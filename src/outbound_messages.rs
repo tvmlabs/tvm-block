@@ -13,23 +13,21 @@
 
 use crate::{
     define_HashmapAugE,
-    error::BlockError,
     envelope_message::MsgEnvelope,
+    error::BlockError,
     hashmapaug::{Augmentable, Augmentation, HashmapAugType},
     inbound_messages::InMsg,
     messages::{CommonMsgInfo, Message},
     miscellaneous::{IhrPendingInfo, ProcessedInfo},
     shard::{AccountIdPrefixFull, ShardState},
-    types::{AddSub, ChildCell, CurrencyCollection},
     transactions::Transaction,
-    Serializable, Deserializable, ShardStateUnsplit, MerkleProof, MerkleUpdate, OutQueueUpdate,
+    types::{AddSub, ChildCell, CurrencyCollection},
+    Deserializable, MerkleProof, MerkleUpdate, OutQueueUpdate, Serializable, ShardStateUnsplit,
 };
-use std::{fmt, collections::HashSet};
-use ton_types::{
-    error, fail, Result,
-    AccountId, UInt256,
-    BuilderData, Cell, SliceData, IBitstring,
-    HashmapType, HashmapSubtree, hm_label, UsageTree,
+use std::{collections::HashSet, fmt};
+use tvm_types::{
+    error, fail, hm_label, AccountId, BuilderData, Cell, HashmapSubtree, HashmapType, IBitstring,
+    Result, SliceData, UInt256, UsageTree,
 };
 
 #[cfg(test)]
@@ -60,11 +58,11 @@ _ enqueued_lt:uint64 out_msg:^MsgEnvelope = EnqueuedMsg;
 
 ///
 /// EnqueuedMsg structure
-/// 
+///
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct EnqueuedMsg {
     pub enqueued_lt: u64,
-    pub out_msg: ChildCell<MsgEnvelope>
+    pub out_msg: ChildCell<MsgEnvelope>,
 }
 
 impl EnqueuedMsg {
@@ -84,14 +82,15 @@ impl EnqueuedMsg {
     pub fn created_lt(&self) -> Result<u64> {
         let env = self.read_out_msg()?;
         let msg = env.read_message()?;
-        msg.lt().ok_or_else(|| error!("wrong message type {:x}", env.message_cell().repr_hash()))
+        msg.lt()
+            .ok_or_else(|| error!("wrong message type {:x}", env.message_cell().repr_hash()))
     }
 
     pub fn enqueued_lt(&self) -> u64 {
         self.enqueued_lt
     }
 
-    pub fn out_msg_cell(&self)-> Cell {
+    pub fn out_msg_cell(&self) -> Cell {
         self.out_msg.cell()
     }
 
@@ -102,8 +101,7 @@ impl EnqueuedMsg {
 
 impl Augmentation<u64> for EnqueuedMsg {
     fn aug(&self) -> Result<u64> {
-        self
-            .read_out_msg()?
+        self.read_out_msg()?
             .read_message()?
             .lt()
             .ok_or_else(|| error!("wrong message type"))
@@ -133,7 +131,11 @@ define_HashmapAugE!(OutMsgDescr, 256, UInt256, OutMsg, CurrencyCollection);
 
 impl OutMsgDescr {
     /// insert new or replace existing (returning prev existing value), key - hash of Message
-    pub fn insert_with_key_return_prev(&mut self, key: UInt256, out_msg: &OutMsg) -> Result<Option<SliceData>> {
+    pub fn insert_with_key_return_prev(
+        &mut self,
+        key: UInt256,
+        out_msg: &OutMsg,
+    ) -> Result<Option<SliceData>> {
         let aug = out_msg.aug()?;
         self.set_return_prev(&key, out_msg, &aug)
     }
@@ -156,19 +158,23 @@ impl OutMsgDescr {
     /// insert or replace existion record (returning prev existing value)
     /// use to improve speed
     pub fn insert_serialized_return_prev(
-        &mut self, 
-        key: &SliceData, 
-        msg_slice: &SliceData, 
-        exported: &CurrencyCollection
+        &mut self,
+        key: &SliceData,
+        msg_slice: &SliceData,
+        exported: &CurrencyCollection,
     ) -> Result<Option<SliceData>> {
         self.set_builder_serialized(key.clone(), &msg_slice.as_builder(), exported)
-            .map_err(|_| error!(BlockError::Other("Error insert serialized message".to_string())))
+            .map_err(|_| {
+                error!(BlockError::Other(
+                    "Error insert serialized message".to_string()
+                ))
+            })
     }
     pub fn insert_serialized(
-        &mut self, 
-        key: &SliceData, 
-        msg_slice: &SliceData, 
-        exported: &CurrencyCollection
+        &mut self,
+        key: &SliceData,
+        msg_slice: &SliceData,
+        exported: &CurrencyCollection,
     ) -> Result<()> {
         self.insert_serialized_return_prev(key, msg_slice, exported)?;
         Ok(())
@@ -200,7 +206,13 @@ impl Augmentable for MsgTime {
 
 impl OutMsgQueue {
     /// insert OutMessage to OutMsgQueue
-    pub fn insert(&mut self, workchain_id: i32, prefix: u64, env: &MsgEnvelope, msg_lt: u64) -> Result<()> {
+    pub fn insert(
+        &mut self,
+        workchain_id: i32,
+        prefix: u64,
+        env: &MsgEnvelope,
+        msg_lt: u64,
+    ) -> Result<()> {
         let hash = env.message_cell().repr_hash();
         let key = OutMsgQueueKey::with_workchain_id_and_prefix(workchain_id, prefix, hash);
         let enq = EnqueuedMsg::with_param(msg_lt, env)?;
@@ -226,9 +238,9 @@ impl OutMsgQueue {
 /// The key used for an outbound message m is the concatenation of its 32-bit
 /// next-hop workchain_id, the first 64 bits of the next-hop address inside that
 /// workchain, and the representation hash Hash(m) of the message m itself
-/// 
+///
 
-#[derive(Clone,Eq,Hash,Debug,PartialEq,Default)]
+#[derive(Clone, Eq, Hash, Debug, PartialEq, Default)]
 pub struct OutMsgQueueKey {
     pub workchain_id: i32,
     pub prefix: u64,
@@ -249,7 +261,8 @@ impl OutMsgQueueKey {
         Self::with_workchain_id_and_prefix(prefix.workchain_id, prefix.prefix, hash)
     }
 
-    pub fn first_u64(acc: &AccountId) -> u64 { // TODO: remove to AccountId
+    pub fn first_u64(acc: &AccountId) -> u64 {
+        // TODO: remove to AccountId
         acc.clone().get_next_u64().unwrap()
     }
 }
@@ -277,7 +290,11 @@ impl fmt::LowerHex for OutMsgQueueKey {
         if f.alternate() {
             write!(f, "0x")?;
         }
-        write!(f, "{}:{:016X}, hash: {:x}", self.workchain_id, self.prefix, self.hash)
+        write!(
+            f,
+            "{}:{:016X}, hash: {:x}",
+            self.workchain_id, self.prefix, self.hash
+        )
     }
 }
 
@@ -308,13 +325,12 @@ impl OutMsgQueueInfo {
     pub fn with_params(
         out_queue: OutMsgQueue,
         proc_info: ProcessedInfo,
-        ihr_pending: IhrPendingInfo
+        ihr_pending: IhrPendingInfo,
     ) -> Self {
-        
         OutMsgQueueInfo {
             out_queue,
             proc_info,
-            ihr_pending, 
+            ihr_pending,
         }
     }
 
@@ -359,10 +375,7 @@ impl OutMsgQueueInfo {
     // Create proofs in state for
     // - part of out queue related with given WC
     // - proceseed info
-    pub fn prepare_proof_for_wc(
-        shard_state_root: &Cell,
-        workchain_id: i32
-    ) -> Result<MerkleProof> {
+    pub fn prepare_proof_for_wc(shard_state_root: &Cell, workchain_id: i32) -> Result<MerkleProof> {
         let proof = Self::prepare_proof_for_wc_ex(shard_state_root, workchain_id)?;
         Ok(proof.proof)
     }
@@ -374,17 +387,13 @@ impl OutMsgQueueInfo {
         new_shard_state_root: &Cell,
         workchain_id: i32,
     ) -> Result<OutQueueUpdate> {
+        let old_proof = Self::prepare_proof_for_wc_ex(old_shard_state_root, workchain_id)?;
 
-        let old_proof = Self::prepare_proof_for_wc_ex(
-            old_shard_state_root, workchain_id)?;
-
-        let new_proof = Self::prepare_proof_for_wc_ex(
-            new_shard_state_root, workchain_id)?;
+        let new_proof = Self::prepare_proof_for_wc_ex(new_shard_state_root, workchain_id)?;
 
         // Prepare visited cells set of the needed part of queue
-        let sub_queue_cells_hashes = old_shard_state_usage_tree.build_visited_subtree(
-            &|h| old_proof.root_hashes.contains(h)
-        )?;
+        let sub_queue_cells_hashes = old_shard_state_usage_tree
+            .build_visited_subtree(&|h| old_proof.root_hashes.contains(h))?;
 
         // Usage tree from state's root to subtree's root
         let usage_tree = UsageTree::with_root(old_proof.proof.proof.clone());
@@ -407,18 +416,12 @@ impl OutMsgQueueInfo {
         let old_proof_root = old_proof.proof.serialize()?;
         let old_proof_hash = old_proof_root.repr_hash();
         let new_proof_root = new_proof.proof.serialize()?;
-        let update = MerkleUpdate::create_fast(
-            &old_proof_root,
-            &new_proof_root,
-            |h| {
-                sub_queue_cells_hashes.contains(h) ||
-                usage_tree.contains(h) ||
-                h == &old_proof_hash
-            }
-        )?;
-        let is_empty = old_proof.sub_queue_root_hash == new_proof.sub_queue_root_hash && 
-            old_proof.sub_queue_root_hash_2.is_none();
-        Ok(OutQueueUpdate {is_empty, update})
+        let update = MerkleUpdate::create_fast(&old_proof_root, &new_proof_root, |h| {
+            sub_queue_cells_hashes.contains(h) || usage_tree.contains(h) || h == &old_proof_hash
+        })?;
+        let is_empty = old_proof.sub_queue_root_hash == new_proof.sub_queue_root_hash
+            && old_proof.sub_queue_root_hash_2.is_none();
+        Ok(OutQueueUpdate { is_empty, update })
     }
 
     pub fn prepare_first_update_for_wc(
@@ -430,7 +433,7 @@ impl OutMsgQueueInfo {
         let new_proof_root = new_proof.serialize()?;
         Ok(OutQueueUpdate {
             is_empty: false,
-            update: MerkleUpdate::create_fast(zerostate_root, &new_proof_root, |_| false)?
+            update: MerkleUpdate::create_fast(zerostate_root, &new_proof_root, |_| false)?,
         })
     }
 
@@ -438,20 +441,23 @@ impl OutMsgQueueInfo {
         shard_state_root: &Cell,
         workchain_id: i32,
     ) -> Result<ProofForWc> {
-        
         let usage_tree = UsageTree::with_root(shard_state_root.clone());
         let mut result = ProofForWc::default();
 
-        fn visit_state(
-            state: &ShardStateUnsplit,
-            workchain_id: i32,
-        ) -> Result<(UInt256, UInt256)> {
+        fn visit_state(state: &ShardStateUnsplit, workchain_id: i32) -> Result<(UInt256, UInt256)> {
             let queue_info = state.read_out_msg_queue_info()?;
-            let sub_queue_root_hash = queue_info.out_queue()
-                .subtree_root_cell(&SliceData::load_bitstring(workchain_id.write_to_new_cell()?)?)?
-                .map(|c| c.repr_hash()).unwrap_or_default();
-            let proc_info_root_hash = queue_info.proc_info().root()
-                .map(|c| c.repr_hash()).unwrap_or_default();
+            let sub_queue_root_hash = queue_info
+                .out_queue()
+                .subtree_root_cell(&SliceData::load_bitstring(
+                    workchain_id.write_to_new_cell()?,
+                )?)?
+                .map(|c| c.repr_hash())
+                .unwrap_or_default();
+            let proc_info_root_hash = queue_info
+                .proc_info()
+                .root()
+                .map(|c| c.repr_hash())
+                .unwrap_or_default();
             Ok((sub_queue_root_hash, proc_info_root_hash))
         }
 
@@ -480,7 +486,7 @@ impl OutMsgQueueInfo {
         result.proof = MerkleProof::create_with_subtrees(
             shard_state_root,
             |h| usage_tree.contains(h),
-            |h| result.root_hashes.contains(h)
+            |h| result.root_hashes.contains(h),
         )?;
         Ok(result)
     }
@@ -506,18 +512,17 @@ impl Deserializable for OutMsgQueueInfo {
     }
 }
 
-
 ///
 /// OutMsg structure
 /// blockchain spec 3.3.3. Descriptor of an outbound message
-/// 
+///
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum OutMsg {
     #[default]
     None,
     /// External outbound messages, or “messages to nowhere”
     /// msg_export_ext$000 msg:^(Message Any) transaction:^Transaction = OutMsg;
-    External(OutMsgExternal),           
+    External(OutMsgExternal),
     /// Ordinary (internal) outbound messages
     /// msg_export_new$001 out_msg:^MsgEnvelope transaction:^Transaction = OutMsg;
     New(OutMsgNew),
@@ -548,7 +553,11 @@ impl OutMsg {
     }
     /// Create Immediate internal message
     pub fn immediate(env_cell: Cell, tr_cell: Cell, reimport_msg_cell: Cell) -> OutMsg {
-        OutMsg::Immediate(OutMsgImmediate::with_cells(env_cell, tr_cell, reimport_msg_cell))
+        OutMsg::Immediate(OutMsgImmediate::with_cells(
+            env_cell,
+            tr_cell,
+            reimport_msg_cell,
+        ))
     }
     /// Create Transit internal message
     pub fn transit(env_cell: Cell, imported_cell: Cell, requeue: bool) -> OutMsg {
@@ -563,7 +572,11 @@ impl OutMsg {
         OutMsg::Dequeue(OutMsgDequeue::with_cells(env_cell, import_block_lt))
     }
     /// Create Dequeue Short internal message
-    pub fn dequeue_short(msg_env_hash: UInt256, next_prefix: &AccountIdPrefixFull, import_block_lt: u64) -> OutMsg {
+    pub fn dequeue_short(
+        msg_env_hash: UInt256,
+        next_prefix: &AccountIdPrefixFull,
+        import_block_lt: u64,
+    ) -> OutMsg {
         OutMsg::DequeueShort(OutMsgDequeueShort {
             msg_env_hash,
             next_workchain: next_prefix.workchain_id,
@@ -574,7 +587,10 @@ impl OutMsg {
 
     /// Create Dequeue immediate message
     pub fn dequeue_immediate(env_cell: Cell, reimport_msg_cell: Cell) -> OutMsg {
-        OutMsg::DequeueImmediate(OutMsgDequeueImmediate::with_cells(env_cell, reimport_msg_cell))
+        OutMsg::DequeueImmediate(OutMsgDequeueImmediate::with_cells(
+            env_cell,
+            reimport_msg_cell,
+        ))
     }
 
     /// Check if is valid message
@@ -584,15 +600,15 @@ impl OutMsg {
 
     pub fn tag(&self) -> u8 {
         match self {
-            OutMsg::External(_)           => OUT_MSG_EXT,
-            OutMsg::Immediate(_)          => OUT_MSG_IMM,
-            OutMsg::New(_)                => OUT_MSG_NEW,
-            OutMsg::Transit(_)            => OUT_MSG_TR,
-            OutMsg::Dequeue(_)            => OUT_MSG_DEQ, // 4 bits
-            OutMsg::DequeueShort(_)       => OUT_MSG_DEQ_SHORT, // 4 bits
-            OutMsg::DequeueImmediate(_)   => OUT_MSG_DEQ_IMM,
-            OutMsg::TransitRequeued(_)    => OUT_MSG_TRDEQ,
-            OutMsg::None => 16
+            OutMsg::External(_) => OUT_MSG_EXT,
+            OutMsg::Immediate(_) => OUT_MSG_IMM,
+            OutMsg::New(_) => OUT_MSG_NEW,
+            OutMsg::Transit(_) => OUT_MSG_TR,
+            OutMsg::Dequeue(_) => OUT_MSG_DEQ,            // 4 bits
+            OutMsg::DequeueShort(_) => OUT_MSG_DEQ_SHORT, // 4 bits
+            OutMsg::DequeueImmediate(_) => OUT_MSG_DEQ_IMM,
+            OutMsg::TransitRequeued(_) => OUT_MSG_TRDEQ,
+            OutMsg::None => 16,
         }
     }
 
@@ -600,19 +616,17 @@ impl OutMsg {
     /// the function returns the message envelop (if exists)
     ///
     pub fn read_out_message(&self) -> Result<Option<MsgEnvelope>> {
-        Ok(
-            match self {
-                OutMsg::External(_) => None,
-                OutMsg::Immediate(ref x) => Some(x.read_out_message()?),
-                OutMsg::New(ref x) => Some(x.read_out_message()?),
-                OutMsg::Transit(ref x) => Some(x.read_out_message()?),
-                OutMsg::Dequeue(ref x) => Some(x.read_out_message()?),
-                OutMsg::DequeueShort(_) => None,
-                OutMsg::DequeueImmediate(ref x) => Some(x.read_out_message()?),
-                OutMsg::TransitRequeued(ref x) => Some(x.read_out_message()?),
-                OutMsg::None => fail!("wrong message type")
-            }
-        )
+        Ok(match self {
+            OutMsg::External(_) => None,
+            OutMsg::Immediate(ref x) => Some(x.read_out_message()?),
+            OutMsg::New(ref x) => Some(x.read_out_message()?),
+            OutMsg::Transit(ref x) => Some(x.read_out_message()?),
+            OutMsg::Dequeue(ref x) => Some(x.read_out_message()?),
+            OutMsg::DequeueShort(_) => None,
+            OutMsg::DequeueImmediate(ref x) => Some(x.read_out_message()?),
+            OutMsg::TransitRequeued(ref x) => Some(x.read_out_message()?),
+            OutMsg::None => fail!("wrong message type"),
+        })
     }
 
     ///
@@ -628,7 +642,7 @@ impl OutMsg {
             OutMsg::DequeueShort(_) => None,
             OutMsg::DequeueImmediate(ref x) => Some(x.out_message_cell()),
             OutMsg::TransitRequeued(ref x) => Some(x.out_message_cell()),
-            OutMsg::None => None
+            OutMsg::None => None,
         }
     }
 
@@ -636,57 +650,51 @@ impl OutMsg {
     /// the function returns the message (if exists)
     ///
     pub fn read_message(&self) -> Result<Option<Message>> {
-        Ok(
-            match self {
-                OutMsg::External(ref x) => Some(x.read_message()?),
-                OutMsg::Immediate(ref x) => Some(x.read_out_message()?.read_message()?),
-                OutMsg::New(ref x) => Some(x.read_out_message()?.read_message()?),
-                OutMsg::Transit(ref x) => Some(x.read_out_message()?.read_message()?),
-                OutMsg::Dequeue(ref x) => Some(x.read_out_message()?.read_message()?),
-                OutMsg::DequeueShort(_) => None,
-                OutMsg::DequeueImmediate(ref x) => Some(x.read_out_message()?.read_message()?),
-                OutMsg::TransitRequeued(ref x) => Some(x.read_out_message()?.read_message()?),
-                OutMsg::None => fail!("wrong message type")
-            }
-        )
+        Ok(match self {
+            OutMsg::External(ref x) => Some(x.read_message()?),
+            OutMsg::Immediate(ref x) => Some(x.read_out_message()?.read_message()?),
+            OutMsg::New(ref x) => Some(x.read_out_message()?.read_message()?),
+            OutMsg::Transit(ref x) => Some(x.read_out_message()?.read_message()?),
+            OutMsg::Dequeue(ref x) => Some(x.read_out_message()?.read_message()?),
+            OutMsg::DequeueShort(_) => None,
+            OutMsg::DequeueImmediate(ref x) => Some(x.read_out_message()?.read_message()?),
+            OutMsg::TransitRequeued(ref x) => Some(x.read_out_message()?.read_message()?),
+            OutMsg::None => fail!("wrong message type"),
+        })
     }
 
     ///
     /// the function returns the messages hash
     ///
     pub fn read_message_hash(&self) -> Result<UInt256> {
-        Ok(
-            match self {
-                OutMsg::External(ref x) => x.message_cell().repr_hash(),
-                OutMsg::Immediate(ref x) => x.read_out_message()?.message_cell().repr_hash(),
-                OutMsg::New(ref x) => x.read_out_message()?.message_hash(),
-                OutMsg::Transit(ref x) => x.read_out_message()?.message_hash(),
-                OutMsg::Dequeue(ref x) => x.read_out_message()?.message_hash(),
-                OutMsg::DequeueShort(_) => fail!("dequeue short out msg doesn't have message hash"),
-                OutMsg::DequeueImmediate(ref x) => x.read_out_message()?.message_hash(),
-                OutMsg::TransitRequeued(ref x) => x.read_out_message()?.message_hash(),
-                OutMsg::None => fail!("wrong message type")
-            }
-        )
+        Ok(match self {
+            OutMsg::External(ref x) => x.message_cell().repr_hash(),
+            OutMsg::Immediate(ref x) => x.read_out_message()?.message_cell().repr_hash(),
+            OutMsg::New(ref x) => x.read_out_message()?.message_hash(),
+            OutMsg::Transit(ref x) => x.read_out_message()?.message_hash(),
+            OutMsg::Dequeue(ref x) => x.read_out_message()?.message_hash(),
+            OutMsg::DequeueShort(_) => fail!("dequeue short out msg doesn't have message hash"),
+            OutMsg::DequeueImmediate(ref x) => x.read_out_message()?.message_hash(),
+            OutMsg::TransitRequeued(ref x) => x.read_out_message()?.message_hash(),
+            OutMsg::None => fail!("wrong message type"),
+        })
     }
 
     ///
     /// the function returns the message cell (if exists)
     ///
     pub fn message_cell(&self) -> Result<Option<Cell>> {
-        Ok(
-            match self {
-                OutMsg::External(ref x) => Some(x.message_cell()),
-                OutMsg::Immediate(ref x) => Some(x.read_out_message()?.message_cell()),
-                OutMsg::New(ref x) => Some(x.read_out_message()?.message_cell()),
-                OutMsg::Transit(ref x) => Some(x.read_out_message()?.message_cell()),
-                OutMsg::Dequeue(ref x) => Some(x.read_out_message()?.message_cell()),
-                OutMsg::DequeueShort(_) => None,
-                OutMsg::DequeueImmediate(ref x) => Some(x.read_out_message()?.message_cell()),
-                OutMsg::TransitRequeued(ref x) => Some(x.read_out_message()?.message_cell()),
-                OutMsg::None => fail!("wrong message type")
-            }
-        )
+        Ok(match self {
+            OutMsg::External(ref x) => Some(x.message_cell()),
+            OutMsg::Immediate(ref x) => Some(x.read_out_message()?.message_cell()),
+            OutMsg::New(ref x) => Some(x.read_out_message()?.message_cell()),
+            OutMsg::Transit(ref x) => Some(x.read_out_message()?.message_cell()),
+            OutMsg::Dequeue(ref x) => Some(x.read_out_message()?.message_cell()),
+            OutMsg::DequeueShort(_) => None,
+            OutMsg::DequeueImmediate(ref x) => Some(x.read_out_message()?.message_cell()),
+            OutMsg::TransitRequeued(ref x) => Some(x.read_out_message()?.message_cell()),
+            OutMsg::None => fail!("wrong message type"),
+        })
     }
 
     ///
@@ -702,7 +710,7 @@ impl OutMsg {
             OutMsg::DequeueShort(ref x) => Some(x.msg_env_hash.clone()),
             OutMsg::DequeueImmediate(ref x) => Some(x.out_message_cell().repr_hash()),
             OutMsg::TransitRequeued(ref x) => Some(x.out_message_cell().repr_hash()),
-            OutMsg::None => None
+            OutMsg::None => None,
         }
     }
 
@@ -723,7 +731,7 @@ impl OutMsg {
     pub fn read_transaction(&self) -> Result<Option<Transaction>> {
         match self.transaction_cell() {
             Some(cell) => Ok(Some(Transaction::construct_from_cell(cell)?)),
-            None => Ok(None)
+            None => Ok(None),
         }
     }
 
@@ -743,11 +751,13 @@ impl OutMsg {
             OutMsg::Transit(ref x) => Some(x.imported_cell()),
             OutMsg::DequeueImmediate(ref x) => Some(x.reimport_message_cell()),
             OutMsg::TransitRequeued(ref x) => Some(x.imported_cell()),
-            _ => None
+            _ => None,
         }
     }
 
-    pub fn exported_value(&self) -> Result<CurrencyCollection> { self.aug() }
+    pub fn exported_value(&self) -> Result<CurrencyCollection> {
+        self.aug()
+    }
 
     pub fn at_and_lt(&self) -> Result<Option<(u32, u64)>> {
         Ok(self.read_message()?.and_then(|msg| msg.at_and_lt()))
@@ -790,11 +800,10 @@ impl Augmentation<CurrencyCollection> for OutMsg {
             }
             OutMsg::None => fail!("wrong OutMsg type"),
             // for other types - no value exported
-            _ => ()
-            // OutMsg::External(ref x) =>
-            // OutMsg::Immediate(ref x) =>
-            // OutMsg::Dequeue(ref x) => 
-            // OutMsg::DequeueImmediate(ref x) =>
+            _ => (), // OutMsg::External(ref x) =>
+                     // OutMsg::Immediate(ref x) =>
+                     // OutMsg::Dequeue(ref x) =>
+                     // OutMsg::DequeueImmediate(ref x) =>
         }
         Ok(exported)
     }
@@ -806,17 +815,16 @@ macro_rules! read_out_msg_descr {
         let mut x = $msg_descr::default();
         x.read_from($cell)?;
         OutMsg::$variant(x)
-    }}
+    }};
 }
 
- ///internal helper macros for reading InMsg variants
+///internal helper macros for reading InMsg variants
 macro_rules! write_out_ctor_tag {
     ($builder:expr, $tag:ident, $tag_len:expr) => {{
         $builder.append_bits($tag as usize, $tag_len).unwrap();
         $builder
-    }}
+    }};
 }
-
 
 impl Serializable for OutMsg {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
@@ -826,12 +834,18 @@ impl Serializable for OutMsg {
             OutMsg::New(ref x) => x.write_to(write_out_ctor_tag!(cell, OUT_MSG_NEW, 3)),
             OutMsg::Transit(ref x) => x.write_to(write_out_ctor_tag!(cell, OUT_MSG_TR, 3)),
             OutMsg::Dequeue(ref x) => x.write_to(write_out_ctor_tag!(cell, OUT_MSG_DEQ, 4)),
-            OutMsg::DequeueShort(ref x) => x.write_to(write_out_ctor_tag!(cell, OUT_MSG_DEQ_SHORT, 4)),
-            OutMsg::DequeueImmediate(ref x) => x.write_to(write_out_ctor_tag!(cell, OUT_MSG_DEQ_IMM, 3)),
-            OutMsg::TransitRequeued(ref x) => x.write_to(write_out_ctor_tag!(cell, OUT_MSG_TRDEQ, 3)),
-            OutMsg::None => fail!(
-                BlockError::InvalidOperation("OutMsg::None can't be serialized".to_string())
-            )
+            OutMsg::DequeueShort(ref x) => {
+                x.write_to(write_out_ctor_tag!(cell, OUT_MSG_DEQ_SHORT, 4))
+            }
+            OutMsg::DequeueImmediate(ref x) => {
+                x.write_to(write_out_ctor_tag!(cell, OUT_MSG_DEQ_IMM, 3))
+            }
+            OutMsg::TransitRequeued(ref x) => {
+                x.write_to(write_out_ctor_tag!(cell, OUT_MSG_TRDEQ, 3))
+            }
+            OutMsg::None => fail!(BlockError::InvalidOperation(
+                "OutMsg::None can't be serialized".to_string()
+            )),
         }
     }
 }
@@ -839,37 +853,38 @@ impl Serializable for OutMsg {
 impl Deserializable for OutMsg {
     fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
         let tag: u8 = (cell.get_next_bits(3)?[0] & 0xE0) >> 5;
-        *self =  match tag {
+        *self = match tag {
             OUT_MSG_EXT => read_out_msg_descr!(cell, OutMsgExternal, External),
             OUT_MSG_IMM => read_out_msg_descr!(cell, OutMsgImmediate, Immediate),
             OUT_MSG_NEW => read_out_msg_descr!(cell, OutMsgNew, New),
             OUT_MSG_TR => read_out_msg_descr!(cell, OutMsgTransit, Transit),
             OUT_MSG_DEQ_IMM => read_out_msg_descr!(cell, OutMsgDequeueImmediate, DequeueImmediate),
             OUT_MSG_TRDEQ => read_out_msg_descr!(cell, OutMsgTransitRequeued, TransitRequeued),
-            tag if cell.remaining_bits() != 0 && (tag == OUT_MSG_DEQ >> 1 || tag == OUT_MSG_DEQ_SHORT >> 1) => {
+            tag if cell.remaining_bits() != 0
+                && (tag == OUT_MSG_DEQ >> 1 || tag == OUT_MSG_DEQ_SHORT >> 1) =>
+            {
                 match (tag << 1) | cell.get_next_bit_int().unwrap() as u8 {
                     OUT_MSG_DEQ => read_out_msg_descr!(cell, OutMsgDequeue, Dequeue),
-                    OUT_MSG_DEQ_SHORT => read_out_msg_descr!(cell, OutMsgDequeueShort, DequeueShort),
-                    _ => unreachable!()
-                }
-            },
-            tag => {
-                fail!(
-                    BlockError::InvalidConstructorTag {
-                        t: tag as u32,
-                        s: "OutMsg".to_string()
+                    OUT_MSG_DEQ_SHORT => {
+                        read_out_msg_descr!(cell, OutMsgDequeueShort, DequeueShort)
                     }
-                );
+                    _ => unreachable!(),
+                }
+            }
+            tag => {
+                fail!(BlockError::InvalidConstructorTag {
+                    t: tag as u32,
+                    s: "OutMsg".to_string()
+                });
             }
         };
         Ok(())
     }
 }
 
-
 ///
 /// msg_export_ext$000 msg:^Message transaction:^Transaction = OutMsg;
-/// 
+///
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct OutMsgExternal {
     msg: ChildCell<Message>,
@@ -888,7 +903,7 @@ impl OutMsgExternal {
         self.msg.read_struct()
     }
 
-    pub fn message_cell(&self)-> Cell {
+    pub fn message_cell(&self) -> Cell {
         self.msg.cell()
     }
 
@@ -896,7 +911,7 @@ impl OutMsgExternal {
         self.transaction.read_struct()
     }
 
-    pub fn transaction_cell(&self)-> Cell {
+    pub fn transaction_cell(&self) -> Cell {
         self.transaction.cell()
     }
 }
@@ -919,7 +934,7 @@ impl Deserializable for OutMsgExternal {
 
 ///
 /// msg_export_imm$010 out_msg:^MsgEnvelope transaction:^Transaction reimport:^InMsg = OutMsg;
-/// 
+///
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct OutMsgImmediate {
@@ -930,7 +945,7 @@ pub struct OutMsgImmediate {
 
 impl OutMsgImmediate {
     pub fn with_cells(env_cell: Cell, tr_cell: Cell, reimport_msg_cell: Cell) -> OutMsgImmediate {
-        OutMsgImmediate{
+        OutMsgImmediate {
             out_msg: ChildCell::with_cell(env_cell),
             transaction: ChildCell::with_cell(tr_cell),
             reimport: ChildCell::with_cell(reimport_msg_cell),
@@ -941,7 +956,7 @@ impl OutMsgImmediate {
         self.out_msg.read_struct()
     }
 
-    pub fn out_message_cell(&self)-> Cell {
+    pub fn out_message_cell(&self) -> Cell {
         self.out_msg.cell()
     }
 
@@ -949,7 +964,7 @@ impl OutMsgImmediate {
         self.transaction.read_struct()
     }
 
-    pub fn transaction_cell(&self)-> Cell {
+    pub fn transaction_cell(&self) -> Cell {
         self.transaction.cell()
     }
 
@@ -957,7 +972,7 @@ impl OutMsgImmediate {
         self.reimport.read_struct()
     }
 
-    pub fn reimport_message_cell(&self)-> Cell {
+    pub fn reimport_message_cell(&self) -> Cell {
         self.reimport.cell()
     }
 }
@@ -982,7 +997,7 @@ impl Deserializable for OutMsgImmediate {
 
 ///
 /// msg_export_new$001 out_msg:^MsgEnvelope transaction:^Transaction = OutMsg;
-/// 
+///
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct OutMsgNew {
@@ -1002,7 +1017,7 @@ impl OutMsgNew {
         self.out_msg.read_struct()
     }
 
-    pub fn out_message_cell(&self)-> Cell {
+    pub fn out_message_cell(&self) -> Cell {
         self.out_msg.cell()
     }
 
@@ -1010,7 +1025,7 @@ impl OutMsgNew {
         self.transaction.read_struct()
     }
 
-    pub fn transaction_cell(&self)-> Cell {
+    pub fn transaction_cell(&self) -> Cell {
         self.transaction.cell()
     }
 }
@@ -1033,7 +1048,7 @@ impl Deserializable for OutMsgNew {
 
 ///
 /// msg_export_tr$011 out_msg:^MsgEnvelope imported:^InMsg = OutMsg;
-/// 
+///
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct OutMsgTransit {
@@ -1043,7 +1058,7 @@ pub struct OutMsgTransit {
 
 impl OutMsgTransit {
     pub fn with_cells(env_cell: Cell, imported_cell: Cell) -> Self {
-        OutMsgTransit{
+        OutMsgTransit {
             out_msg: ChildCell::with_cell(env_cell),
             imported: ChildCell::with_cell(imported_cell),
         }
@@ -1053,7 +1068,7 @@ impl OutMsgTransit {
         self.out_msg.read_struct()
     }
 
-    pub fn out_message_cell(&self)-> Cell {
+    pub fn out_message_cell(&self) -> Cell {
         self.out_msg.cell()
     }
 
@@ -1061,7 +1076,7 @@ impl OutMsgTransit {
         self.imported.read_struct()
     }
 
-    pub fn imported_cell(&self)-> Cell {
+    pub fn imported_cell(&self) -> Cell {
         self.imported.cell()
     }
 }
@@ -1077,14 +1092,14 @@ impl Serializable for OutMsgTransit {
 impl Deserializable for OutMsgTransit {
     fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
         self.out_msg.read_from_reference(cell)?;
-        self.imported.read_from_reference(cell)?; 
+        self.imported.read_from_reference(cell)?;
         Ok(())
     }
 }
 
 ///
 /// msg_export_deq$110 out_msg:^MsgEnvelope import_block_lt:uint64 = OutMsg;
-/// 
+///
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct OutMsgDequeueImmediate {
@@ -1094,7 +1109,7 @@ pub struct OutMsgDequeueImmediate {
 
 impl OutMsgDequeueImmediate {
     pub fn with_cells(env_cell: Cell, reimport_msg_cell: Cell) -> Self {
-        OutMsgDequeueImmediate{
+        OutMsgDequeueImmediate {
             out_msg: ChildCell::with_cell(env_cell),
             reimport: ChildCell::with_cell(reimport_msg_cell),
         }
@@ -1104,7 +1119,7 @@ impl OutMsgDequeueImmediate {
         self.out_msg.read_struct()
     }
 
-    pub fn out_message_cell(&self)-> Cell {
+    pub fn out_message_cell(&self) -> Cell {
         self.out_msg.cell()
     }
 
@@ -1112,7 +1127,7 @@ impl OutMsgDequeueImmediate {
         self.reimport.read_struct()
     }
 
-    pub fn reimport_message_cell(&self)-> Cell {
+    pub fn reimport_message_cell(&self) -> Cell {
         self.reimport.cell()
     }
 }
@@ -1135,7 +1150,7 @@ impl Deserializable for OutMsgDequeueImmediate {
 
 ///
 /// msg_export_deq$1100 out_msg:^MsgEnvelope import_block_lt:uint63 = OutMsg;
-/// 
+///
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct OutMsgDequeue {
@@ -1155,7 +1170,7 @@ impl OutMsgDequeue {
         self.out_msg.read_struct()
     }
 
-    pub fn out_message_cell(&self)-> Cell {
+    pub fn out_message_cell(&self) -> Cell {
         self.out_msg.cell()
     }
 
@@ -1165,7 +1180,9 @@ impl OutMsgDequeue {
 
     pub fn set_import_block_lt(&mut self, value: u64) -> Result<()> {
         if value & 0x8000_0000_0000_0000 != 0 {
-            fail!(BlockError::InvalidArg("`import_block_lt` can't have highest bit set".to_string()))
+            fail!(BlockError::InvalidArg(
+                "`import_block_lt` can't have highest bit set".to_string()
+            ))
         }
         self.import_block_lt = value;
         Ok(())
@@ -1212,17 +1229,17 @@ impl Serializable for OutMsgDequeueShort {
 
 impl Deserializable for OutMsgDequeueShort {
     fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
-        self.msg_env_hash.read_from(cell)?; 
-        self.next_workchain.read_from(cell)?; 
-        self.next_addr_pfx.read_from(cell)?; 
-        self.import_block_lt.read_from(cell)?; 
+        self.msg_env_hash.read_from(cell)?;
+        self.next_workchain.read_from(cell)?;
+        self.next_addr_pfx.read_from(cell)?;
+        self.import_block_lt.read_from(cell)?;
         Ok(())
     }
 }
 
 ///
 /// msg_export_tr_req$111 out_msg:^MsgEnvelope imported:^InMsg = OutMsg;
-/// 
+///
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct OutMsgTransitRequeued {
@@ -1232,7 +1249,7 @@ pub struct OutMsgTransitRequeued {
 
 impl OutMsgTransitRequeued {
     pub fn with_cells(env_cell: Cell, imported_cell: Cell) -> Self {
-        OutMsgTransitRequeued{
+        OutMsgTransitRequeued {
             out_msg: ChildCell::with_cell(env_cell),
             imported: ChildCell::with_cell(imported_cell),
         }
@@ -1242,7 +1259,7 @@ impl OutMsgTransitRequeued {
         self.out_msg.read_struct()
     }
 
-    pub fn out_message_cell(&self)-> Cell {
+    pub fn out_message_cell(&self) -> Cell {
         self.out_msg.cell()
     }
 
@@ -1250,7 +1267,7 @@ impl OutMsgTransitRequeued {
         self.imported.read_struct()
     }
 
-    pub fn imported_cell(&self)-> Cell {
+    pub fn imported_cell(&self) -> Cell {
         self.imported.cell()
     }
 }
@@ -1266,7 +1283,7 @@ impl Serializable for OutMsgTransitRequeued {
 impl Deserializable for OutMsgTransitRequeued {
     fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
         self.out_msg.read_from_reference(cell)?;
-        self.imported.read_from_reference(cell)?; 
+        self.imported.read_from_reference(cell)?;
         Ok(())
     }
 }

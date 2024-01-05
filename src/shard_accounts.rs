@@ -12,18 +12,16 @@
 */
 
 use crate::{
-    define_HashmapAugE,
     accounts::{Account, ShardAccount},
+    define_HashmapAugE,
     hashmapaug::{Augmentable, HashmapAugType},
     types::{CurrencyCollection, Number5},
-    Serializable, Deserializable, Augmentation,
+    Augmentation, Deserializable, Serializable,
 };
 use std::fmt;
-use ton_types::{
-    error, fail, Result,
-    AccountId, UInt256,
-    BuilderData, Cell, IBitstring,
-    HashmapType, SliceData, hm_label, HashmapSubtree,
+use tvm_types::{
+    error, fail, hm_label, AccountId, BuilderData, Cell, HashmapSubtree, HashmapType, IBitstring,
+    Result, SliceData, UInt256,
 };
 
 #[cfg(test)]
@@ -38,15 +36,28 @@ define_HashmapAugE!(ShardAccounts, 256, UInt256, ShardAccount, DepthBalanceInfo)
 impl HashmapSubtree for ShardAccounts {}
 
 impl ShardAccounts {
-    pub fn insert(&mut self, split_depth: u8, account: &Account, last_trans_hash: UInt256, last_trans_lt: u64) -> Result<Option<AccountId>> {
+    pub fn insert(
+        &mut self,
+        split_depth: u8,
+        account: &Account,
+        last_trans_hash: UInt256,
+        last_trans_lt: u64,
+    ) -> Result<Option<AccountId>> {
         match account.get_id() {
             Some(acc_id) => {
-                let depth_balance_info = DepthBalanceInfo::new(split_depth, account.get_balance().unwrap())?;
-                let sh_account = ShardAccount::with_params(account, last_trans_hash, last_trans_lt)?;
-                self.set_builder_serialized(acc_id.clone(), &sh_account.write_to_new_cell()?, &depth_balance_info).unwrap();
+                let depth_balance_info =
+                    DepthBalanceInfo::new(split_depth, account.get_balance().unwrap())?;
+                let sh_account =
+                    ShardAccount::with_params(account, last_trans_hash, last_trans_lt)?;
+                self.set_builder_serialized(
+                    acc_id.clone(),
+                    &sh_account.write_to_new_cell()?,
+                    &depth_balance_info,
+                )
+                .unwrap();
                 Ok(Some(acc_id))
             }
-            _ => Ok(None)
+            _ => Ok(None),
         }
     }
 
@@ -57,7 +68,7 @@ impl ShardAccounts {
     pub fn balance(&self, account_id: &AccountId) -> Result<Option<DepthBalanceInfo>> {
         match self.get_serialized_raw(account_id.clone())? {
             Some(mut slice) => Ok(Some(DepthBalanceInfo::construct_from(&mut slice)?)),
-            None => Ok(None)
+            None => Ok(None),
         }
     }
 
@@ -98,11 +109,17 @@ impl DepthBalanceInfo {
         })
     }
 
-    pub fn set_split_depth(&mut self, split_depth: Number5) { self.split_depth = split_depth }
+    pub fn set_split_depth(&mut self, split_depth: Number5) {
+        self.split_depth = split_depth
+    }
 
-    pub fn set_balance(&mut self, balance: CurrencyCollection) { self.balance = balance }
+    pub fn set_balance(&mut self, balance: CurrencyCollection) {
+        self.balance = balance
+    }
 
-    pub fn balance(&self) -> &CurrencyCollection { &self.balance }
+    pub fn balance(&self) -> &CurrencyCollection {
+        &self.balance
+    }
 }
 
 impl Augmentable for DepthBalanceInfo {

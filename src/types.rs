@@ -19,17 +19,14 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use num::{BigInt, bigint::Sign, One, Zero};
-use ton_types::{
-    error, fail,
-    Result, BuilderData, Cell, CellType, IBitstring, HashmapE, HashmapType, SliceData, UInt256
+use num::{bigint::Sign, BigInt, One, Zero};
+use tvm_types::{
+    error, fail, BuilderData, Cell, CellType, HashmapE, HashmapType, IBitstring, Result, SliceData,
+    UInt256,
 };
 
 use crate::{
-    define_HashmapE,
-    error::BlockError,
-    hashmapaug::Augmentable,
-    Serializable, Deserializable,
+    define_HashmapE, error::BlockError, hashmapaug::Augmentable, Deserializable, Serializable,
 };
 
 #[cfg(test)]
@@ -38,11 +35,11 @@ mod tests;
 
 ///
 /// var_uint$_ {n:#} len:(#< n) value:(uint (len * 8)) = VarUInteger n;
-/// 
+///
 
 /// var_int$_ {n:#} len:(#< n) value:(int (len * 8)) = VarInteger n;
 /// nanograms$_ amount:(VarUInteger 16) = Grams;
-/// 
+///
 /// If one wants to represent x nanograms, one selects an integer l < 16 such
 /// that x < 2^8*l, and serializes first l as an unsigned 4-bit integer, then x itself
 /// as an unsigned 8`-bit integer. Notice that four zero bits represent a zero
@@ -50,12 +47,11 @@ mod tests;
 
 macro_rules! define_VarIntegerN {
     ( $varname:ident, $N:expr, BigInt ) => {
-        #[derive( Eq, Clone, Debug)]
+        #[derive(Eq, Clone, Debug)]
         pub struct $varname(BigInt);
 
         #[allow(dead_code)]
         impl $varname {
-
             fn get_len(value: &BigInt) -> usize {
                 (value.bits() as usize + 7) >> 3
             }
@@ -93,11 +89,11 @@ macro_rules! define_VarIntegerN {
             fn check_overflow(value: &BigInt) -> Result<()> {
                 match Self::get_len(&value) > $N {
                     true => fail!("value {} is bigger than {} bytes", value, $N),
-                    false => Ok(())
+                    false => Ok(()),
                 }
             }
 
-            // determine the size of the len field, using the formula from 3.3.4 VM 
+            // determine the size of the len field, using the formula from 3.3.4 VM
             fn get_len_len() -> usize {
                 let max_bits = ($N - 1) as f64;
                 max_bits.log2() as usize + 1
@@ -107,7 +103,12 @@ macro_rules! define_VarIntegerN {
             fn write_to_cell(value: &BigInt) -> Result<BuilderData> {
                 let len = Self::get_len(value);
                 if len >= $N {
-                    fail!("serialization of {} error {} >= {}", stringify!($varname), len, $N)
+                    fail!(
+                        "serialization of {} error {} >= {}",
+                        stringify!($varname),
+                        len,
+                        $N
+                    )
                 }
 
                 let mut cell = BuilderData::default();
@@ -120,11 +121,18 @@ macro_rules! define_VarIntegerN {
             fn read_from_cell(cell: &mut SliceData) -> Result<BigInt> {
                 let len = cell.get_next_int(Self::get_len_len())? as usize;
                 if len >= $N {
-                    fail!("deserialization of {} error {} >= {}", stringify!($varname), len, $N)
+                    fail!(
+                        "deserialization of {} error {} >= {}",
+                        stringify!($varname),
+                        len,
+                        $N
+                    )
                 }
-                Ok(BigInt::from_bytes_be(Sign::Plus, &cell.get_next_bytes(len)?))
+                Ok(BigInt::from_bytes_be(
+                    Sign::Plus,
+                    &cell.get_next_bytes(len)?,
+                ))
             }
-
         }
 
         impl<T: Into<BigInt>> From<T> for $varname {
@@ -149,7 +157,7 @@ macro_rules! define_VarIntegerN {
                         Self::check_overflow(&val)?;
                         Ok(Self(val))
                     }
-                    None => fail!("cannot parse {} for {}", stringify!($varname), string)
+                    None => fail!("cannot parse {} for {}", stringify!($varname), string),
                 }
             }
         }
@@ -196,7 +204,6 @@ macro_rules! define_VarIntegerN {
             }
         }
 
-
         impl Default for $varname {
             fn default() -> Self {
                 $varname(BigInt::default())
@@ -212,7 +219,7 @@ macro_rules! define_VarIntegerN {
         }
 
         impl Deserializable for $varname {
-            fn read_from(&mut self, cell: &mut SliceData) -> Result<()>{
+            fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
                 self.0 = Self::read_from_cell(cell)?;
                 Ok(())
             }
@@ -225,19 +232,29 @@ macro_rules! define_VarIntegerN {
         }
     };
     ( $varname:ident, $N:expr, $tt:ty ) => {
-        #[derive( Eq, Copy, Clone, Debug, Default, Ord, PartialEq, PartialOrd)]
+        #[derive(Eq, Copy, Clone, Debug, Default, Ord, PartialEq, PartialOrd)]
         pub struct $varname($tt);
 
         impl $varname {
-            pub const fn default() -> Self { $varname(0) }
+            pub const fn default() -> Self {
+                $varname(0)
+            }
             pub fn new(value: $tt) -> Result<Self> {
                 Self::check_overflow(&value)?;
                 Ok(Self(value))
             }
-            pub const fn zero() -> Self { Self(0) }
-            pub const fn one() -> Self { Self(1) }
-            pub const fn sgn(&self) -> bool { false }
-            pub const fn is_zero(&self) -> bool { self.0 == 0 }
+            pub const fn zero() -> Self {
+                Self(0)
+            }
+            pub const fn one() -> Self {
+                Self(1)
+            }
+            pub const fn sgn(&self) -> bool {
+                false
+            }
+            pub const fn is_zero(&self) -> bool {
+                self.0 == 0
+            }
             pub fn add_checked(&mut self, other: $tt) -> bool {
                 if let Some(result) = self.0.checked_add(other) {
                     if let Err(err) = Self::check_overflow(&result) {
@@ -263,7 +280,7 @@ macro_rules! define_VarIntegerN {
                 let bytes = ((0 as $tt).leading_zeros() / 8 - value.leading_zeros() / 8) as usize;
                 match bytes > $N {
                     true => fail!("value {} is bigger than {} bytes", value, $N),
-                    false => Ok(())
+                    false => Ok(()),
                 }
             }
             pub fn get_len(&self) -> usize {
@@ -271,7 +288,9 @@ macro_rules! define_VarIntegerN {
                 let bytes = ((0 as $tt).leading_zeros() / 8 - self.0.leading_zeros() / 8) as usize;
                 bits as usize + bytes * 8
             }
-            pub const fn inner(&self) -> $tt { self.0 }
+            pub const fn inner(&self) -> $tt {
+                self.0
+            }
         }
 
         impl Serializable for $varname {
@@ -279,7 +298,12 @@ macro_rules! define_VarIntegerN {
                 let bits = 8 - ($N as u8).leading_zeros();
                 let bytes = ((0 as $tt).leading_zeros() / 8 - self.0.leading_zeros() / 8) as usize;
                 if bytes > $N {
-                    fail!("cannot store {} {}, required {} bytes", self, stringify!($varname), bytes)
+                    fail!(
+                        "cannot store {} {}, required {} bytes",
+                        self,
+                        stringify!($varname),
+                        bytes
+                    )
                 }
                 cell.append_bits(bytes, bits as usize)?;
                 let be_bytes = self.0.to_be_bytes();
@@ -336,7 +360,6 @@ macro_rules! define_VarIntegerN {
         impl std::ops::MulAssign<$tt> for $varname {
             fn mul_assign(&mut self, rhs: $tt) {
                 self.0 *= rhs;
-                
             }
         }
 
@@ -365,7 +388,6 @@ macro_rules! define_VarIntegerN {
         impl std::ops::DivAssign<$tt> for $varname {
             fn div_assign(&mut self, rhs: $tt) {
                 self.0 /= rhs;
-                
             }
         }
 
@@ -399,7 +421,7 @@ macro_rules! define_VarIntegerN {
 
         impl std::ops::Shl<u8> for $varname {
             type Output = Self;
-            fn shl(mut self, rhs: u8) -> Self{
+            fn shl(mut self, rhs: u8) -> Self {
                 self.0 <<= rhs;
                 self
             }
@@ -415,7 +437,7 @@ macro_rules! define_VarIntegerN {
             fn checked_add(&self, rhs: &Self) -> Option<Self> {
                 if let Some(result) = self.0.checked_add(rhs.0) {
                     if Self::check_overflow(&result).is_ok() {
-                        return Some(Self(result))
+                        return Some(Self(result));
                     }
                 }
                 None
@@ -424,7 +446,7 @@ macro_rules! define_VarIntegerN {
 
         impl std::ops::Add<$tt> for $varname {
             type Output = Self;
-            fn add(mut self, rhs: $tt) -> Self{
+            fn add(mut self, rhs: $tt) -> Self {
                 self.0 += rhs;
                 self
             }
@@ -438,7 +460,7 @@ macro_rules! define_VarIntegerN {
 
         impl std::ops::Add for $varname {
             type Output = Self;
-            fn add(mut self, rhs: Self) -> Self{
+            fn add(mut self, rhs: Self) -> Self {
                 self.0 += rhs.0;
                 self
             }
@@ -458,7 +480,7 @@ macro_rules! define_VarIntegerN {
 
         impl std::ops::Sub<$tt> for $varname {
             type Output = Self;
-            fn sub(mut self, rhs: $tt) -> Self{
+            fn sub(mut self, rhs: $tt) -> Self {
                 self.0 -= rhs;
                 self
             }
@@ -472,7 +494,7 @@ macro_rules! define_VarIntegerN {
 
         impl std::ops::Sub for $varname {
             type Output = Self;
-            fn sub(mut self, rhs: Self) -> Self{
+            fn sub(mut self, rhs: Self) -> Self {
                 self.0 -= rhs.0;
                 self
             }
@@ -495,7 +517,7 @@ macro_rules! define_VarIntegerN {
                 Some(self.0.cmp(other))
             }
         }
-    }
+    };
 }
 define_VarIntegerN!(Grams, 15, u128);
 define_VarIntegerN!(VarUInteger32, 32, BigInt);
@@ -530,15 +552,21 @@ impl From<u32> for VarUInteger7 {
 }
 
 impl VarUInteger7 {
-    pub const fn as_u64(&self) -> u64 { self.0 }
+    pub const fn as_u64(&self) -> u64 {
+        self.0
+    }
 }
 
 impl VarUInteger3 {
-    pub const fn as_u32(&self) -> u32 { self.0 }
+    pub const fn as_u32(&self) -> u32 {
+        self.0
+    }
 }
 
 impl Grams {
-    pub const fn as_u128(&self) -> u128 { self.0 }
+    pub const fn as_u128(&self) -> u128 {
+        self.0
+    }
     pub const fn as_u64(&self) -> Option<u64> {
         if self.0 <= u64::MAX as u128 {
             Some(self.0 as u64)
@@ -577,9 +605,10 @@ macro_rules! define_NumberN_up32bit {
             }
             pub fn new_checked(value: u32, max_value: u32) -> Result<Self> {
                 if value > max_value {
-                    fail!(BlockError::InvalidArg(
-                        format!("value: {} must be <= {}", value, max_value) 
-                    ))
+                    fail!(BlockError::InvalidArg(format!(
+                        "value: {} must be <= {}",
+                        value, max_value
+                    )))
                 }
                 Ok($varname(value))
             }
@@ -630,10 +659,7 @@ macro_rules! define_NumberN_up32bit {
 
         impl fmt::Display for $varname {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                write!(
-                    f,
-                    "vui{}[value = {}]", $N, self.0
-                )
+                write!(f, "vui{}[value = {}]", $N, self.0)
             }
         }
 
@@ -658,7 +684,7 @@ define_NumberN_up32bit!(Number13, 13);
 define_NumberN_up32bit!(Number16, 16);
 define_NumberN_up32bit!(Number32, 32);
 
-define_HashmapE!{ExtraCurrencyCollection, 32, VarUInteger32}
+define_HashmapE! {ExtraCurrencyCollection, 32, VarUInteger32}
 
 impl From<HashmapE> for ExtraCurrencyCollection {
     fn from(other: HashmapE) -> Self {
@@ -704,42 +730,42 @@ impl From<u32> for Number32 {
 
 impl std::convert::TryFrom<u32> for Number5 {
     type Error = failure::Error;
-    fn try_from(value: u32) -> ton_types::Result<Self> {
+    fn try_from(value: u32) -> tvm_types::Result<Self> {
         Self::new(value)
     }
 }
 
 impl std::convert::TryFrom<u32> for Number8 {
     type Error = failure::Error;
-    fn try_from(value: u32) -> ton_types::Result<Self> {
+    fn try_from(value: u32) -> tvm_types::Result<Self> {
         Self::new(value)
     }
 }
 
 impl std::convert::TryFrom<u32> for Number9 {
     type Error = failure::Error;
-    fn try_from(value: u32) -> ton_types::Result<Self> {
+    fn try_from(value: u32) -> tvm_types::Result<Self> {
         Self::new(value)
     }
 }
 
 impl std::convert::TryFrom<u32> for Number12 {
     type Error = failure::Error;
-    fn try_from(value: u32) -> ton_types::Result<Self> {
+    fn try_from(value: u32) -> tvm_types::Result<Self> {
         Self::new(value)
     }
 }
 
 impl std::convert::TryFrom<u32> for Number13 {
     type Error = failure::Error;
-    fn try_from(value: u32) -> ton_types::Result<Self> {
+    fn try_from(value: u32) -> tvm_types::Result<Self> {
         Self::new(value)
     }
 }
 
 impl std::convert::TryFrom<u32> for Number16 {
     type Error = failure::Error;
-    fn try_from(value: u32) -> ton_types::Result<Self> {
+    fn try_from(value: u32) -> tvm_types::Result<Self> {
         Self::new(value)
     }
 }
@@ -767,7 +793,9 @@ impl Augmentable for CurrencyCollection {
 }
 
 impl CurrencyCollection {
-    pub const fn default() -> Self { Self::new() }
+    pub const fn default() -> Self {
+        Self::new()
+    }
     pub const fn new() -> Self {
         Self::from_grams(Grams::zero())
     }
@@ -797,13 +825,13 @@ impl CurrencyCollection {
     pub const fn from_grams(grams: Grams) -> Self {
         CurrencyCollection {
             grams,
-            other: ExtraCurrencyCollection::default()
+            other: ExtraCurrencyCollection::default(),
         }
     }
 
     pub fn is_zero(&self) -> Result<bool> {
         if !self.grams.is_zero() {
-            return Ok(false)
+            return Ok(false);
         }
         self.other.iterate(|value| Ok(value.is_zero()))
     }
@@ -818,7 +846,7 @@ impl Serializable for CurrencyCollection {
 }
 
 impl Deserializable for CurrencyCollection {
-    fn read_from(&mut self, cell: &mut SliceData) -> Result<()>{
+    fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
         self.grams.read_from(cell)?;
         self.other.read_from(cell)?;
         Ok(())
@@ -833,34 +861,38 @@ pub trait AddSub {
 impl AddSub for CurrencyCollection {
     fn sub(&mut self, other: &Self) -> Result<bool> {
         if !self.grams.sub(&other.grams)? {
-            return Ok(false)
+            return Ok(false);
         }
-        other.other.iterate_with_keys(|key: u32, b| -> Result<bool> {
-            if let Some(mut a) = self.other.get(&key)? {
-                if a >= b {
-                    a.sub(&b)?;
-                    self.other.set(&key, &a)?;
-                    return Ok(true)
+        other
+            .other
+            .iterate_with_keys(|key: u32, b| -> Result<bool> {
+                if let Some(mut a) = self.other.get(&key)? {
+                    if a >= b {
+                        a.sub(&b)?;
+                        self.other.set(&key, &a)?;
+                        return Ok(true);
+                    }
                 }
-            }
-            Ok(false) // coin not found in mine or amount is smaller - cannot subtract
-        })
+                Ok(false) // coin not found in mine or amount is smaller - cannot subtract
+            })
     }
     fn add(&mut self, other: &Self) -> Result<bool> {
         self.grams.add(&other.grams)?;
         let mut result = self.other.clone();
-        other.other.iterate_with_keys(|key: u32, b| -> Result<bool> {
-            match self.other.get(&key)? {
-                Some(mut a) => {
-                    a.add(&b)?;
-                    result.set(&key, &a)?;
+        other
+            .other
+            .iterate_with_keys(|key: u32, b| -> Result<bool> {
+                match self.other.get(&key)? {
+                    Some(mut a) => {
+                        a.add(&b)?;
+                        result.set(&key, &a)?;
+                    }
+                    None => {
+                        result.set(&key, &b)?;
+                    }
                 }
-                None => {
-                    result.set(&key, &b)?;
-                }
-            }
-            Ok(true)
-        })?;
+                Ok(true)
+            })?;
         self.other = result;
         Ok(true)
     }
@@ -872,11 +904,13 @@ impl fmt::Display for CurrencyCollection {
         if !self.other.is_empty() {
             let mut len = 0;
             write!(f, ", other: {{")?;
-            self.other.iterate_with_keys(|key: u32, value| {
-                len += 1;
-                write!(f, " {} => {},", key, value.0)?;
-                Ok(true)
-            }).ok();
+            self.other
+                .iterate_with_keys(|key: u32, value| {
+                    len += 1;
+                    write!(f, " {} => {},", key, value.0)?;
+                    Ok(true)
+                })
+                .ok();
             write!(f, " count: {} }}", len)?;
         }
         Ok(())
@@ -1065,7 +1099,9 @@ macro_rules! define_HashmapE {
         #[allow(dead_code)]
         impl $varname {
             /// default const constructor
-            pub const fn default() -> Self { Self::new() }
+            pub const fn default() -> Self {
+                Self::new()
+            }
             /// default const constructor
             pub const fn new() -> Self {
                 Self(HashmapE::with_hashmap($bit_len, None))
@@ -1104,32 +1140,43 @@ macro_rules! define_HashmapE {
             }
             /// iterates items
             pub fn iterate<F>(&self, mut p: F) -> Result<bool>
-            where F: FnMut($x_type) -> Result<bool> {
-                self.0.iterate_slices(|_, ref mut slice| p(<$x_type>::construct_from(slice)?))
+            where
+                F: FnMut($x_type) -> Result<bool>,
+            {
+                self.0
+                    .iterate_slices(|_, ref mut slice| p(<$x_type>::construct_from(slice)?))
             }
             /// iterates items as raw slices
             pub fn iterate_slices<F>(&self, mut p: F) -> Result<bool>
-            where F: FnMut(SliceData) -> Result<bool> {
+            where
+                F: FnMut(SliceData) -> Result<bool>,
+            {
                 self.0.iterate_slices(|_, slice| p(slice))
             }
             /// iterates keys
             pub fn iterate_keys<K, F>(&self, mut p: F) -> Result<bool>
-            where K: Default + Deserializable, F: FnMut(K) -> Result<bool> {
-                self.0.iterate_slices(|mut key, _| p(
-                    K::construct_from(&mut key)?
-                ))
+            where
+                K: Default + Deserializable,
+                F: FnMut(K) -> Result<bool>,
+            {
+                self.0
+                    .iterate_slices(|mut key, _| p(K::construct_from(&mut key)?))
             }
             /// iterates items with keys
             pub fn iterate_with_keys<K, F>(&self, mut p: F) -> Result<bool>
-            where K: Default + Deserializable, F: FnMut(K, $x_type) -> Result<bool> {
-                self.0.iterate_slices(|ref mut key, ref mut slice| p(
-                    K::construct_from(key)?,
-                    <$x_type>::construct_from(slice)?
-                ))
+            where
+                K: Default + Deserializable,
+                F: FnMut(K, $x_type) -> Result<bool>,
+            {
+                self.0.iterate_slices(|ref mut key, ref mut slice| {
+                    p(K::construct_from(key)?, <$x_type>::construct_from(slice)?)
+                })
             }
             /// iterates items as slices with keys
             pub fn iterate_slices_with_keys<F>(&self, mut p: F) -> Result<bool>
-            where F: FnMut(SliceData, SliceData) -> Result<bool> {
+            where
+                F: FnMut(SliceData, SliceData) -> Result<bool>,
+            {
                 self.0.iterate_slices(|key, slice| p(key, slice))
             }
             pub fn set<K: Serializable>(&mut self, key: &K, value: &$x_type) -> Result<()> {
@@ -1151,7 +1198,8 @@ macro_rules! define_HashmapE {
             }
             pub fn get<K: Serializable>(&self, key: &K) -> Result<Option<$x_type>> {
                 self.get_as_slice(key)?
-                    .map(|ref mut slice| <$x_type>::construct_from(slice)).transpose()
+                    .map(|ref mut slice| <$x_type>::construct_from(slice))
+                    .transpose()
             }
             pub fn get_as_slice<K: Serializable>(&self, key: &K) -> Result<Option<SliceData>> {
                 let key = SliceData::load_bitstring(key.write_to_new_cell()?)?;
@@ -1181,25 +1229,38 @@ macro_rules! define_HashmapE {
                 self.0.merge(&other.0, split_key)
             }
             pub fn split(&self, split_key: &SliceData) -> Result<(Self, Self)> {
-                self.0.split(split_key).map(|(left, right)| (Self(left), Self(right)))
+                self.0
+                    .split(split_key)
+                    .map(|(left, right)| (Self(left), Self(right)))
             }
             pub fn combine_with(&mut self, other: &Self) -> Result<bool> {
                 self.0.combine_with(&other.0)
             }
             pub fn scan_diff<K, F>(&self, other: &Self, mut op: F) -> Result<bool>
-            where K: Deserializable, F: FnMut(K, Option<$x_type>, Option<$x_type>) -> Result<bool> {
+            where
+                K: Deserializable,
+                F: FnMut(K, Option<$x_type>, Option<$x_type>) -> Result<bool>,
+            {
                 self.0.scan_diff(&other.0, |mut key, value1, value2| {
                     let key = K::construct_from(&mut key)?;
-                    let value1 = value1.map(|ref mut slice| <$x_type>::construct_from(slice)).transpose()?;
-                    let value2 = value2.map(|ref mut slice| <$x_type>::construct_from(slice)).transpose()?;
+                    let value1 = value1
+                        .map(|ref mut slice| <$x_type>::construct_from(slice))
+                        .transpose()?;
+                    let value2 = value2
+                        .map(|ref mut slice| <$x_type>::construct_from(slice))
+                        .transpose()?;
                     op(key, value1, value2)
                 })
             }
 
             pub fn filter<K, F>(&mut self, mut op: F) -> Result<()>
-            where K: Deserializable, K : Serializable, F: FnMut(&K, &$x_type) -> Result<bool> {
+            where
+                K: Deserializable,
+                K: Serializable,
+                F: FnMut(&K, &$x_type) -> Result<bool>,
+            {
                 let mut other_tree = $varname(HashmapE::with_bit_len($bit_len));
-                self.iterate_with_keys(&mut |key : K, value| {
+                self.iterate_with_keys(&mut |key: K, value| {
                     if op(&key, &value)? {
                         other_tree.set(&key, &value)?;
                     };
@@ -1244,24 +1305,26 @@ macro_rules! define_HashmapE {
         }
 
         impl Serializable for $varname {
-            fn write_to(&self, cell: &mut BuilderData) -> Result<()>{
+            fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
                 self.0.write_to(cell)
             }
         }
 
         impl Deserializable for $varname {
-            fn read_from(&mut self, slice: &mut SliceData) -> Result<()>{
+            fn read_from(&mut self, slice: &mut SliceData) -> Result<()> {
                 self.0.read_from(slice)
             }
         }
-    }
+    };
 }
 
 #[derive(PartialEq, Copy, Clone, Debug, Eq, Default, Hash)]
 pub struct UnixTime32(u32);
 
 impl UnixTime32 {
-    pub const fn default() -> Self { Self(0) }
+    pub const fn default() -> Self {
+        Self(0)
+    }
     pub const fn new(value: u32) -> Self {
         Self(value)
     }
@@ -1269,7 +1332,12 @@ impl UnixTime32 {
         self.0
     }
     pub fn now() -> Self {
-        UnixTime32( SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as u32 )
+        UnixTime32(
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as u32,
+        )
     }
 }
 
@@ -1286,9 +1354,9 @@ impl From<UnixTime32> for u32 {
 }
 
 impl Serializable for UnixTime32 {
-    fn write_to(&self, cell: &mut BuilderData) -> Result<()>{
+    fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
         self.0.write_to(cell)
-    } 
+    }
 }
 
 impl Deserializable for UnixTime32 {
@@ -1298,31 +1366,29 @@ impl Deserializable for UnixTime32 {
 }
 
 impl Display for UnixTime32 {
-	fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-		write!(f, "{}", self.0)
-	}
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
 
 #[derive(Debug, Default, Clone, Eq)]
 pub struct ChildCell<T: Default + Serializable + Deserializable> {
     cell: Option<Cell>,
-    phantom: PhantomData<T>
+    phantom: PhantomData<T>,
 }
 
 impl<T: Default + Serializable + Deserializable + Clone> ChildCell<T> {
     pub fn with_cell(cell: Cell) -> Self {
         Self {
             cell: Some(cell),
-            phantom: PhantomData
+            phantom: PhantomData,
         }
     }
     pub fn with_struct(s: &T) -> Result<Self> {
-        Ok(
-            ChildCell {
-                cell: Some(s.serialize()?),
-                phantom: PhantomData
-            }
-        )
+        Ok(ChildCell {
+            cell: Some(s.serialize()?),
+            phantom: PhantomData,
+        })
     }
 
     pub fn write_struct(&mut self, s: &T) -> Result<()> {
@@ -1347,13 +1413,13 @@ impl<T: Default + Serializable + Deserializable + Clone> ChildCell<T> {
         match self.cell.clone() {
             Some(cell) => {
                 if cell.cell_type() == CellType::PrunedBranch {
-                    fail!(
-                        BlockError::PrunedCellAccess(std::any::type_name::<T>().into())
-                    )
+                    fail!(BlockError::PrunedCellAccess(
+                        std::any::type_name::<T>().into()
+                    ))
                 }
                 T::construct_from_cell(cell)
             }
-            None => Ok(T::default())
+            None => Ok(T::default()),
         }
     }
 
@@ -1361,11 +1427,11 @@ impl<T: Default + Serializable + Deserializable + Clone> ChildCell<T> {
         if let Some(s) = opt {
             if let Some(cell) = s.cell.as_ref() {
                 if cell.cell_type() == CellType::PrunedBranch {
-                    fail!(
-                        BlockError::PrunedCellAccess(std::any::type_name::<T>().into())
-                    )
+                    fail!(BlockError::PrunedCellAccess(
+                        std::any::type_name::<T>().into()
+                    ))
                 }
-                return Ok(Some(T::construct_from_cell(cell.clone())?))
+                return Ok(Some(T::construct_from_cell(cell.clone())?));
             }
         }
         Ok(None)
@@ -1384,14 +1450,14 @@ impl<T: Default + Serializable + Deserializable + Clone> ChildCell<T> {
     pub fn construct_maybe_from_reference(slice: &mut SliceData) -> Result<Option<Self>> {
         match slice.get_next_bit()? {
             true => Ok(Some(Self::with_cell(slice.checked_drain_reference()?))),
-            false => Ok(None)
+            false => Ok(None),
         }
     }
 
-    pub fn cell(&self)-> Cell {
+    pub fn cell(&self) -> Cell {
         match self.cell.as_ref() {
             Some(cell) => cell.clone(),
-            None => T::default().serialize().unwrap_or_default()
+            None => T::default().serialize().unwrap_or_default(),
         }
     }
 
@@ -1402,7 +1468,7 @@ impl<T: Default + Serializable + Deserializable + Clone> ChildCell<T> {
     pub fn hash(&self) -> UInt256 {
         match self.cell.as_ref() {
             Some(cell) => cell.repr_hash(),
-            None => T::default().serialize().unwrap_or_default().repr_hash()
+            None => T::default().serialize().unwrap_or_default().repr_hash(),
         }
     }
 }
@@ -1410,13 +1476,14 @@ impl<T: Default + Serializable + Deserializable + Clone> ChildCell<T> {
 impl<T: Default + Serializable + Deserializable> PartialEq for ChildCell<T> {
     fn eq(&self, other: &Self) -> bool {
         if self.cell == other.cell {
-            return true
+            return true;
         }
         match (self.cell.as_ref(), other.cell.as_ref()) {
             (Some(cell), Some(other)) => cell.eq(other),
-            (None, Some(cell)) |
-            (Some(cell), None) => cell.eq(&T::default().serialize().unwrap_or_default()),
-            (None, None) => true
+            (None, Some(cell)) | (Some(cell), None) => {
+                cell.eq(&T::default().serialize().unwrap_or_default())
+            }
+            (None, None) => true,
         }
     }
 }

@@ -13,17 +13,14 @@
 
 use crate::{
     error::BlockError,
-    shard::{AccountIdPrefixFull, ShardIdent},
     messages::Message,
+    shard::{AccountIdPrefixFull, ShardIdent},
     types::{AddSub, ChildCell, Grams},
-    Serializable, Deserializable,
+    Deserializable, Serializable,
 };
 
 use std::cmp::Ordering;
-use ton_types::{
-    error, fail, Result,
-    BuilderData, Cell, IBitstring, SliceData, UInt256,
-};
+use tvm_types::{error, fail, BuilderData, Cell, IBitstring, Result, SliceData, UInt256};
 
 #[cfg(test)]
 #[path = "tests/test_envelope_message.rs"]
@@ -40,11 +37,11 @@ by a cell reference.
 */
 
 /////////////////////////////////////////////////////////////////////
-/// 
+///
 /// interm_addr_regular$0 use_dest_bits:(#<= 96) = IntermediateAddress;
 /// interm_addr_simple$10 workchain_id:int8 addr_pfx:(64 * Bit) = IntermediateAddress;
 /// interm_addr_ext$11 workchain_id:int32 addr_pfx:(64 * Bit) = IntermediateAddress;
-/// 
+///
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum IntermediateAddress {
@@ -87,7 +84,7 @@ impl IntermediateAddress {
         match self {
             IntermediateAddress::Simple(simple) => Ok(simple.workchain_id() as i32),
             IntermediateAddress::Ext(ext) => Ok(ext.workchain_id()),
-            _ => fail!("Unsupported address type")
+            _ => fail!("Unsupported address type"),
         }
     }
 
@@ -98,13 +95,13 @@ impl IntermediateAddress {
         match self {
             IntermediateAddress::Simple(simple) => Ok(simple.addr_pfx()),
             IntermediateAddress::Ext(ext) => Ok(ext.addr_pfx()),
-            _ => fail!("Unsupported address type")
+            _ => fail!("Unsupported address type"),
         }
     }
 }
 
-impl Default for IntermediateAddress{
-    fn default() -> Self{
+impl Default for IntermediateAddress {
+    fn default() -> Self {
         IntermediateAddress::full_src()
     }
 }
@@ -113,7 +110,7 @@ impl PartialOrd<u8> for IntermediateAddress {
     fn partial_cmp(&self, other: &u8) -> Option<Ordering> {
         match self {
             IntermediateAddress::Regular(ia) => Some(ia.use_dest_bits.cmp(other)),
-            _ => None
+            _ => None,
         }
     }
 }
@@ -122,24 +119,24 @@ impl PartialEq<u8> for IntermediateAddress {
     fn eq(&self, other: &u8) -> bool {
         match self {
             IntermediateAddress::Regular(ia) => &ia.use_dest_bits == other,
-            _ => false
+            _ => false,
         }
     }
 }
 
-impl Serializable for IntermediateAddress{
+impl Serializable for IntermediateAddress {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
         match self {
             IntermediateAddress::Regular(addr) => {
-                cell.append_raw(&[0b00000000], 1)?;       // tag = $0
+                cell.append_raw(&[0b00000000], 1)?; // tag = $0
                 addr.write_to(cell)?;
-            },
+            }
             IntermediateAddress::Simple(addr) => {
-                cell.append_raw(&[0b10000000], 2)?;    // tag = $10
+                cell.append_raw(&[0b10000000], 2)?; // tag = $10
                 addr.write_to(cell)?;
-            },
+            }
             IntermediateAddress::Ext(addr) => {
-                cell.append_raw(&[0b11000000], 2)?;    // tag = $11
+                cell.append_raw(&[0b11000000], 2)?; // tag = $11
                 addr.write_to(cell)?;
             }
         };
@@ -147,33 +144,35 @@ impl Serializable for IntermediateAddress{
     }
 }
 
-impl Deserializable for IntermediateAddress{
-    fn read_from(&mut self, cell: &mut SliceData) -> Result<()>{
-        *self =
+impl Deserializable for IntermediateAddress {
+    fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
+        *self = if cell.get_next_bit()? {
             if cell.get_next_bit()? {
-                if cell.get_next_bit()? { // tag = 11
-                    let mut addr = IntermediateAddressExt::default();
-                    addr.read_from(cell)?;
-                    IntermediateAddress::Ext(addr)
-                } else { // tag = $10
-                    let mut addr = IntermediateAddressSimple::default();
-                    addr.read_from(cell)?;
-                    IntermediateAddress::Simple(addr)
-                }
-            } else { // tag = $0
-                let mut addr = IntermediateAddressRegular::default();
+                // tag = 11
+                let mut addr = IntermediateAddressExt::default();
                 addr.read_from(cell)?;
-                IntermediateAddress::Regular(addr)
-            };
+                IntermediateAddress::Ext(addr)
+            } else {
+                // tag = $10
+                let mut addr = IntermediateAddressSimple::default();
+                addr.read_from(cell)?;
+                IntermediateAddress::Simple(addr)
+            }
+        } else {
+            // tag = $0
+            let mut addr = IntermediateAddressRegular::default();
+            addr.read_from(cell)?;
+            IntermediateAddress::Regular(addr)
+        };
 
         Ok(())
     }
 }
 
 /////////////////////////////////////////////////////////////////
-/// 
+///
 /// interm_addr_regular$0 use_dest_bits:(#<= 96) = IntermediateAddress;
-/// 
+///
 
 #[derive(Clone, Default, Debug, PartialEq, Eq, Hash)]
 pub struct IntermediateAddressRegular {
@@ -184,26 +183,28 @@ pub static FULL_BITS: u8 = 96;
 
 impl IntermediateAddressRegular {
     pub const fn default() -> Self {
-        IntermediateAddressRegular {
-            use_dest_bits: 0
-        }
+        IntermediateAddressRegular { use_dest_bits: 0 }
     }
     pub fn with_use_src_bits(use_src_bits: u8) -> Result<Self> {
         if use_src_bits > FULL_BITS {
-            fail!(BlockError::InvalidArg(format!("use_src_bits must be <= {}", FULL_BITS)))
+            fail!(BlockError::InvalidArg(format!(
+                "use_src_bits must be <= {}",
+                FULL_BITS
+            )))
         }
         Ok(IntermediateAddressRegular {
-            use_dest_bits: FULL_BITS - use_src_bits
+            use_dest_bits: FULL_BITS - use_src_bits,
         })
     }
 
     pub fn with_use_dest_bits(use_dest_bits: u8) -> Result<Self> {
         if use_dest_bits > FULL_BITS {
-            fail!(BlockError::InvalidArg(format!("use_dest_bits must be <= {}", FULL_BITS)))
+            fail!(BlockError::InvalidArg(format!(
+                "use_dest_bits must be <= {}",
+                FULL_BITS
+            )))
         }
-        Ok(IntermediateAddressRegular {
-            use_dest_bits
-        })
+        Ok(IntermediateAddressRegular { use_dest_bits })
     }
 
     pub fn use_src_bits(&self) -> u8 {
@@ -214,16 +215,19 @@ impl IntermediateAddressRegular {
         self.use_dest_bits
     }
 
-    pub fn set_use_src_bits(&mut self, use_src_bits: u8) -> Result<()>{
+    pub fn set_use_src_bits(&mut self, use_src_bits: u8) -> Result<()> {
         if use_src_bits > FULL_BITS {
-            fail!(BlockError::InvalidArg(format!("use_src_bits must be <= {}", FULL_BITS)))
+            fail!(BlockError::InvalidArg(format!(
+                "use_src_bits must be <= {}",
+                FULL_BITS
+            )))
         }
         self.use_dest_bits = FULL_BITS - use_src_bits;
         Ok(())
     }
 }
 
-impl Serializable for IntermediateAddressRegular{
+impl Serializable for IntermediateAddressRegular {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
         // write 7-bit from use_dest_bits
         cell.append_raw(&[self.use_dest_bits << 1], 7)?;
@@ -231,24 +235,26 @@ impl Serializable for IntermediateAddressRegular{
     }
 }
 
-impl Deserializable for IntermediateAddressRegular{
-    fn read_from(&mut self, cell: &mut SliceData) -> Result<()>{
-        self.use_dest_bits = cell.get_next_bits(7)?[0] >> 1;    // read 7 bit into use_dest_bits
+impl Deserializable for IntermediateAddressRegular {
+    fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
+        self.use_dest_bits = cell.get_next_bits(7)?[0] >> 1; // read 7 bit into use_dest_bits
         if self.use_dest_bits > FULL_BITS {
-            fail!(BlockError::InvalidArg(format!("use_dest_bits must be <= {}", FULL_BITS)))
+            fail!(BlockError::InvalidArg(format!(
+                "use_dest_bits must be <= {}",
+                FULL_BITS
+            )))
         }
         Ok(())
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
-/// 
+///
 /// interm_addr_simple$10 workchain_id:int8 addr_pfx:(64 * Bit) = IntermediateAddress;
-/// 
-
+///
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct IntermediateAddressSimple{
+pub struct IntermediateAddressSimple {
     pub workchain_id: i8,
     pub addr_pfx: u64,
 }
@@ -257,7 +263,7 @@ impl IntermediateAddressSimple {
     pub const fn default() -> Self {
         Self {
             workchain_id: 0,
-            addr_pfx: 0
+            addr_pfx: 0,
         }
     }
 
@@ -280,12 +286,12 @@ impl IntermediateAddressSimple {
         self.workchain_id = workchain_id;
     }
 
-    pub fn set_addr_pfx(&mut self, addr_pfx: u64){
+    pub fn set_addr_pfx(&mut self, addr_pfx: u64) {
         self.addr_pfx = addr_pfx;
     }
 }
 
-impl Serializable for IntermediateAddressSimple{
+impl Serializable for IntermediateAddressSimple {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
         self.workchain_id.write_to(cell)?;
         self.addr_pfx.write_to(cell)?;
@@ -293,8 +299,8 @@ impl Serializable for IntermediateAddressSimple{
     }
 }
 
-impl Deserializable for IntermediateAddressSimple{
-    fn read_from(&mut self, cell: &mut SliceData) -> Result<()>{
+impl Deserializable for IntermediateAddressSimple {
+    fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
         self.workchain_id.read_from(cell)?;
         self.addr_pfx.read_from(cell)?;
         Ok(())
@@ -302,13 +308,12 @@ impl Deserializable for IntermediateAddressSimple{
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
-/// 
+///
 /// interm_addr_ext$11 workchain_id:int32 addr_pfx:(64 * Bit) = IntermediateAddress;
-/// 
-
+///
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct IntermediateAddressExt{
+pub struct IntermediateAddressExt {
     pub workchain_id: i32,
     pub addr_pfx: u64,
 }
@@ -317,7 +322,7 @@ impl IntermediateAddressExt {
     pub const fn default() -> Self {
         Self {
             workchain_id: 0,
-            addr_pfx: 0
+            addr_pfx: 0,
         }
     }
 
@@ -354,19 +359,19 @@ impl Serializable for IntermediateAddressExt {
 }
 
 impl Deserializable for IntermediateAddressExt {
-    fn read_from(&mut self, cell: &mut SliceData) -> Result<()>{
+    fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
         self.workchain_id.read_from(cell)?;
         self.addr_pfx.read_from(cell)?;
         Ok(())
     }
 }
 
-// msg_envelope#4 
-//   cur_addr:IntermediateAddress 
+// msg_envelope#4
+//   cur_addr:IntermediateAddress
 //   next_addr:IntermediateAddress
-//   fwd_fee_remaining:Grams 
-//   msg:^(Message Any) 
-// = MsgEnvelope; 
+//   fwd_fee_remaining:Grams
+//   msg:^(Message Any)
+// = MsgEnvelope;
 #[derive(Clone, Default, Debug, Eq, PartialEq)]
 pub struct MsgEnvelope {
     cur_addr: IntermediateAddress,
@@ -387,7 +392,7 @@ impl MsgEnvelope {
             msg.serialize()?,
             fwd_fee_remaining,
             IntermediateAddress::full_dest(),
-            IntermediateAddress::full_dest()
+            IntermediateAddress::full_dest(),
         ))
     }
 
@@ -399,7 +404,7 @@ impl MsgEnvelope {
             msg_cell,
             fwd_fee_remaining,
             IntermediateAddress::full_dest(),
-            IntermediateAddress::full_dest()
+            IntermediateAddress::full_dest(),
         )
     }
 
@@ -410,7 +415,7 @@ impl MsgEnvelope {
         msg_cell: Cell,
         fwd_fee_remaining: Grams,
         cur_addr: IntermediateAddress,
-        next_addr: IntermediateAddress
+        next_addr: IntermediateAddress,
     ) -> Self {
         MsgEnvelope {
             cur_addr,
@@ -425,11 +430,25 @@ impl MsgEnvelope {
     /// TBD
     ///
     #[allow(dead_code)]
-    pub(crate) fn hypercube_routing(msg: &Message, src_shard: &ShardIdent, fwd_fee_remaining: Grams) -> Result<Self> {
+    pub(crate) fn hypercube_routing(
+        msg: &Message,
+        src_shard: &ShardIdent,
+        fwd_fee_remaining: Grams,
+    ) -> Result<Self> {
         let msg_cell = msg.serialize()?;
-        let src = msg.src_ref().ok_or_else(|| error!("source address of message {:x} is invalid", msg_cell.repr_hash()))?;
+        let src = msg.src_ref().ok_or_else(|| {
+            error!(
+                "source address of message {:x} is invalid",
+                msg_cell.repr_hash()
+            )
+        })?;
         let src_prefix = AccountIdPrefixFull::prefix(src)?;
-        let dst = msg.dst_ref().ok_or_else(|| error!("destination address of message {:x} is invalid", msg_cell.repr_hash()))?;
+        let dst = msg.dst_ref().ok_or_else(|| {
+            error!(
+                "destination address of message {:x} is invalid",
+                msg_cell.repr_hash()
+            )
+        })?;
         let dst_prefix = AccountIdPrefixFull::prefix(dst)?;
         let ia = IntermediateAddress::default();
         let route_info = src_prefix.perform_hypercube_routing(&dst_prefix, src_shard, ia)?;
@@ -444,12 +463,22 @@ impl MsgEnvelope {
     /// calc prefixes with routing info
     pub fn calc_cur_next_prefix(&self) -> Result<(AccountIdPrefixFull, AccountIdPrefixFull)> {
         let msg = self.read_message()?;
-        let src = msg.src_ref().ok_or_else(|| error!("source address of message {:x} is invalid", self.message_hash()))?;
+        let src = msg.src_ref().ok_or_else(|| {
+            error!(
+                "source address of message {:x} is invalid",
+                self.message_hash()
+            )
+        })?;
         let src_prefix = AccountIdPrefixFull::prefix(src)?;
-        let dst = msg.dst_ref().ok_or_else(|| error!("destination address of message {:x} is invalid", self.message_hash()))?;
+        let dst = msg.dst_ref().ok_or_else(|| {
+            error!(
+                "destination address of message {:x} is invalid",
+                self.message_hash()
+            )
+        })?;
         let dst_prefix = AccountIdPrefixFull::prefix(dst)?;
 
-        let cur_prefix  = src_prefix.interpolate_addr_intermediate(&dst_prefix, &self.cur_addr)?;
+        let cur_prefix = src_prefix.interpolate_addr_intermediate(&dst_prefix, &self.cur_addr)?;
         let next_prefix = src_prefix.interpolate_addr_intermediate(&dst_prefix, &self.next_addr)?;
         Ok((cur_prefix, next_prefix))
     }
@@ -471,14 +500,14 @@ impl MsgEnvelope {
     ///
     /// Return message cell from envelope
     ///
-    pub fn message_cell(&self)-> Cell {
+    pub fn message_cell(&self) -> Cell {
         self.msg.cell()
     }
 
     ///
     /// Return message hash from envelope
     ///
-    pub fn message_hash(&self)-> UInt256 {
+    pub fn message_hash(&self) -> UInt256 {
         self.msg.cell().repr_hash()
     }
 
@@ -499,7 +528,7 @@ impl MsgEnvelope {
     ///
     /// Set current address of envelope
     ///
-    pub fn set_cur_addr(&mut self, addr: IntermediateAddress) -> &mut Self{
+    pub fn set_cur_addr(&mut self, addr: IntermediateAddress) -> &mut Self {
         self.cur_addr = addr;
         self
     }
@@ -507,7 +536,7 @@ impl MsgEnvelope {
     ///
     /// Set next address of envelope
     ///
-    pub fn set_next_addr(&mut self, addr: IntermediateAddress) -> &mut Self{
+    pub fn set_next_addr(&mut self, addr: IntermediateAddress) -> &mut Self {
         self.next_addr = addr;
         self
     }
@@ -515,31 +544,36 @@ impl MsgEnvelope {
     ///
     /// Get current address
     ///
-    pub fn cur_addr(&self) -> &IntermediateAddress{
+    pub fn cur_addr(&self) -> &IntermediateAddress {
         &self.cur_addr
     }
 
     ///
     /// Get next address
     ///
-    pub fn next_addr(&self) -> &IntermediateAddress{
+    pub fn next_addr(&self) -> &IntermediateAddress {
         &self.next_addr
     }
 
     /// is message route in one workchain
     pub fn same_workchain(&self) -> Result<bool> {
         let msg = self.read_message()?;
-        debug_assert!(msg.is_internal(), "Message with hash {:x} is not internal",
-            self.message_cell().repr_hash());
+        debug_assert!(
+            msg.is_internal(),
+            "Message with hash {:x} is not internal",
+            self.message_cell().repr_hash()
+        );
         if let (Some(src), Some(dst)) = (msg.src_ref(), msg.dst_ref()) {
-            return Ok(src.get_workchain_id() == dst.get_workchain_id())
+            return Ok(src.get_workchain_id() == dst.get_workchain_id());
         }
-        fail!("Message with hash {:x} has wrong type of src/dst address",
-            self.message_cell().repr_hash())
+        fail!(
+            "Message with hash {:x} has wrong type of src/dst address",
+            self.message_cell().repr_hash()
+        )
     }
 }
 
-const MSG_ENVELOPE_TAG : usize = 0x4;
+const MSG_ENVELOPE_TAG: usize = 0x4;
 
 impl Serializable for MsgEnvelope {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
@@ -553,15 +587,13 @@ impl Serializable for MsgEnvelope {
 }
 
 impl Deserializable for MsgEnvelope {
-    fn read_from(&mut self, cell: &mut SliceData) -> Result<()>{
+    fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
         let tag = cell.get_next_int(4)? as usize;
         if tag != MSG_ENVELOPE_TAG {
-            fail!(
-                BlockError::InvalidConstructorTag {
-                    t: tag as u32,
-                    s: "MsgEnvelope".to_string()
-                }
-            )
+            fail!(BlockError::InvalidConstructorTag {
+                t: tag as u32,
+                s: "MsgEnvelope".to_string()
+            })
         }
         self.cur_addr.read_from(cell)?;
         self.next_addr.read_from(cell)?;

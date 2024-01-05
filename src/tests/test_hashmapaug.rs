@@ -15,15 +15,12 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::vec_init_then_push)]
 use super::*;
-use crate::{
-    define_HashmapAugE,
-    AddSub, Grams
-};
+use crate::{define_HashmapAugE, AddSub, Grams};
 use std::fmt;
-use ton_types::{IBitstring, hm_label, HashmapSubtree};
+use tvm_types::{hm_label, HashmapSubtree, IBitstring};
 
 #[derive(Eq, Clone, Debug, Default, PartialEq)]
-pub struct GramStruct (Grams);
+pub struct GramStruct(Grams);
 
 impl GramStruct {
     pub fn with_value(value: u8) -> Self {
@@ -84,8 +81,11 @@ fn test_hashmapaug() {
     tree.set_serialized(key1.clone(), &value1, &extra1).unwrap();
     println!("first {}", tree);
     assert_eq!(&GramStruct::with_value(1), tree.root_extra());
-    assert_eq!(tree.get_serialized_as_slice(key1.clone()).unwrap(), Some(value1.clone()));
-    
+    assert_eq!(
+        tree.get_serialized_as_slice(key1.clone()).unwrap(),
+        Some(value1.clone())
+    );
+
     // replace single
     let value1 = SliceData::new(vec![0xFB]);
     let extra1 = GramStruct::with_value(2);
@@ -93,7 +93,10 @@ fn test_hashmapaug() {
     println!("replaced {}", tree);
     assert!(!tree.is_empty());
     assert_eq!(&GramStruct::with_value(2), tree.root_extra());
-    assert_eq!(tree.get_serialized_as_slice(key1.clone()).unwrap(), Some(value1.clone()));
+    assert_eq!(
+        tree.get_serialized_as_slice(key1.clone()).unwrap(),
+        Some(value1.clone())
+    );
 
     // add second with same first bit
     let key2 = SliceData::new(vec![0xF1]);
@@ -103,8 +106,14 @@ fn test_hashmapaug() {
     println!("second {}", tree);
     assert!(!tree.is_empty());
     assert_eq!(&GramStruct::with_value(5), tree.root_extra());
-    assert_eq!(tree.get_serialized_as_slice(key1.clone()).unwrap(), Some(value1.clone()));
-    assert_eq!(tree.get_serialized_as_slice(key2.clone()).unwrap(), Some(value2.clone()));
+    assert_eq!(
+        tree.get_serialized_as_slice(key1.clone()).unwrap(),
+        Some(value1.clone())
+    );
+    assert_eq!(
+        tree.get_serialized_as_slice(key2.clone()).unwrap(),
+        Some(value2.clone())
+    );
 
     // replace second
     let value2 = SliceData::new(vec![0xF2]);
@@ -113,8 +122,14 @@ fn test_hashmapaug() {
     println!("second replaced {}", tree);
     assert!(!tree.is_empty());
     assert_eq!(&GramStruct::with_value(6), tree.root_extra());
-    assert_eq!(tree.get_serialized_as_slice(key1.clone()).unwrap(), Some(value1.clone()));
-    assert_eq!(tree.get_serialized_as_slice(key2.clone()).unwrap(), Some(value2.clone()));
+    assert_eq!(
+        tree.get_serialized_as_slice(key1.clone()).unwrap(),
+        Some(value1.clone())
+    );
+    assert_eq!(
+        tree.get_serialized_as_slice(key2.clone()).unwrap(),
+        Some(value2.clone())
+    );
 
     // add third with dif first bit
     let key3 = SliceData::new(vec![0x01]);
@@ -124,9 +139,18 @@ fn test_hashmapaug() {
     println!("third added {}", tree);
     assert!(!tree.is_empty());
     assert_eq!(&GramStruct::with_value(11), tree.root_extra());
-    assert_eq!(tree.get_serialized_as_slice(key1.clone()).unwrap(), Some(value1.clone()));
-    assert_eq!(tree.get_serialized_as_slice(key2.clone()).unwrap(), Some(value2.clone()));
-    assert_eq!(tree.get_serialized_as_slice(key3.clone()).unwrap(), Some(value3.clone()));
+    assert_eq!(
+        tree.get_serialized_as_slice(key1.clone()).unwrap(),
+        Some(value1.clone())
+    );
+    assert_eq!(
+        tree.get_serialized_as_slice(key2.clone()).unwrap(),
+        Some(value2.clone())
+    );
+    assert_eq!(
+        tree.get_serialized_as_slice(key3.clone()).unwrap(),
+        Some(value3.clone())
+    );
 
     // replace third
     let value3 = SliceData::new(vec![0x0F]);
@@ -135,9 +159,18 @@ fn test_hashmapaug() {
     println!("third replaced {}", tree);
     assert!(!tree.is_empty());
     assert_eq!(&GramStruct::with_value(12), tree.root_extra());
-    assert_eq!(tree.get_serialized_as_slice(key1.clone()).unwrap(), Some(value1.clone()));
-    assert_eq!(tree.get_serialized_as_slice(key2.clone()).unwrap(), Some(value2.clone()));
-    assert_eq!(tree.get_serialized_as_slice(key3.clone()).unwrap(), Some(value3.clone()));
+    assert_eq!(
+        tree.get_serialized_as_slice(key1.clone()).unwrap(),
+        Some(value1.clone())
+    );
+    assert_eq!(
+        tree.get_serialized_as_slice(key2.clone()).unwrap(),
+        Some(value2.clone())
+    );
+    assert_eq!(
+        tree.get_serialized_as_slice(key3.clone()).unwrap(),
+        Some(value3.clone())
+    );
 
     // add fourth with same 1 bit label
     let key4 = SliceData::new(vec![0x07]);
@@ -155,27 +188,107 @@ fn test_hashmapaug() {
 
 fn make_tree_with_filled_root_label() -> GramHashmap8 {
     let mut tree = GramHashmap8::default();
-    tree.set_serialized(SliceData::from_raw(vec![0b11111111], 8), &SliceData::new(vec![0b11111111]), &GramStruct::with_value(1)).unwrap();
-    tree.set_serialized(SliceData::from_raw(vec![0b11111100], 8), &SliceData::new(vec![0b11111100]), &GramStruct::with_value(2)).unwrap();
-    tree.set_serialized(SliceData::from_raw(vec![0b11110011], 8), &SliceData::new(vec![0b11110011]), &GramStruct::with_value(3)).unwrap();
-    tree.set_serialized(SliceData::from_raw(vec![0b11110000], 8), &SliceData::new(vec![0b11110000]), &GramStruct::with_value(4)).unwrap();
-    tree.set_serialized(SliceData::from_raw(vec![0b11001111], 8), &SliceData::new(vec![0b11001111]), &GramStruct::with_value(5)).unwrap();
-    tree.set_serialized(SliceData::from_raw(vec![0b11001100], 8), &SliceData::new(vec![0b11001100]), &GramStruct::with_value(6)).unwrap();
-    tree.set_serialized(SliceData::from_raw(vec![0b11000011], 8), &SliceData::new(vec![0b11000011]), &GramStruct::with_value(7)).unwrap();
-    tree.set_serialized(SliceData::from_raw(vec![0b11000000], 8), &SliceData::new(vec![0b11000000]), &GramStruct::with_value(8)).unwrap();
+    tree.set_serialized(
+        SliceData::from_raw(vec![0b11111111], 8),
+        &SliceData::new(vec![0b11111111]),
+        &GramStruct::with_value(1),
+    )
+    .unwrap();
+    tree.set_serialized(
+        SliceData::from_raw(vec![0b11111100], 8),
+        &SliceData::new(vec![0b11111100]),
+        &GramStruct::with_value(2),
+    )
+    .unwrap();
+    tree.set_serialized(
+        SliceData::from_raw(vec![0b11110011], 8),
+        &SliceData::new(vec![0b11110011]),
+        &GramStruct::with_value(3),
+    )
+    .unwrap();
+    tree.set_serialized(
+        SliceData::from_raw(vec![0b11110000], 8),
+        &SliceData::new(vec![0b11110000]),
+        &GramStruct::with_value(4),
+    )
+    .unwrap();
+    tree.set_serialized(
+        SliceData::from_raw(vec![0b11001111], 8),
+        &SliceData::new(vec![0b11001111]),
+        &GramStruct::with_value(5),
+    )
+    .unwrap();
+    tree.set_serialized(
+        SliceData::from_raw(vec![0b11001100], 8),
+        &SliceData::new(vec![0b11001100]),
+        &GramStruct::with_value(6),
+    )
+    .unwrap();
+    tree.set_serialized(
+        SliceData::from_raw(vec![0b11000011], 8),
+        &SliceData::new(vec![0b11000011]),
+        &GramStruct::with_value(7),
+    )
+    .unwrap();
+    tree.set_serialized(
+        SliceData::from_raw(vec![0b11000000], 8),
+        &SliceData::new(vec![0b11000000]),
+        &GramStruct::with_value(8),
+    )
+    .unwrap();
     assert_eq!(tree.root_extra(), &GramStruct::with_value(36));
     tree
 }
 fn make_tree_with_empty_root_label() -> GramHashmap8 {
     let mut tree = GramHashmap8::default();
-    tree.set_serialized(SliceData::from_raw(vec![0b11111100], 8), &SliceData::new(vec![0b11111100]), &GramStruct::with_value(1)).unwrap();
-    tree.set_serialized(SliceData::from_raw(vec![0b11110000], 8), &SliceData::new(vec![0b11110000]), &GramStruct::with_value(2)).unwrap();
-    tree.set_serialized(SliceData::from_raw(vec![0b11001100], 8), &SliceData::new(vec![0b11001100]), &GramStruct::with_value(3)).unwrap();
-    tree.set_serialized(SliceData::from_raw(vec![0b11000000], 8), &SliceData::new(vec![0b11000000]), &GramStruct::with_value(4)).unwrap();
-    tree.set_serialized(SliceData::from_raw(vec![0b00111100], 8), &SliceData::new(vec![0b00111100]), &GramStruct::with_value(5)).unwrap();
-    tree.set_serialized(SliceData::from_raw(vec![0b00110000], 8), &SliceData::new(vec![0b00110000]), &GramStruct::with_value(6)).unwrap();
-    tree.set_serialized(SliceData::from_raw(vec![0b00001100], 8), &SliceData::new(vec![0b00001100]), &GramStruct::with_value(7)).unwrap();
-    tree.set_serialized(SliceData::from_raw(vec![0b00000000], 8), &SliceData::new(vec![0b00000000]), &GramStruct::with_value(8)).unwrap();
+    tree.set_serialized(
+        SliceData::from_raw(vec![0b11111100], 8),
+        &SliceData::new(vec![0b11111100]),
+        &GramStruct::with_value(1),
+    )
+    .unwrap();
+    tree.set_serialized(
+        SliceData::from_raw(vec![0b11110000], 8),
+        &SliceData::new(vec![0b11110000]),
+        &GramStruct::with_value(2),
+    )
+    .unwrap();
+    tree.set_serialized(
+        SliceData::from_raw(vec![0b11001100], 8),
+        &SliceData::new(vec![0b11001100]),
+        &GramStruct::with_value(3),
+    )
+    .unwrap();
+    tree.set_serialized(
+        SliceData::from_raw(vec![0b11000000], 8),
+        &SliceData::new(vec![0b11000000]),
+        &GramStruct::with_value(4),
+    )
+    .unwrap();
+    tree.set_serialized(
+        SliceData::from_raw(vec![0b00111100], 8),
+        &SliceData::new(vec![0b00111100]),
+        &GramStruct::with_value(5),
+    )
+    .unwrap();
+    tree.set_serialized(
+        SliceData::from_raw(vec![0b00110000], 8),
+        &SliceData::new(vec![0b00110000]),
+        &GramStruct::with_value(6),
+    )
+    .unwrap();
+    tree.set_serialized(
+        SliceData::from_raw(vec![0b00001100], 8),
+        &SliceData::new(vec![0b00001100]),
+        &GramStruct::with_value(7),
+    )
+    .unwrap();
+    tree.set_serialized(
+        SliceData::from_raw(vec![0b00000000], 8),
+        &SliceData::new(vec![0b00000000]),
+        &GramStruct::with_value(8),
+    )
+    .unwrap();
     assert_eq!(tree.root_extra(), &GramStruct::with_value(36));
     tree
 }
@@ -187,18 +300,23 @@ fn test_hashmap_split() {
     assert_eq!(left.len().unwrap(), 4);
     assert_eq!(right.len().unwrap(), 4);
 
-    tree.split(&SliceData::new(vec![0x40])).expect_err("should generate error");
-    tree.split(&SliceData::new(vec![0xC0])).expect_err("should generate error");
+    tree.split(&SliceData::new(vec![0x40]))
+        .expect_err("should generate error");
+    tree.split(&SliceData::new(vec![0xC0]))
+        .expect_err("should generate error");
 
     let (l, r) = left.split(&SliceData::new(vec![0x20])).unwrap();
     assert_eq!(l.len().unwrap(), 2);
     assert_eq!(r.len().unwrap(), 2);
-    left.split(&SliceData::new(vec![0xF0])).expect_err("should generate error");
+    left.split(&SliceData::new(vec![0xF0]))
+        .expect_err("should generate error");
 
     let (l, r) = right.split(&SliceData::new(vec![0xE0])).unwrap();
     assert_eq!(l.len().unwrap(), 2);
     assert_eq!(r.len().unwrap(), 2);
-    right.split(&SliceData::new(vec![0x40])).expect_err("should generate error");
+    right
+        .split(&SliceData::new(vec![0x40]))
+        .expect_err("should generate error");
 
     let tree = make_tree_with_filled_root_label();
     let (left, right) = tree.split(&SliceData::new(vec![0xC0])).unwrap();
@@ -214,55 +332,143 @@ fn test_hashmap_split() {
     assert_eq!(left.len().unwrap(), 4);
     assert_eq!(right.len().unwrap(), 4);
 
-    tree.split(&SliceData::new(vec![0x40])).expect_err("should generate error");
-    tree.split(&SliceData::new(vec![0xA0])).expect_err("should generate error");
-    tree.split(&SliceData::new(vec![0xD0])).expect_err("should generate error");
-    tree.split(&SliceData::new(vec![0xF0])).expect_err("should generate error");
+    tree.split(&SliceData::new(vec![0x40]))
+        .expect_err("should generate error");
+    tree.split(&SliceData::new(vec![0xA0]))
+        .expect_err("should generate error");
+    tree.split(&SliceData::new(vec![0xD0]))
+        .expect_err("should generate error");
+    tree.split(&SliceData::new(vec![0xF0]))
+        .expect_err("should generate error");
 }
 
 #[test]
 fn test_hashmap_merge() {
     let mut left = GramHashmap8::default();
-    left.set_serialized(SliceData::from_raw(vec![0b11000000], 8), &SliceData::new(vec![0b11000000]), &GramStruct::with_value(1)).unwrap();
+    left.set_serialized(
+        SliceData::from_raw(vec![0b11000000], 8),
+        &SliceData::new(vec![0b11000000]),
+        &GramStruct::with_value(1),
+    )
+    .unwrap();
     let mut right = GramHashmap8::default();
-    right.set_serialized(SliceData::from_raw(vec![0b00000000], 8), &SliceData::new(vec![0b00000000]), &GramStruct::with_value(2)).unwrap();
+    right
+        .set_serialized(
+            SliceData::from_raw(vec![0b00000000], 8),
+            &SliceData::new(vec![0b00000000]),
+            &GramStruct::with_value(2),
+        )
+        .unwrap();
     left.merge(&right, &SliceData::new(vec![0x80])).unwrap();
     assert_eq!(left.len().unwrap(), 2);
     let mut result = GramHashmap8::default();
-    result.set_serialized(SliceData::from_raw(vec![0b11000000], 8), &SliceData::new(vec![0b11000000]), &GramStruct::with_value(1)).unwrap();
-    result.set_serialized(SliceData::from_raw(vec![0b00000000], 8), &SliceData::new(vec![0b00000000]), &GramStruct::with_value(2)).unwrap();
+    result
+        .set_serialized(
+            SliceData::from_raw(vec![0b11000000], 8),
+            &SliceData::new(vec![0b11000000]),
+            &GramStruct::with_value(1),
+        )
+        .unwrap();
+    result
+        .set_serialized(
+            SliceData::from_raw(vec![0b00000000], 8),
+            &SliceData::new(vec![0b00000000]),
+            &GramStruct::with_value(2),
+        )
+        .unwrap();
     assert_eq!(left, result);
 
     let mut left = GramHashmap8::default();
     let mut right = GramHashmap8::default();
-    right.set_serialized(SliceData::from_raw(vec![0b00000000], 8), &SliceData::new(vec![0b00000000]), &GramStruct::with_value(1)).unwrap();
+    right
+        .set_serialized(
+            SliceData::from_raw(vec![0b00000000], 8),
+            &SliceData::new(vec![0b00000000]),
+            &GramStruct::with_value(1),
+        )
+        .unwrap();
     left.merge(&right, &SliceData::new(vec![0x80])).unwrap();
     assert_eq!(left.len().unwrap(), 1);
     assert_eq!(left.root_extra(), &GramStruct::with_value(1));
     assert_eq!(left, right);
 
     let mut left = GramHashmap8::default();
-    left.set_serialized(SliceData::from_raw(vec![0b11000000], 8), &SliceData::new(vec![0b11000000]), &GramStruct::with_value(1)).unwrap();
+    left.set_serialized(
+        SliceData::from_raw(vec![0b11000000], 8),
+        &SliceData::new(vec![0b11000000]),
+        &GramStruct::with_value(1),
+    )
+    .unwrap();
     let right = GramHashmap8::default();
     left.merge(&right, &SliceData::new(vec![0x80])).unwrap();
     assert_eq!(left.len().unwrap(), 1);
     let mut result = GramHashmap8::default();
-    result.set_serialized(SliceData::from_raw(vec![0b11000000], 8), &SliceData::new(vec![0b11000000]), &GramStruct::with_value(1)).unwrap();
+    result
+        .set_serialized(
+            SliceData::from_raw(vec![0b11000000], 8),
+            &SliceData::new(vec![0b11000000]),
+            &GramStruct::with_value(1),
+        )
+        .unwrap();
     assert_eq!(left, result);
 
     let tree = make_tree_with_empty_root_label();
     let mut left = GramHashmap8::default();
-    left.set_serialized(SliceData::from_raw(vec![0b11111100], 8), &SliceData::new(vec![0b11111100]), &GramStruct::with_value(1)).unwrap();
-    left.set_serialized(SliceData::from_raw(vec![0b11110000], 8), &SliceData::new(vec![0b11110000]), &GramStruct::with_value(2)).unwrap();
-    left.set_serialized(SliceData::from_raw(vec![0b11001100], 8), &SliceData::new(vec![0b11001100]), &GramStruct::with_value(3)).unwrap();
-    left.set_serialized(SliceData::from_raw(vec![0b11000000], 8), &SliceData::new(vec![0b11000000]), &GramStruct::with_value(4)).unwrap();
+    left.set_serialized(
+        SliceData::from_raw(vec![0b11111100], 8),
+        &SliceData::new(vec![0b11111100]),
+        &GramStruct::with_value(1),
+    )
+    .unwrap();
+    left.set_serialized(
+        SliceData::from_raw(vec![0b11110000], 8),
+        &SliceData::new(vec![0b11110000]),
+        &GramStruct::with_value(2),
+    )
+    .unwrap();
+    left.set_serialized(
+        SliceData::from_raw(vec![0b11001100], 8),
+        &SliceData::new(vec![0b11001100]),
+        &GramStruct::with_value(3),
+    )
+    .unwrap();
+    left.set_serialized(
+        SliceData::from_raw(vec![0b11000000], 8),
+        &SliceData::new(vec![0b11000000]),
+        &GramStruct::with_value(4),
+    )
+    .unwrap();
 
     let mut right = GramHashmap8::default();
-    right.set_serialized(SliceData::from_raw(vec![0b00111100], 8), &SliceData::new(vec![0b00111100]), &GramStruct::with_value(5)).unwrap();
-    right.set_serialized(SliceData::from_raw(vec![0b00110000], 8), &SliceData::new(vec![0b00110000]), &GramStruct::with_value(6)).unwrap();
-    right.set_serialized(SliceData::from_raw(vec![0b00001100], 8), &SliceData::new(vec![0b00001100]), &GramStruct::with_value(7)).unwrap();
-    right.set_serialized(SliceData::from_raw(vec![0b00000000], 8), &SliceData::new(vec![0b00000000]), &GramStruct::with_value(8)).unwrap();
-    
+    right
+        .set_serialized(
+            SliceData::from_raw(vec![0b00111100], 8),
+            &SliceData::new(vec![0b00111100]),
+            &GramStruct::with_value(5),
+        )
+        .unwrap();
+    right
+        .set_serialized(
+            SliceData::from_raw(vec![0b00110000], 8),
+            &SliceData::new(vec![0b00110000]),
+            &GramStruct::with_value(6),
+        )
+        .unwrap();
+    right
+        .set_serialized(
+            SliceData::from_raw(vec![0b00001100], 8),
+            &SliceData::new(vec![0b00001100]),
+            &GramStruct::with_value(7),
+        )
+        .unwrap();
+    right
+        .set_serialized(
+            SliceData::from_raw(vec![0b00000000], 8),
+            &SliceData::new(vec![0b00000000]),
+            &GramStruct::with_value(8),
+        )
+        .unwrap();
+
     assert_eq!(left.len().unwrap(), 4);
     assert_eq!(right.len().unwrap(), 4);
     assert_eq!(left.root_extra(), &GramStruct::with_value(10));
@@ -288,22 +494,36 @@ fn test_scan_diff_empty() {
     let mut tree_1 = SimpleAugDict::default();
     let mut tree_2 = SimpleAugDict::default();
 
-    tree_1.set(&0b11111100u8, &0b11111100, &GramStruct::with_value(1)).unwrap();
-    tree_1.set(&0b11110000u8, &0b11110000, &GramStruct::with_value(2)).unwrap();
-    tree_1.set(&0b11001100u8, &0b11001100, &GramStruct::with_value(3)).unwrap();
+    tree_1
+        .set(&0b11111100u8, &0b11111100, &GramStruct::with_value(1))
+        .unwrap();
+    tree_1
+        .set(&0b11110000u8, &0b11110000, &GramStruct::with_value(2))
+        .unwrap();
+    tree_1
+        .set(&0b11001100u8, &0b11001100, &GramStruct::with_value(3))
+        .unwrap();
 
-    tree_2.set(&0b11111100u8, &0b11111100, &GramStruct::with_value(1)).unwrap();
-    tree_2.set(&0b11110000u8, &0b11110000, &GramStruct::with_value(2)).unwrap();
-    tree_2.set(&0b11001100u8, &0b11001100, &GramStruct::with_value(3)).unwrap();
+    tree_2
+        .set(&0b11111100u8, &0b11111100, &GramStruct::with_value(1))
+        .unwrap();
+    tree_2
+        .set(&0b11110000u8, &0b11110000, &GramStruct::with_value(2))
+        .unwrap();
+    tree_2
+        .set(&0b11001100u8, &0b11001100, &GramStruct::with_value(3))
+        .unwrap();
 
-    let mut correct_dif : Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
+    let mut correct_dif: Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
 
-    let mut diff_vec : Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
+    let mut diff_vec: Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
 
-    tree_1.scan_diff_with_aug(&tree_2, |key, value1, value2| { 
-        diff_vec.push((key, value1, value2)); 
-        Ok(true)
-    }).unwrap();
+    tree_1
+        .scan_diff_with_aug(&tree_2, |key, value1, value2| {
+            diff_vec.push((key, value1, value2));
+            Ok(true)
+        })
+        .unwrap();
     correct_dif.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     diff_vec.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     assert!(diff_vec == correct_dif);
@@ -314,24 +534,39 @@ fn test_scan_diff_1() {
     let mut tree_1 = SimpleAugDict::default();
     let mut tree_2 = SimpleAugDict::default();
 
-    tree_1.set(&0b11111100u8, &0b11111100, &GramStruct::with_value(1)).unwrap();
-    tree_1.set(&0b11110000u8, &0b11110000, &GramStruct::with_value(2)).unwrap();
-    tree_1.set(&0b11001100u8, &0b11001100, &GramStruct::with_value(3)).unwrap();
+    tree_1
+        .set(&0b11111100u8, &0b11111100, &GramStruct::with_value(1))
+        .unwrap();
+    tree_1
+        .set(&0b11110000u8, &0b11110000, &GramStruct::with_value(2))
+        .unwrap();
+    tree_1
+        .set(&0b11001100u8, &0b11001100, &GramStruct::with_value(3))
+        .unwrap();
 
-    tree_2.set(&0b11111100u8, &0b11111100, &GramStruct::with_value(1)).unwrap();
-    tree_2.set(&0b11110000u8, &0b11110000, &GramStruct::with_value(2)).unwrap();
+    tree_2
+        .set(&0b11111100u8, &0b11111100, &GramStruct::with_value(1))
+        .unwrap();
+    tree_2
+        .set(&0b11110000u8, &0b11110000, &GramStruct::with_value(2))
+        .unwrap();
 
+    let mut correct_dif: Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
 
-    let mut correct_dif : Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
-  
-    correct_dif.push((0b11001100, Some((0b11001100, GramStruct::with_value(3))), None));
+    correct_dif.push((
+        0b11001100,
+        Some((0b11001100, GramStruct::with_value(3))),
+        None,
+    ));
 
-    let mut diff_vec : Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
+    let mut diff_vec: Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
 
-    tree_1.scan_diff_with_aug(&tree_2, |key, value1, value2| { 
-        diff_vec.push((key, value1, value2)); 
-        Ok(true)
-    }).unwrap();
+    tree_1
+        .scan_diff_with_aug(&tree_2, |key, value1, value2| {
+            diff_vec.push((key, value1, value2));
+            Ok(true)
+        })
+        .unwrap();
     correct_dif.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     diff_vec.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     assert!(diff_vec.len() == 1);
@@ -343,24 +578,39 @@ fn test_scan_diff_2() {
     let mut tree_1 = SimpleAugDict::default();
     let mut tree_2 = SimpleAugDict::default();
 
-    tree_1.set(&0b11111100u8, &0b11111100, &GramStruct::with_value(1)).unwrap();
-    tree_1.set(&0b11110000u8, &0b11110000, &GramStruct::with_value(2)).unwrap();
+    tree_1
+        .set(&0b11111100u8, &0b11111100, &GramStruct::with_value(1))
+        .unwrap();
+    tree_1
+        .set(&0b11110000u8, &0b11110000, &GramStruct::with_value(2))
+        .unwrap();
 
-    tree_2.set(&0b11111100u8, &0b11111100, &GramStruct::with_value(1)).unwrap();
-    tree_2.set(&0b11110000u8, &0b11110000, &GramStruct::with_value(2)).unwrap();
-    tree_2.set(&0b11001100u8, &0b11001100, &GramStruct::with_value(3)).unwrap();
+    tree_2
+        .set(&0b11111100u8, &0b11111100, &GramStruct::with_value(1))
+        .unwrap();
+    tree_2
+        .set(&0b11110000u8, &0b11110000, &GramStruct::with_value(2))
+        .unwrap();
+    tree_2
+        .set(&0b11001100u8, &0b11001100, &GramStruct::with_value(3))
+        .unwrap();
 
+    let mut correct_dif: Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
 
-    let mut correct_dif : Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
-  
-    correct_dif.push((0b11001100, None, Some((0b11001100, GramStruct::with_value(3)))));
+    correct_dif.push((
+        0b11001100,
+        None,
+        Some((0b11001100, GramStruct::with_value(3))),
+    ));
 
-    let mut diff_vec : Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
+    let mut diff_vec: Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
 
-    tree_1.scan_diff_with_aug(&tree_2, |key, value1, value2| { 
-        diff_vec.push((key, value1, value2)); 
-        Ok(true)
-    }).unwrap(); 
+    tree_1
+        .scan_diff_with_aug(&tree_2, |key, value1, value2| {
+            diff_vec.push((key, value1, value2));
+            Ok(true)
+        })
+        .unwrap();
     correct_dif.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     diff_vec.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     assert!(diff_vec.len() == 1);
@@ -372,23 +622,40 @@ fn test_scan_diff_3() {
     let mut tree_1 = SimpleAugDict::default();
     let mut tree_2 = SimpleAugDict::default();
 
-    tree_1.set(&0b11111100u8, &0b11111100, &GramStruct::with_value(1)).unwrap();
-    tree_1.set(&0b11110000u8, &0b11110000, &GramStruct::with_value(2)).unwrap();
-    tree_1.set(&0b11001100u8, &0b11001101, &GramStruct::with_value(3)).unwrap();
+    tree_1
+        .set(&0b11111100u8, &0b11111100, &GramStruct::with_value(1))
+        .unwrap();
+    tree_1
+        .set(&0b11110000u8, &0b11110000, &GramStruct::with_value(2))
+        .unwrap();
+    tree_1
+        .set(&0b11001100u8, &0b11001101, &GramStruct::with_value(3))
+        .unwrap();
 
-    tree_2.set(&0b11111100u8, &0b11111100, &GramStruct::with_value(1)).unwrap();
-    tree_2.set(&0b11110000u8, &0b11110000, &GramStruct::with_value(2)).unwrap();
-    tree_2.set(&0b11001100u8, &0b11001100, &GramStruct::with_value(3)).unwrap();
+    tree_2
+        .set(&0b11111100u8, &0b11111100, &GramStruct::with_value(1))
+        .unwrap();
+    tree_2
+        .set(&0b11110000u8, &0b11110000, &GramStruct::with_value(2))
+        .unwrap();
+    tree_2
+        .set(&0b11001100u8, &0b11001100, &GramStruct::with_value(3))
+        .unwrap();
 
+    let mut correct_dif: Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
+    correct_dif.push((
+        0b11001100,
+        Some((0b11001101, GramStruct::with_value(3))),
+        Some((0b11001100, GramStruct::with_value(3))),
+    ));
+    let mut diff_vec: Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
 
-    let mut correct_dif : Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
-    correct_dif.push((0b11001100, Some((0b11001101, GramStruct::with_value(3))), Some((0b11001100, GramStruct::with_value(3)))));
-    let mut diff_vec : Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
-
-    tree_1.scan_diff_with_aug(&tree_2, |key,value1, value2| { 
-        diff_vec.push((key, value1, value2)); 
-        Ok(true)
-    }).unwrap();
+    tree_1
+        .scan_diff_with_aug(&tree_2, |key, value1, value2| {
+            diff_vec.push((key, value1, value2));
+            Ok(true)
+        })
+        .unwrap();
     correct_dif.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     diff_vec.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     assert!(diff_vec == correct_dif);
@@ -399,29 +666,49 @@ fn test_filter_simple() {
     let mut tree_1 = SimpleAugDict::default();
     let mut tree_2 = SimpleAugDict::default();
 
-    tree_1.set(&0b11111100u8, &0b11111100, &GramStruct::with_value(1)).unwrap();
-    tree_1.set(&0b11110000u8, &0b11110000, &GramStruct::with_value(2)).unwrap();
-    tree_1.set(&0b11001100u8, &0b11001101, &GramStruct::with_value(3)).unwrap();
+    tree_1
+        .set(&0b11111100u8, &0b11111100, &GramStruct::with_value(1))
+        .unwrap();
+    tree_1
+        .set(&0b11110000u8, &0b11110000, &GramStruct::with_value(2))
+        .unwrap();
+    tree_1
+        .set(&0b11001100u8, &0b11001101, &GramStruct::with_value(3))
+        .unwrap();
 
-    tree_2.set(&0b11111100u8, &0b11111100, &GramStruct::with_value(1)).unwrap();
-    tree_2.set(&0b11110000u8, &0b11110000, &GramStruct::with_value(2)).unwrap();
-    tree_2.set(&0b11001100u8, &0b11001101, &GramStruct::with_value(3)).unwrap();
-    tree_1.filter(|key, _value, _aug| { 
-        if key == 0b11001100u8 { 
-           Ok(HashmapFilterResult::Remove)
-        } else {
-            Ok(HashmapFilterResult::Accept)
-        }
-    }).unwrap();
+    tree_2
+        .set(&0b11111100u8, &0b11111100, &GramStruct::with_value(1))
+        .unwrap();
+    tree_2
+        .set(&0b11110000u8, &0b11110000, &GramStruct::with_value(2))
+        .unwrap();
+    tree_2
+        .set(&0b11001100u8, &0b11001101, &GramStruct::with_value(3))
+        .unwrap();
+    tree_1
+        .filter(|key, _value, _aug| {
+            if key == 0b11001100u8 {
+                Ok(HashmapFilterResult::Remove)
+            } else {
+                Ok(HashmapFilterResult::Accept)
+            }
+        })
+        .unwrap();
 
-    let mut correct_dif : Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
-    correct_dif.push((0b11001100, Some((0b11001101, GramStruct::with_value(3))), None));
-    let mut diff_vec : Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
+    let mut correct_dif: Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
+    correct_dif.push((
+        0b11001100,
+        Some((0b11001101, GramStruct::with_value(3))),
+        None,
+    ));
+    let mut diff_vec: Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
 
-    tree_2.scan_diff_with_aug(&tree_1, |key,value1, value2| { 
-        diff_vec.push((key, value1, value2)); 
-        Ok(true)
-    }).unwrap();
+    tree_2
+        .scan_diff_with_aug(&tree_1, |key, value1, value2| {
+            diff_vec.push((key, value1, value2));
+            Ok(true)
+        })
+        .unwrap();
     correct_dif.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     diff_vec.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     assert!(diff_vec == correct_dif);
@@ -432,52 +719,98 @@ fn test_filter() {
     let mut tree_1 = SimpleAugDict::default();
     let mut tree_2 = SimpleAugDict::default();
 
-    tree_1.set(&0b11001100u8, &0b11001101, &GramStruct::with_value(1)).unwrap();
-    tree_1.set(&0b11010000u8, &0b11001101, &GramStruct::with_value(2)).unwrap();
-    tree_1.set(&0b11010100u8, &0b11001101, &GramStruct::with_value(3)).unwrap();
-    tree_1.set(&0b11011000u8, &0b11001101, &GramStruct::with_value(4)).unwrap();
-    tree_1.set(&0b11011100u8, &0b11001101, &GramStruct::with_value(5)).unwrap();
-    tree_1.set(&0b11100000u8, &0b11001101, &GramStruct::with_value(6)).unwrap();
-    tree_1.set(&0b11100100u8, &0b11001101, &GramStruct::with_value(7)).unwrap();
-    tree_1.set(&0b11101000u8, &0b11001101, &GramStruct::with_value(8)).unwrap();
+    tree_1
+        .set(&0b11001100u8, &0b11001101, &GramStruct::with_value(1))
+        .unwrap();
+    tree_1
+        .set(&0b11010000u8, &0b11001101, &GramStruct::with_value(2))
+        .unwrap();
+    tree_1
+        .set(&0b11010100u8, &0b11001101, &GramStruct::with_value(3))
+        .unwrap();
+    tree_1
+        .set(&0b11011000u8, &0b11001101, &GramStruct::with_value(4))
+        .unwrap();
+    tree_1
+        .set(&0b11011100u8, &0b11001101, &GramStruct::with_value(5))
+        .unwrap();
+    tree_1
+        .set(&0b11100000u8, &0b11001101, &GramStruct::with_value(6))
+        .unwrap();
+    tree_1
+        .set(&0b11100100u8, &0b11001101, &GramStruct::with_value(7))
+        .unwrap();
+    tree_1
+        .set(&0b11101000u8, &0b11001101, &GramStruct::with_value(8))
+        .unwrap();
 
-    tree_2.set(&0b11001100u8, &0b11001101, &GramStruct::with_value(1)).unwrap();
-    tree_2.set(&0b11010100u8, &0b11001101, &GramStruct::with_value(3)).unwrap();
-    tree_2.set(&0b11011100u8, &0b11001101, &GramStruct::with_value(5)).unwrap();
-    tree_2.set(&0b11100100u8, &0b11001101, &GramStruct::with_value(7)).unwrap();
+    tree_2
+        .set(&0b11001100u8, &0b11001101, &GramStruct::with_value(1))
+        .unwrap();
+    tree_2
+        .set(&0b11010100u8, &0b11001101, &GramStruct::with_value(3))
+        .unwrap();
+    tree_2
+        .set(&0b11011100u8, &0b11001101, &GramStruct::with_value(5))
+        .unwrap();
+    tree_2
+        .set(&0b11100100u8, &0b11001101, &GramStruct::with_value(7))
+        .unwrap();
 
     let mut correct_dif = vec![
-        (0b11010000, Some((0b11001101, GramStruct::with_value(2))), None),
-        (0b11011000, Some((0b11001101, GramStruct::with_value(4))), None),
-        (0b11100000, Some((0b11001101, GramStruct::with_value(6))), None),
-        (0b11101000, Some((0b11001101, GramStruct::with_value(8))), None),
+        (
+            0b11010000,
+            Some((0b11001101, GramStruct::with_value(2))),
+            None,
+        ),
+        (
+            0b11011000,
+            Some((0b11001101, GramStruct::with_value(4))),
+            None,
+        ),
+        (
+            0b11100000,
+            Some((0b11001101, GramStruct::with_value(6))),
+            None,
+        ),
+        (
+            0b11101000,
+            Some((0b11001101, GramStruct::with_value(8))),
+            None,
+        ),
     ];
 
-    let mut diff_vec : Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
-  
-    tree_1.scan_diff_with_aug(&tree_2, |key,value1, value2| { 
-        diff_vec.push((key, value1, value2)); 
-        Ok(true)
-    }).unwrap();
+    let mut diff_vec: Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
+
+    tree_1
+        .scan_diff_with_aug(&tree_2, |key, value1, value2| {
+            diff_vec.push((key, value1, value2));
+            Ok(true)
+        })
+        .unwrap();
     correct_dif.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     diff_vec.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     assert!(diff_vec == correct_dif);
 
-    tree_1.filter(|key, _value, _aug| { 
-        if key % 8 == 0 { 
-           Ok(HashmapFilterResult::Remove)
-        } else {
-            Ok(HashmapFilterResult::Accept)
-        }
-    }).unwrap();
+    tree_1
+        .filter(|key, _value, _aug| {
+            if key % 8 == 0 {
+                Ok(HashmapFilterResult::Remove)
+            } else {
+                Ok(HashmapFilterResult::Accept)
+            }
+        })
+        .unwrap();
 
-    let mut correct_dif : Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
-    let mut diff_vec : Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
+    let mut correct_dif: Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
+    let mut diff_vec: Vec<(u8, Option<(u8, GramStruct)>, Option<(u8, GramStruct)>)> = Vec::new();
 
-    tree_1.scan_diff_with_aug(&tree_2, |key,value1, value2| { 
-        diff_vec.push((key, value1, value2)); 
-        Ok(true)
-    }).unwrap();
+    tree_1
+        .scan_diff_with_aug(&tree_2, |key, value1, value2| {
+            diff_vec.push((key, value1, value2));
+            Ok(true)
+        })
+        .unwrap();
     correct_dif.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     diff_vec.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     assert!(diff_vec == correct_dif);
@@ -487,27 +820,47 @@ fn test_filter() {
 fn test_traverse() {
     let mut tree_1 = SimpleAugDict::default();
 
-    tree_1.set(&0b000u8, &0b000u8, &GramStruct::with_value(0)).unwrap();
-    tree_1.set(&0b001u8, &0b001u8, &GramStruct::with_value(1)).unwrap();
-    tree_1.set(&0b010u8, &0b010u8, &GramStruct::with_value(2)).unwrap();
-    tree_1.set(&0b011u8, &0b011u8, &GramStruct::with_value(3)).unwrap();
-    tree_1.set(&0b100u8, &0b100u8, &GramStruct::with_value(4)).unwrap();
-    tree_1.set(&0b101u8, &0b101u8, &GramStruct::with_value(5)).unwrap();
-    tree_1.set(&0b110u8, &0b110u8, &GramStruct::with_value(6)).unwrap();
-    tree_1.set(&0b111u8, &0b111u8, &GramStruct::with_value(7)).unwrap();
+    tree_1
+        .set(&0b000u8, &0b000u8, &GramStruct::with_value(0))
+        .unwrap();
+    tree_1
+        .set(&0b001u8, &0b001u8, &GramStruct::with_value(1))
+        .unwrap();
+    tree_1
+        .set(&0b010u8, &0b010u8, &GramStruct::with_value(2))
+        .unwrap();
+    tree_1
+        .set(&0b011u8, &0b011u8, &GramStruct::with_value(3))
+        .unwrap();
+    tree_1
+        .set(&0b100u8, &0b100u8, &GramStruct::with_value(4))
+        .unwrap();
+    tree_1
+        .set(&0b101u8, &0b101u8, &GramStruct::with_value(5))
+        .unwrap();
+    tree_1
+        .set(&0b110u8, &0b110u8, &GramStruct::with_value(6))
+        .unwrap();
+    tree_1
+        .set(&0b111u8, &0b111u8, &GramStruct::with_value(7))
+        .unwrap();
 
     let zero_way = vec![
         GramStruct::with_value(28),
         GramStruct::with_value(6),
         GramStruct::with_value(1),
-        GramStruct::with_value(0)
+        GramStruct::with_value(0),
     ];
     let mut way = vec![];
-    let res = tree_1.traverse_slices(|_key_prefix, _key_prefix_len, mut label| -> Result<TraverseNextStep<()>> {
-        let aug = GramStruct::construct_from(&mut label).unwrap();
-        way.push(aug);
-        Ok(TraverseNextStep::VisitZero)
-    }).unwrap();
+    let res = tree_1
+        .traverse_slices(
+            |_key_prefix, _key_prefix_len, mut label| -> Result<TraverseNextStep<()>> {
+                let aug = GramStruct::construct_from(&mut label).unwrap();
+                way.push(aug);
+                Ok(TraverseNextStep::VisitZero)
+            },
+        )
+        .unwrap();
     assert!(res.is_none());
     assert_eq!(way, zero_way);
 
@@ -515,17 +868,19 @@ fn test_traverse() {
         GramStruct::with_value(28),
         GramStruct::with_value(22),
         GramStruct::with_value(13),
-        GramStruct::with_value(7)
+        GramStruct::with_value(7),
     ];
     let mut way = vec![];
-    let res = tree_1.traverse(|_key_prefix, key_prefix_len, aug, value_opt| {
-        way.push(aug);
-        if key_prefix_len == 8 {
-            Ok(TraverseNextStep::End(value_opt.unwrap()))
-        } else {
-            Ok(TraverseNextStep::VisitOne)
-        }
-    }).unwrap();
+    let res = tree_1
+        .traverse(|_key_prefix, key_prefix_len, aug, value_opt| {
+            way.push(aug);
+            if key_prefix_len == 8 {
+                Ok(TraverseNextStep::End(value_opt.unwrap()))
+            } else {
+                Ok(TraverseNextStep::VisitOne)
+            }
+        })
+        .unwrap();
     assert_eq!(res.unwrap(), 7);
     assert_eq!(way, ones_way);
 
@@ -535,14 +890,18 @@ fn test_traverse() {
         GramStruct::with_value(22),
     ];
     let mut way = vec![];
-    let res = tree_1.traverse(|_key_prefix, key_prefix_len, aug, _value_opt| -> Result<TraverseNextStep<()>> {
-        way.push(aug);
-        if key_prefix_len == 6 {
-            Ok(TraverseNextStep::Stop)
-        } else {
-            Ok(TraverseNextStep::VisitZeroOne)
-        }
-    }).unwrap();
+    let res = tree_1
+        .traverse(
+            |_key_prefix, key_prefix_len, aug, _value_opt| -> Result<TraverseNextStep<()>> {
+                way.push(aug);
+                if key_prefix_len == 6 {
+                    Ok(TraverseNextStep::Stop)
+                } else {
+                    Ok(TraverseNextStep::VisitZeroOne)
+                }
+            },
+        )
+        .unwrap();
     assert!(res.is_none());
     assert_eq!(way, high_way);
 }
@@ -574,7 +933,11 @@ fn check_hashmap_fill_and_filter(mut keys: Vec<u8>, remove: &[u8], stop: usize, 
         let key = keys[i];
         let val = 0;
         let aug = i as u8 + 1;
-        assert_eq!(queue1.get_raw(&key).unwrap(), None, "generated two equal random keys - try to restart test");
+        assert_eq!(
+            queue1.get_raw(&key).unwrap(),
+            None,
+            "generated two equal random keys - try to restart test"
+        );
         queue1.set(&key, &val, &aug).unwrap();
         if stop <= i || cancel < keys.len() || !remove.contains(&key) {
             queue2.set(&key, &val, &aug).unwrap();
@@ -583,30 +946,36 @@ fn check_hashmap_fill_and_filter(mut keys: Vec<u8>, remove: &[u8], stop: usize, 
     // queue1.dump();
     // println!("{:#.3}", queue1.data().cloned().unwrap());
 
-    queue1.filter(|key, _val, _aug| {
-        if cancel < keys.len() && keys[cancel] == key {
-            Ok(HashmapFilterResult::Cancel)
-        } else if stop < keys.len() && keys[stop] == key {
-            Ok(HashmapFilterResult::Stop)
-        } else if remove.contains(&key) {
-            Ok(HashmapFilterResult::Remove)
-        } else {
-            Ok(HashmapFilterResult::Accept)
-        }
-    }).unwrap();
+    queue1
+        .filter(|key, _val, _aug| {
+            if cancel < keys.len() && keys[cancel] == key {
+                Ok(HashmapFilterResult::Cancel)
+            } else if stop < keys.len() && keys[stop] == key {
+                Ok(HashmapFilterResult::Stop)
+            } else if remove.contains(&key) {
+                Ok(HashmapFilterResult::Remove)
+            } else {
+                Ok(HashmapFilterResult::Accept)
+            }
+        })
+        .unwrap();
     let mut res1 = vec![];
-    queue1.iterate_with_keys_and_aug(|key, val, aug| {
-        res1.push((key, val, aug));
-        Ok(true)
-    }).unwrap();
+    queue1
+        .iterate_with_keys_and_aug(|key, val, aug| {
+            res1.push((key, val, aug));
+            Ok(true)
+        })
+        .unwrap();
     // println!("{:#.3}", queue1.data().cloned().unwrap_or_default());
     // assert_eq!(queue, queue2);
     // additional testing
     let mut res2 = vec![];
-    queue2.iterate_with_keys_and_aug(|key, val, aug| {
-        res2.push((key, val, aug));
-        Ok(true)
-    }).unwrap();
+    queue2
+        .iterate_with_keys_and_aug(|key, val, aug| {
+            res2.push((key, val, aug));
+            Ok(true)
+        })
+        .unwrap();
     assert_eq!(res1.len(), res2.len());
     if res1 != res2 {
         panic!("not equal")

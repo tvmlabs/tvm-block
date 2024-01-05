@@ -24,12 +24,11 @@ use crate::{
     messages::Message,
     transactions::Transaction,
     types::{AddSub, ChildCell, CurrencyCollection, Grams},
-    Serializable, Deserializable,
+    Deserializable, Serializable,
 };
 use std::fmt;
-use ton_types::{
-    error, fail, Result,
-    BuilderData, Cell, IBitstring, SliceData, HashmapType, UInt256, hm_label,
+use tvm_types::{
+    error, fail, hm_label, BuilderData, Cell, HashmapType, IBitstring, Result, SliceData, UInt256,
 };
 
 #[cfg(test)]
@@ -42,7 +41,7 @@ macro_rules! read_msg_descr {
         let mut x = $msg_descr::default();
         x.read_from($cell)?;
         InMsg::$variant(x)
-    }}
+    }};
 }
 
 ///internal helper macros for writing constructor tags in InMsg variants
@@ -50,7 +49,7 @@ macro_rules! write_ctor_tag {
     ($builder:expr, $tag:ident) => {{
         $builder.append_bits($tag as usize, 3).unwrap();
         $builder
-    }}
+    }};
 }
 
 //3.2.7. Augmentation of InMsgDescr
@@ -78,7 +77,7 @@ impl ImportFees {
     pub fn with_grams(grams: u64) -> Self {
         Self {
             fees_collected: Grams::from(grams),
-            value_imported: CurrencyCollection::new()
+            value_imported: CurrencyCollection::new(),
         }
     }
 }
@@ -108,7 +107,7 @@ const MSG_IMPORT_TR: u8 = 0b00000101;
 const MSG_DISCARD_FIN: u8 = 0b00000110;
 const MSG_DISCARD_TR: u8 = 0b00000111;
 
-/// 
+///
 /// Inbound message
 /// blockchain spec 3.2.2. Descriptor of an inbound message.
 ///
@@ -144,21 +143,47 @@ impl fmt::Display for InMsg {
         let msg_hash = self.message_cell().unwrap_or_default().repr_hash();
         let tr_hash = self.transaction_cell().unwrap_or_default().repr_hash();
         match self {
-            InMsg::External(_x) => write!(f, "InMsg msg_import_ext$000 msg: {:x} tr: {:x}",
-                msg_hash, tr_hash),
-            InMsg::IHR(_x) => write!(f, "InMsg msg_import_ihr$010 msg: {:x} tr: {:x}",
-                msg_hash, tr_hash),
-            InMsg::Immediate(x) => write!(f, "InMsg msg_import_imm$011 msg: {:x} tr: {:x} fee: {}",
-                msg_hash, tr_hash, x.fwd_fee),
-            InMsg::Transit(x) => write!(f, "InMsg msg_import_tr$101 in_msg: {:x} out_msg: {:x} fee: {}",
-                msg_hash, x.out_msg.read_struct().unwrap_or_default().message_hash(), x.transit_fee),
-            InMsg::Final(x) => write!(f, "InMsg msg_import_fin$100 msg: {:x} tr: {:x} fee: {}",
-                msg_hash, tr_hash, x.fwd_fee),
-            InMsg::DiscardedFinal(x) => write!(f, "InMsg msg_discard_fin$110 msg: {:x} tr: {} fee: {}",
-                msg_hash, x.transaction_id, x.fwd_fee),
-            InMsg::DiscardedTransit(x) => write!(f, "InMsg msg_discard_tr$111 msg: {:x} tr: {:x} fee: {} proof: {:x}",
-                msg_hash, x.transaction_id, x.fwd_fee, x.proof_delivered.repr_hash()),
-            InMsg::None => write!(f, "InMsg msg_unknown")
+            InMsg::External(_x) => write!(
+                f,
+                "InMsg msg_import_ext$000 msg: {:x} tr: {:x}",
+                msg_hash, tr_hash
+            ),
+            InMsg::IHR(_x) => write!(
+                f,
+                "InMsg msg_import_ihr$010 msg: {:x} tr: {:x}",
+                msg_hash, tr_hash
+            ),
+            InMsg::Immediate(x) => write!(
+                f,
+                "InMsg msg_import_imm$011 msg: {:x} tr: {:x} fee: {}",
+                msg_hash, tr_hash, x.fwd_fee
+            ),
+            InMsg::Transit(x) => write!(
+                f,
+                "InMsg msg_import_tr$101 in_msg: {:x} out_msg: {:x} fee: {}",
+                msg_hash,
+                x.out_msg.read_struct().unwrap_or_default().message_hash(),
+                x.transit_fee
+            ),
+            InMsg::Final(x) => write!(
+                f,
+                "InMsg msg_import_fin$100 msg: {:x} tr: {:x} fee: {}",
+                msg_hash, tr_hash, x.fwd_fee
+            ),
+            InMsg::DiscardedFinal(x) => write!(
+                f,
+                "InMsg msg_discard_fin$110 msg: {:x} tr: {} fee: {}",
+                msg_hash, x.transaction_id, x.fwd_fee
+            ),
+            InMsg::DiscardedTransit(x) => write!(
+                f,
+                "InMsg msg_discard_tr$111 msg: {:x} tr: {:x} fee: {} proof: {:x}",
+                msg_hash,
+                x.transaction_id,
+                x.fwd_fee,
+                x.proof_delivered.repr_hash()
+            ),
+            InMsg::None => write!(f, "InMsg msg_unknown"),
         }
     }
 }
@@ -190,7 +215,9 @@ impl InMsg {
     }
     /// Create DiscardedTransit
     pub fn discarded_transit(env_cell: Cell, tr_id: u64, fwd_fee: Grams, proof: Cell) -> InMsg {
-        InMsg::DiscardedTransit(InMsgDiscardedTransit::with_cells(env_cell, tr_id, fwd_fee, proof))
+        InMsg::DiscardedTransit(InMsgDiscardedTransit::with_cells(
+            env_cell, tr_id, fwd_fee, proof,
+        ))
     }
 
     /// Check if is valid message
@@ -200,14 +227,14 @@ impl InMsg {
 
     pub fn tag(&self) -> u8 {
         match self {
-            InMsg::External(_)             => MSG_IMPORT_EXT,
-            InMsg::IHR(_)                  => MSG_IMPORT_IHR,
-            InMsg::Immediate(_)            => MSG_IMPORT_IMM,
-            InMsg::Final(_)                => MSG_IMPORT_FIN,
-            InMsg::Transit(_)              => MSG_IMPORT_TR,
-            InMsg::DiscardedFinal(_)       => MSG_DISCARD_FIN,
-            InMsg::DiscardedTransit(_)     => MSG_DISCARD_TR,
-            InMsg::None => 8
+            InMsg::External(_) => MSG_IMPORT_EXT,
+            InMsg::IHR(_) => MSG_IMPORT_IHR,
+            InMsg::Immediate(_) => MSG_IMPORT_IMM,
+            InMsg::Final(_) => MSG_IMPORT_FIN,
+            InMsg::Transit(_) => MSG_IMPORT_TR,
+            InMsg::DiscardedFinal(_) => MSG_DISCARD_FIN,
+            InMsg::DiscardedTransit(_) => MSG_DISCARD_TR,
+            InMsg::None => 8,
         }
     }
 
@@ -217,18 +244,16 @@ impl InMsg {
     /// For other messages function returned None
     ///
     pub fn read_transaction(&self) -> Result<Option<Transaction>> {
-        Ok(
-            match self {
-                InMsg::External(ref x) => Some(x.read_transaction()?),
-                InMsg::IHR(ref x) => Some(x.read_transaction()?),
-                InMsg::Immediate(ref x) => Some(x.read_transaction()?),
-                InMsg::Final(ref x) => Some(x.read_transaction()?),
-                InMsg::Transit(ref _x) => None,
-                InMsg::DiscardedFinal(ref _x) => None,
-                InMsg::DiscardedTransit(ref _x) => None,
-                InMsg::None => fail!("wrong message type")
-            }
-        )
+        Ok(match self {
+            InMsg::External(ref x) => Some(x.read_transaction()?),
+            InMsg::IHR(ref x) => Some(x.read_transaction()?),
+            InMsg::Immediate(ref x) => Some(x.read_transaction()?),
+            InMsg::Final(ref x) => Some(x.read_transaction()?),
+            InMsg::Transit(ref _x) => None,
+            InMsg::DiscardedFinal(ref _x) => None,
+            InMsg::DiscardedTransit(ref _x) => None,
+            InMsg::None => fail!("wrong message type"),
+        })
     }
 
     ///
@@ -261,7 +286,7 @@ impl InMsg {
             InMsg::Transit(ref x) => x.read_in_message()?.read_message(),
             InMsg::DiscardedFinal(ref x) => x.read_envelope_message()?.read_message(),
             InMsg::DiscardedTransit(ref x) => x.read_envelope_message()?.read_message(),
-            InMsg::None => fail!("wrong msg type")
+            InMsg::None => fail!("wrong msg type"),
         }
     }
 
@@ -269,18 +294,16 @@ impl InMsg {
     /// Get message cell
     ///
     pub fn message_cell(&self) -> Result<Cell> {
-        Ok(
-            match self {
-                InMsg::External(ref x) => x.message_cell(),
-                InMsg::IHR(ref x) => x.message_cell(),
-                InMsg::Immediate(ref x) => x.read_envelope_message()?.message_cell(),
-                InMsg::Final(ref x) => x.read_envelope_message()?.message_cell(),
-                InMsg::Transit(ref x) => x.read_in_message()?.message_cell(),
-                InMsg::DiscardedFinal(ref x) => x.read_envelope_message()?.message_cell(),
-                InMsg::DiscardedTransit(ref x) => x.read_envelope_message()?.message_cell(),
-                InMsg::None => fail!("wrong message type")
-            }
-        )
+        Ok(match self {
+            InMsg::External(ref x) => x.message_cell(),
+            InMsg::IHR(ref x) => x.message_cell(),
+            InMsg::Immediate(ref x) => x.read_envelope_message()?.message_cell(),
+            InMsg::Final(ref x) => x.read_envelope_message()?.message_cell(),
+            InMsg::Transit(ref x) => x.read_in_message()?.message_cell(),
+            InMsg::DiscardedFinal(ref x) => x.read_envelope_message()?.message_cell(),
+            InMsg::DiscardedTransit(ref x) => x.read_envelope_message()?.message_cell(),
+            InMsg::None => fail!("wrong message type"),
+        })
     }
 
     ///
@@ -303,18 +326,16 @@ impl InMsg {
     /// Get in envelope message
     ///
     pub fn read_in_msg_envelope(&self) -> Result<Option<MsgEnvelope>> {
-        Ok(
-            match self {
-                InMsg::External(_) => None,
-                InMsg::IHR(_) => None,
-                InMsg::Immediate(ref x) => Some(x.read_envelope_message()?),
-                InMsg::Final(ref x) => Some(x.read_envelope_message()?),
-                InMsg::Transit(ref x) => Some(x.read_in_message()?),
-                InMsg::DiscardedFinal(ref x) => Some(x.read_envelope_message()?),
-                InMsg::DiscardedTransit(ref x) => Some(x.read_envelope_message()?),
-                InMsg::None => fail!("wrong message type"),
-            }
-        )
+        Ok(match self {
+            InMsg::External(_) => None,
+            InMsg::IHR(_) => None,
+            InMsg::Immediate(ref x) => Some(x.read_envelope_message()?),
+            InMsg::Final(ref x) => Some(x.read_envelope_message()?),
+            InMsg::Transit(ref x) => Some(x.read_in_message()?),
+            InMsg::DiscardedFinal(ref x) => Some(x.read_envelope_message()?),
+            InMsg::DiscardedTransit(ref x) => Some(x.read_envelope_message()?),
+            InMsg::None => fail!("wrong message type"),
+        })
     }
 
     ///
@@ -345,11 +366,13 @@ impl InMsg {
             InMsg::Transit(ref x) => Some(x.read_out_message()).transpose(),
             InMsg::DiscardedFinal(_) => Ok(None),
             InMsg::DiscardedTransit(_) => Ok(None),
-            InMsg::None => fail!("wrong message type")
+            InMsg::None => fail!("wrong message type"),
         }
     }
 
-    pub fn get_fee(&self) -> Result<ImportFees> { self.aug() }
+    pub fn get_fee(&self) -> Result<ImportFees> {
+        self.aug()
+    }
 }
 
 impl Augmentation<ImportFees> for InMsg {
@@ -357,14 +380,14 @@ impl Augmentation<ImportFees> for InMsg {
         let msg = self.read_message()?;
         let header = match msg.int_header() {
             Some(header) => header,
-            None => return Ok(ImportFees::default())
+            None => return Ok(ImportFees::default()),
         };
         let mut fees = ImportFees::default();
         match self {
             InMsg::External(_) => {
                 //println!("InMsg::External");
             }
-            InMsg::IHR(_) =>  {
+            InMsg::IHR(_) => {
                 //println!("InMsg::IHR");
                 fees.fees_collected = header.ihr_fee;
 
@@ -412,7 +435,7 @@ impl Augmentation<ImportFees> for InMsg {
 
                 fees.value_imported.grams = header.fwd_fee;
             }
-            InMsg::None => fail!("wrong InMsg type")
+            InMsg::None => fail!("wrong InMsg type"),
         }
         Ok(fees)
     }
@@ -436,21 +459,19 @@ impl Serializable for InMsg {
 impl Deserializable for InMsg {
     fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
         let tag: u8 = (cell.get_next_bits(3)?[0] & 0xE0) >> 5;
-        *self =  match tag {
+        *self = match tag {
             MSG_IMPORT_EXT => read_msg_descr!(cell, InMsgExternal, External),
             MSG_IMPORT_IHR => read_msg_descr!(cell, InMsgIHR, IHR),
             MSG_IMPORT_IMM => read_msg_descr!(cell, InMsgFinal, Immediate),
             MSG_IMPORT_FIN => read_msg_descr!(cell, InMsgFinal, Final),
-            MSG_IMPORT_TR =>  read_msg_descr!(cell, InMsgTransit, Transit),
+            MSG_IMPORT_TR => read_msg_descr!(cell, InMsgTransit, Transit),
             MSG_DISCARD_FIN => read_msg_descr!(cell, InMsgDiscardedFinal, DiscardedFinal),
             MSG_DISCARD_TR => read_msg_descr!(cell, InMsgDiscardedTransit, DiscardedTransit),
-            tag => fail!(
-                BlockError::InvalidConstructorTag {
-                    t: tag as u32,
-                    s: "InMsg".to_string()
-                }
-            )
-        };        
+            tag => fail!(BlockError::InvalidConstructorTag {
+                t: tag as u32,
+                s: "InMsg".to_string()
+            }),
+        };
         Ok(())
     }
 }
@@ -473,7 +494,7 @@ impl InMsgExternal {
         self.msg.read_struct()
     }
 
-    pub fn message_cell(&self)-> Cell {
+    pub fn message_cell(&self) -> Cell {
         self.msg.cell()
     }
 
@@ -481,7 +502,7 @@ impl InMsgExternal {
         self.transaction.read_struct()
     }
 
-    pub fn transaction_cell(&self)-> Cell {
+    pub fn transaction_cell(&self) -> Cell {
         self.transaction.cell()
     }
 }
@@ -510,14 +531,13 @@ pub struct InMsgIHR {
     proof_created: Cell,
 }
 
-
 impl InMsgIHR {
     pub fn with_cells(msg_cell: Cell, tr_cell: Cell, ihr_fee: Grams, proof_created: Cell) -> Self {
         InMsgIHR {
             msg: ChildCell::with_cell(msg_cell),
             transaction: ChildCell::with_cell(tr_cell),
             ihr_fee,
-            proof_created
+            proof_created,
         }
     }
 
@@ -525,7 +545,7 @@ impl InMsgIHR {
         self.msg.read_struct()
     }
 
-    pub fn message_cell(&self)-> Cell {
+    pub fn message_cell(&self) -> Cell {
         self.msg.cell()
     }
 
@@ -533,7 +553,7 @@ impl InMsgIHR {
         self.transaction.read_struct()
     }
 
-    pub fn transaction_cell(&self)-> Cell {
+    pub fn transaction_cell(&self) -> Cell {
         self.transaction.cell()
     }
 
@@ -541,11 +561,10 @@ impl InMsgIHR {
         &self.ihr_fee
     }
 
-    pub fn proof_created(&self)-> &Cell {
+    pub fn proof_created(&self) -> &Cell {
         &self.proof_created
     }
 }
-
 
 impl Serializable for InMsgIHR {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
@@ -599,7 +618,7 @@ impl InMsgFinal {
         self.transaction.read_struct()
     }
 
-    pub fn transaction_cell(&self)-> Cell {
+    pub fn transaction_cell(&self) -> Cell {
         self.transaction.cell()
     }
 
@@ -650,15 +669,15 @@ impl InMsgTransit {
         self.out_msg.read_struct()
     }
 
-    pub fn in_envelope_message_cell(&self)-> Cell {
+    pub fn in_envelope_message_cell(&self) -> Cell {
         self.in_msg.cell()
     }
 
-    pub fn in_envelope_message_hash(&self)-> UInt256 {
+    pub fn in_envelope_message_hash(&self) -> UInt256 {
         self.in_msg.hash()
     }
 
-    pub fn out_envelope_message_cell(&self)-> Cell {
+    pub fn out_envelope_message_cell(&self) -> Cell {
         self.out_msg.cell()
     }
 
@@ -713,7 +732,7 @@ impl InMsgDiscardedFinal {
         self.in_msg.hash()
     }
 
-    pub fn message_cell(&self)-> Result<Cell> {
+    pub fn message_cell(&self) -> Result<Cell> {
         Ok(self.read_envelope_message()?.message_cell())
     }
 
@@ -758,7 +777,7 @@ impl InMsgDiscardedTransit {
             in_msg: ChildCell::with_cell(env_cell),
             transaction_id,
             fwd_fee: fee,
-            proof_delivered: proof
+            proof_delivered: proof,
         }
     }
 
@@ -774,7 +793,7 @@ impl InMsgDiscardedTransit {
         self.in_msg.hash()
     }
 
-    pub fn message_cell(&self)-> Result<Cell> {
+    pub fn message_cell(&self) -> Result<Cell> {
         Ok(self.in_msg.read_struct()?.message_cell())
     }
 
@@ -786,7 +805,7 @@ impl InMsgDiscardedTransit {
         &self.fwd_fee
     }
 
-    pub fn proof_delivered(&self)-> &Cell {
+    pub fn proof_delivered(&self) -> &Cell {
         &self.proof_delivered
     }
 }
@@ -830,15 +849,20 @@ impl InMsgDescr {
     /// insert or replace existion record
     /// use to improve speed
     pub fn insert_serialized(
-        &mut self, 
-        key: &SliceData, 
-        msg_slice: &SliceData, 
-        fees: &ImportFees
+        &mut self,
+        key: &SliceData,
+        msg_slice: &SliceData,
+        fees: &ImportFees,
     ) -> Result<()> {
-        if self.set_builder_serialized(key.clone(), &msg_slice.as_builder(), fees).is_ok() {
+        if self
+            .set_builder_serialized(key.clone(), &msg_slice.as_builder(), fees)
+            .is_ok()
+        {
             Ok(())
         } else {
-            fail!(BlockError::Other("Error insert serialized message".to_string()))
+            fail!(BlockError::Other(
+                "Error insert serialized message".to_string()
+            ))
         }
     }
 

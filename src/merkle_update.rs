@@ -11,13 +11,13 @@
 * limitations under the License.
 */
 
-use crate::{
-    error::BlockError,
-    Serializable, Deserializable, MerkleProof,
+use crate::{error::BlockError, Deserializable, MerkleProof, Serializable};
+use std::{
+    collections::{HashMap, HashSet},
+    time::Duration,
 };
-use std::{collections::{HashMap, HashSet}, time::Duration};
-use ton_types::{
-    error, fail, Result, UInt256, BuilderData, Cell, CellType, IBitstring, LevelMask, SliceData,
+use tvm_types::{
+    error, fail, BuilderData, Cell, CellType, IBitstring, LevelMask, Result, SliceData, UInt256,
 };
 
 #[cfg(test)]
@@ -65,9 +65,9 @@ impl Deserializable for MerkleUpdate {
             fail!("Merkle update have to fill full cell from its zeroth bit.")
         }
         if CellType::try_from(cell.get_next_byte()?)? != CellType::MerkleUpdate {
-            fail!(
-                BlockError::InvalidData("invalid Merkle update root's cell type".to_string())
-            )
+            fail!(BlockError::InvalidData(
+                "invalid Merkle update root's cell type".to_string()
+            ))
         }
         self.old_hash.read_from(cell)?;
         self.new_hash.read_from(cell)?;
@@ -77,32 +77,24 @@ impl Deserializable for MerkleUpdate {
         self.new = cell.checked_drain_reference()?;
 
         if self.old_hash != Cell::hash(&self.old, 0) {
-            fail!(
-                BlockError::WrongMerkleUpdate(
-                    "Stored old hash is not equal calculated one".to_string()
-                )
-            )
+            fail!(BlockError::WrongMerkleUpdate(
+                "Stored old hash is not equal calculated one".to_string()
+            ))
         }
         if self.new_hash != Cell::hash(&self.new, 0) {
-            fail!(
-                BlockError::WrongMerkleUpdate(
-                    "Stored new hash is not equal calculated one".to_string() 
-                )
-            )
+            fail!(BlockError::WrongMerkleUpdate(
+                "Stored new hash is not equal calculated one".to_string()
+            ))
         }
         if self.old_depth != Cell::depth(&self.old, 0) {
-            fail!(
-                BlockError::WrongMerkleUpdate(
-                    "Stored old depth is not equal calculated one".to_string()
-                )
-            )
+            fail!(BlockError::WrongMerkleUpdate(
+                "Stored old depth is not equal calculated one".to_string()
+            ))
         }
         if self.new_depth != Cell::depth(&self.new, 0) {
-            fail!(
-                BlockError::WrongMerkleUpdate(
-                    "Stored new depth is not equal calculated one".to_string() 
-                )
-             )
+            fail!(BlockError::WrongMerkleUpdate(
+                "Stored new depth is not equal calculated one".to_string()
+            ))
         }
 
         Ok(())
@@ -127,15 +119,13 @@ impl Serializable for MerkleUpdate {
 }
 
 impl MerkleUpdate {
-
     /// Creating of a Merkle update
     pub fn create(old: &Cell, new: &Cell) -> Result<MerkleUpdate> {
-
         if old.repr_hash() == new.repr_hash() {
             // if trees are the same
             let hash = old.repr_hash();
             let pruned_branch_cell = Self::make_pruned_branch_cell(old, 0)?.into_cell()?;
-             Ok(MerkleUpdate {
+            Ok(MerkleUpdate {
                 old_hash: hash.clone(),
                 new_hash: hash,
                 old_depth: old.repr_depth(),
@@ -148,11 +138,12 @@ impl MerkleUpdate {
             let new_cells = Self::collect_cells(new);
             let mut pruned_branches = HashMap::new();
 
-            let old_update_cell = match Self::traverse_old_on_create(old, &new_cells, &mut pruned_branches, 0)? {
-                Some(old_update_cell) => old_update_cell,
-                // Nothing from old tree were pruned, lets prune all tree!
-                None => Self::make_pruned_branch_cell(old, 0)?
-            };
+            let old_update_cell =
+                match Self::traverse_old_on_create(old, &new_cells, &mut pruned_branches, 0)? {
+                    Some(old_update_cell) => old_update_cell,
+                    // Nothing from old tree were pruned, lets prune all tree!
+                    None => Self::make_pruned_branch_cell(old, 0)?,
+                };
             let new_update_cell = Self::traverse_new_on_create(new, &pruned_branches)?;
 
             Ok(MerkleUpdate {
@@ -166,12 +157,16 @@ impl MerkleUpdate {
         }
     }
 
-    pub fn create_fast(old: &Cell, new: &Cell, is_visited_old: impl Fn(&UInt256) -> bool) -> Result<MerkleUpdate> {
+    pub fn create_fast(
+        old: &Cell,
+        new: &Cell,
+        is_visited_old: impl Fn(&UInt256) -> bool,
+    ) -> Result<MerkleUpdate> {
         if old.repr_hash() == new.repr_hash() {
             // if trees are the same
             let hash = old.repr_hash();
             let pruned_branch_cell = Self::make_pruned_branch_cell(old, 0)?.into_cell()?;
-             Ok(MerkleUpdate {
+            Ok(MerkleUpdate {
                 old_hash: hash.clone(),
                 new_hash: hash,
                 old_depth: old.repr_depth(),
@@ -183,19 +178,37 @@ impl MerkleUpdate {
             let mut pruned_branches = Some(HashSet::new());
             let mut done_cells = HashMap::new();
             let new_update_cell = MerkleProof::create_raw(
-                new, &|hash| !is_visited_old(hash), &|_| false, 0, &mut pruned_branches, &mut done_cells)?;
+                new,
+                &|hash| !is_visited_old(hash),
+                &|_| false,
+                0,
+                &mut pruned_branches,
+                &mut done_cells,
+            )?;
             let pruned_branches = pruned_branches.unwrap();
 
             let mut used_paths_cells = HashSet::new();
             let mut visited = HashSet::new();
-            if Self::collect_used_paths_cells(old, &is_visited_old, &pruned_branches, 
-                &mut HashSet::new(), &mut used_paths_cells, &mut visited) {
+            if Self::collect_used_paths_cells(
+                old,
+                &is_visited_old,
+                &pruned_branches,
+                &mut HashSet::new(),
+                &mut used_paths_cells,
+                &mut visited,
+            ) {
                 used_paths_cells.insert(old.repr_hash());
             }
 
             let mut done_cells = HashMap::new();
             let old_update_cell = MerkleProof::create_raw(
-                old, &|hash| used_paths_cells.contains(hash), &|_| false, 0, &mut None, &mut done_cells)?;
+                old,
+                &|hash| used_paths_cells.contains(hash),
+                &|_| false,
+                0,
+                &mut None,
+                &mut done_cells,
+            )?;
 
             Ok(MerkleUpdate {
                 old_hash: old.repr_hash(),
@@ -262,7 +275,7 @@ impl MerkleUpdate {
                     pruned_branches,
                     visited_pruned_branches,
                     used_paths_cells,
-                    visited
+                    visited,
                 );
             }
             if collect {
@@ -274,7 +287,6 @@ impl MerkleUpdate {
 
     /// Applies update to given tree of cells by returning new updated one
     pub fn apply_for(&self, old_root: &Cell) -> Result<Cell> {
-
         let old_cells = self.check(old_root, None)?;
 
         // cells for new bag
@@ -285,15 +297,19 @@ impl MerkleUpdate {
 
             // constructed tree's hash have to coinside with self.new_hash
             if new_root.repr_hash() != self.new_hash {
-                fail!(BlockError::WrongMerkleUpdate("new bag's hash mismatch".to_string()))
+                fail!(BlockError::WrongMerkleUpdate(
+                    "new bag's hash mismatch".to_string()
+                ))
             }
 
             Ok(new_root)
         }
     }
 
-    pub fn apply_for_with_metrics(&self, old_root: &Cell) -> Result<(Cell, MerkleUdateApplyMetrics)> {
-
+    pub fn apply_for_with_metrics(
+        &self,
+        old_root: &Cell,
+    ) -> Result<(Cell, MerkleUdateApplyMetrics)> {
         let mut metrics = MerkleUdateApplyMetrics::default();
 
         let old_cells = self.check(old_root, Some(&mut metrics))?;
@@ -306,7 +322,9 @@ impl MerkleUpdate {
 
             // constructed tree's hash have to coinside with self.new_hash
             if new_root.repr_hash() != self.new_hash {
-                fail!(BlockError::WrongMerkleUpdate("new bag's hash mismatch".to_string()))
+                fail!(BlockError::WrongMerkleUpdate(
+                    "new bag's hash mismatch".to_string()
+                ))
             }
 
             Ok((new_root, metrics))
@@ -318,12 +336,13 @@ impl MerkleUpdate {
     fn check(
         &self,
         old_root: &Cell,
-        metrics: Option<&mut MerkleUdateApplyMetrics>
+        metrics: Option<&mut MerkleUdateApplyMetrics>,
     ) -> Result<HashMap<UInt256, Cell>> {
-
         // check that hash of `old_tree` is equal old hash from `self`
         if self.old_hash != old_root.repr_hash() {
-            fail!(BlockError::WrongMerkleUpdate("old bag's hash mismatch".to_string()))
+            fail!(BlockError::WrongMerkleUpdate(
+                "old bag's hash mismatch".to_string()
+            ))
         }
 
         // traversal along `self.new` and check all pruned branches.
@@ -335,14 +354,21 @@ impl MerkleUpdate {
         Self::traverse_old_on_check(&self.old, &mut known_cells, &mut visited, 0);
         if let Some(metrics) = metrics {
             metrics.loaded_old_cells = visited.len();
-            #[cfg(not(target_family = "wasm"))] {
+            #[cfg(not(target_family = "wasm"))]
+            {
                 metrics.loaded_old_cells_time = start.elapsed();
             }
         }
         Self::traverse_new_on_check(&self.new, &known_cells, &mut HashSet::new(), 0)?;
 
         let mut known_cells_vals = HashMap::new();
-        Self::collate_old_cells(old_root, &known_cells, &mut known_cells_vals, &mut HashSet::new(), 0);
+        Self::collate_old_cells(
+            old_root,
+            &known_cells,
+            &mut known_cells_vals,
+            &mut HashSet::new(),
+            0,
+        );
 
         Ok(known_cells_vals)
     }
@@ -351,54 +377,66 @@ impl MerkleUpdate {
     /// `cell` ordinary cell from merkle update's new tree;
     /// `old_cells` cells from old bag of cells;
     #[allow(clippy::only_used_in_recursion)]
-    fn traverse_on_apply(&self,
+    fn traverse_on_apply(
+        &self,
         update_cell: &Cell,
         old_cells: &HashMap<UInt256, Cell>,
         new_cells: &mut HashMap<UInt256, Cell>,
-        merkle_depth: u8
+        merkle_depth: u8,
     ) -> Result<Cell> {
-
-        // We will recursively construct new skeleton for new cells 
+        // We will recursively construct new skeleton for new cells
         // and connect unchanged branches to it
 
         let mut new_cell = BuilderData::new();
         new_cell.set_type(update_cell.cell_type());
 
-        let child_merkle_depth = if update_cell.is_merkle() { 
-            merkle_depth + 1 
-        } else { 
-            merkle_depth 
+        let child_merkle_depth = if update_cell.is_merkle() {
+            merkle_depth + 1
+        } else {
+            merkle_depth
         };
 
         // traverse references
         let mut child_mask = LevelMask::with_mask(0);
         for update_child in update_cell.clone_references().iter() {
             let new_child = match update_child.cell_type() {
-                CellType::Ordinary | CellType::MerkleProof | CellType::MerkleUpdate | CellType::LibraryReference => {
+                CellType::Ordinary
+                | CellType::MerkleProof
+                | CellType::MerkleUpdate
+                | CellType::LibraryReference => {
                     let new_child_hash = update_child.hash(child_merkle_depth as usize);
                     if let Some(c) = new_cells.get(&new_child_hash) {
                         c.clone()
                     } else {
-                        let c = self.traverse_on_apply(update_child, old_cells, new_cells, child_merkle_depth)?;
+                        let c = self.traverse_on_apply(
+                            update_child,
+                            old_cells,
+                            new_cells,
+                            child_merkle_depth,
+                        )?;
                         new_cells.insert(new_child_hash, c.clone());
                         c
                     }
-                },
+                }
                 CellType::PrunedBranch => {
                     // if this pruned branch is related to current update
                     let mask = update_child.level_mask().mask();
                     if mask & (1 << child_merkle_depth) != 0 {
                         // connect branch from old bag instead pruned
-                        let new_child_hash = Cell::hash(update_child, update_child.level() as usize - 1);
-                        old_cells.get(&new_child_hash)
-                            .ok_or_else(|| error!("Can't get child with hash {:x}", new_child_hash))?
+                        let new_child_hash =
+                            Cell::hash(update_child, update_child.level() as usize - 1);
+                        old_cells
+                            .get(&new_child_hash)
+                            .ok_or_else(|| {
+                                error!("Can't get child with hash {:x}", new_child_hash)
+                            })?
                             .clone()
                     } else {
                         // else - just copy this cell (like an ordinary)
                         update_child.clone()
                     }
-                },
-                _ => fail!("Unknown cell type while applying merkle update!")
+                }
+                _ => fail!("Unknown cell type while applying merkle update!"),
             };
             child_mask |= new_child.level_mask();
             new_cell.checked_append_reference(new_child)?;
@@ -411,19 +449,18 @@ impl MerkleUpdate {
     }
 
     fn traverse_new_on_create(
-            new_cell: &Cell, 
-            common_pruned: &HashMap<UInt256, Cell>) -> Result<BuilderData> {
-
+        new_cell: &Cell,
+        common_pruned: &HashMap<UInt256, Cell>,
+    ) -> Result<BuilderData> {
         let mut new_update_cell = BuilderData::new();
         new_update_cell.set_type(new_cell.cell_type());
         let mut level_mask = new_cell.level_mask();
         for child in new_cell.clone_references().iter() {
-            let update_child =
-                if let Some(pruned) = common_pruned.get(&child.repr_hash()) {
-                    pruned.clone()
-                } else {
-                    Self::traverse_new_on_create(child, common_pruned)?.into_cell()?
-                };
+            let update_child = if let Some(pruned) = common_pruned.get(&child.repr_hash()) {
+                pruned.clone()
+            } else {
+                Self::traverse_new_on_create(child, common_pruned)?.into_cell()?
+            };
             level_mask |= update_child.level_mask();
             new_update_cell.checked_append_reference(update_child)?;
         }
@@ -435,7 +472,7 @@ impl MerkleUpdate {
 
     // If old_cell's child contains in new_cells - it transformed to pruned branch cell,
     //   else - recursion call for the child.
-    // If any child is pruned branch (or contains pruned branch among their subtree) 
+    // If any child is pruned branch (or contains pruned branch among their subtree)
     //   - all other skipped childs are transformed to pruned branches
     //   else - skip this cell (return None)
     fn traverse_old_on_create(
@@ -444,25 +481,24 @@ impl MerkleUpdate {
         pruned_branches: &mut HashMap<UInt256, Cell>,
         mut merkle_depth: u8,
     ) -> Result<Option<BuilderData>> {
-
-        if old_cell.is_merkle() { 
+        if old_cell.is_merkle() {
             merkle_depth += 1;
         }
 
-        let mut childs = vec!(None; old_cell.references_count());
+        let mut childs = vec![None; old_cell.references_count()];
         let mut has_pruned = false;
 
         for (i, child) in old_cell.clone_references().iter().enumerate() {
             let child_hash = child.repr_hash();
             if let Some(common_cell) = new_cells.get(&child_hash) {
-
                 let pruned_branch_cell = Self::make_pruned_branch_cell(common_cell, merkle_depth)?;
                 pruned_branches.insert(child_hash, pruned_branch_cell.clone().into_cell()?);
 
                 childs[i] = Some(pruned_branch_cell);
                 has_pruned = true;
             } else {
-                childs[i] = Self::traverse_old_on_create(child, new_cells, pruned_branches, merkle_depth)?;
+                childs[i] =
+                    Self::traverse_old_on_create(child, new_cells, pruned_branches, merkle_depth)?;
                 if childs[i].is_some() {
                     has_pruned = true;
                 }
@@ -470,7 +506,6 @@ impl MerkleUpdate {
         }
 
         if has_pruned {
-
             let mut old_update_cell = BuilderData::new();
             old_update_cell.set_type(old_cell.cell_type());
             for (i, child_opt) in childs.into_iter().enumerate() {
@@ -479,14 +514,13 @@ impl MerkleUpdate {
                         let child = old_cell.reference(i)?;
                         Self::make_pruned_branch_cell(&child, merkle_depth)?
                     }
-                    Some(child) => child
+                    Some(child) => child,
                 };
                 old_update_cell.checked_append_reference(child.into_cell()?)?;
             }
 
             old_update_cell.append_bytestring(&SliceData::load_cell_ref(old_cell)?)?;
             Ok(Some(old_update_cell))
-
         } else {
             Ok(None)
         }
@@ -494,20 +528,18 @@ impl MerkleUpdate {
 
     fn add_one_hash(cell: &Cell, depth: u8) -> Result<LevelMask> {
         let mask = cell.level_mask().mask();
-        if depth > 2 { 
+        if depth > 2 {
             fail!(BlockError::InvalidArg("depth".to_string()))
         } else if mask & (1 << depth) != 0 {
-            fail!(
-                BlockError::InvalidOperation(
-                    format!("attempt to add hash with depth {} into mask {:03b}", depth, mask)
-                )
-            )
+            fail!(BlockError::InvalidOperation(format!(
+                "attempt to add hash with depth {} into mask {:03b}",
+                depth, mask
+            )))
         }
         Ok(LevelMask::with_mask(mask | (1 << depth)))
     }
 
     pub(crate) fn make_pruned_branch_cell(cell: &Cell, merkle_depth: u8) -> Result<BuilderData> {
-
         let mut result = BuilderData::new();
         let level_mask = Self::add_one_hash(cell, merkle_depth)?;
         result.set_type(CellType::PrunedBranch);
@@ -522,11 +554,20 @@ impl MerkleUpdate {
         Ok(result)
     }
 
-    fn traverse_old_on_check(cell: &Cell, known_cells: &mut HashSet<UInt256>, visited: &mut HashSet<UInt256>, merkle_depth: u8) {
+    fn traverse_old_on_check(
+        cell: &Cell,
+        known_cells: &mut HashSet<UInt256>,
+        visited: &mut HashSet<UInt256>,
+        merkle_depth: u8,
+    ) {
         if visited.insert(cell.repr_hash()) {
             known_cells.insert(cell.hash(merkle_depth as usize));
             if cell.cell_type() != CellType::PrunedBranch {
-                let child_merkle_depth = if cell.is_merkle() { merkle_depth + 1 } else { merkle_depth };
+                let child_merkle_depth = if cell.is_merkle() {
+                    merkle_depth + 1
+                } else {
+                    merkle_depth
+                };
                 for child in cell.clone_references().iter() {
                     Self::traverse_old_on_check(child, known_cells, visited, child_merkle_depth);
                 }
@@ -536,20 +577,27 @@ impl MerkleUpdate {
 
     // Checks all pruned branches from new tree are exist in old tree
     fn traverse_new_on_check(
-        cell: &Cell, 
-        known_cells: &HashSet<UInt256>, 
-        visited: &mut HashSet<UInt256>, 
-        merkle_depth: u8
+        cell: &Cell,
+        known_cells: &HashSet<UInt256>,
+        visited: &mut HashSet<UInt256>,
+        merkle_depth: u8,
     ) -> Result<()> {
         if visited.insert(cell.repr_hash()) {
             if cell.cell_type() == CellType::PrunedBranch {
-                if cell.level() == merkle_depth + 1 &&
-                   !known_cells.contains(&cell.hash(merkle_depth as usize))
+                if cell.level() == merkle_depth + 1
+                    && !known_cells.contains(&cell.hash(merkle_depth as usize))
                 {
-                    fail!("old and new trees mismatch {:x}", cell.hash(merkle_depth as usize))
+                    fail!(
+                        "old and new trees mismatch {:x}",
+                        cell.hash(merkle_depth as usize)
+                    )
                 }
             } else {
-                let child_merkle_depth = if cell.is_merkle() { merkle_depth + 1 } else { merkle_depth };
+                let child_merkle_depth = if cell.is_merkle() {
+                    merkle_depth + 1
+                } else {
+                    merkle_depth
+                };
                 for child in cell.clone_references().iter() {
                     Self::traverse_new_on_check(child, known_cells, visited, child_merkle_depth)?;
                 }
@@ -559,19 +607,29 @@ impl MerkleUpdate {
     }
 
     fn collate_old_cells(
-        cell: &Cell, 
-        known_cells_hashes: &HashSet<UInt256>, 
-        known_cells: &mut HashMap<UInt256, Cell>, 
-        visited: &mut HashSet<UInt256>, 
-        merkle_depth: u8
+        cell: &Cell,
+        known_cells_hashes: &HashSet<UInt256>,
+        known_cells: &mut HashMap<UInt256, Cell>,
+        visited: &mut HashSet<UInt256>,
+        merkle_depth: u8,
     ) {
         if visited.insert(cell.repr_hash()) {
             let hash = cell.hash(merkle_depth as usize);
             if known_cells_hashes.contains(&hash) {
                 known_cells.insert(hash, cell.clone());
-                let child_merkle_depth = if cell.is_merkle() { merkle_depth + 1 } else { merkle_depth };
+                let child_merkle_depth = if cell.is_merkle() {
+                    merkle_depth + 1
+                } else {
+                    merkle_depth
+                };
                 for child in cell.clone_references().iter() {
-                    Self::collate_old_cells(child, known_cells_hashes, known_cells, visited, child_merkle_depth);
+                    Self::collate_old_cells(
+                        child,
+                        known_cells_hashes,
+                        known_cells,
+                        visited,
+                        child_merkle_depth,
+                    );
                 }
             }
         }

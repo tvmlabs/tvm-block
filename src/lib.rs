@@ -77,9 +77,9 @@ pub mod config_params;
 pub use self::config_params::*;
 
 use std::{collections::HashMap, hash::Hash};
-use ton_types::{
-    error, fail, Result, AccountId, UInt256, BuilderData, Cell, IBitstring, SliceData, HashmapE, 
-    HashmapType, read_single_root_boc, write_boc,
+use tvm_types::{
+    error, fail, read_single_root_boc, write_boc, AccountId, BuilderData, Cell, HashmapE,
+    HashmapType, IBitstring, Result, SliceData, UInt256,
 };
 
 include!("../common/src/info.rs");
@@ -87,7 +87,7 @@ include!("../common/src/info.rs");
 impl<K, V> Serializable for HashMap<K, V>
 where
     K: Clone + Eq + Hash + Default + Deserializable + Serializable,
-    V: Serializable
+    V: Serializable,
 {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
         let bit_len = K::default().write_to_new_cell()?.length_in_bits();
@@ -103,18 +103,20 @@ where
 impl<K, V> Deserializable for HashMap<K, V>
 where
     K: Eq + Hash + Default + Deserializable + Serializable,
-    V: Deserializable + Default
+    V: Deserializable + Default,
 {
     fn read_from(&mut self, slice: &mut SliceData) -> Result<()> {
         let bit_len = K::default().write_to_new_cell()?.length_in_bits();
         let mut dictionary = HashmapE::with_bit_len(bit_len);
         dictionary.read_hashmap_data(slice)?;
-        dictionary.iterate_slices(|ref mut key, ref mut value| {
-            let key = K::construct_from(key)?;
-            let value = V::construct_from(value)?;
-            self.insert(key, value);
-            Ok(true)
-        }).map(|_|())
+        dictionary
+            .iterate_slices(|ref mut key, ref mut value| {
+                let key = K::construct_from(key)?;
+                let value = V::construct_from(value)?;
+                self.insert(key, value);
+                Ok(true)
+            })
+            .map(|_| ())
     }
 }
 
@@ -166,7 +168,7 @@ pub trait Deserializable: Default {
     fn construct_maybe_from(slice: &mut SliceData) -> Result<Option<Self>> {
         match slice.get_next_bit()? {
             true => Ok(Some(Self::construct_from(slice)?)),
-            false => Ok(None)
+            false => Ok(None),
         }
     }
     fn construct_from_cell(cell: Cell) -> Result<Self> {
@@ -254,10 +256,10 @@ impl<T: Serializable> MaybeSerialize for Option<T> {
 }
 
 pub trait MaybeDeserialize {
-    fn read_maybe_from<T: Deserializable + Default> (slice: &mut SliceData) -> Result<Option<T>> {
+    fn read_maybe_from<T: Deserializable + Default>(slice: &mut SliceData) -> Result<Option<T>> {
         match slice.get_next_bit_int()? {
             1 => Ok(Some(T::construct_from(slice)?)),
-            _ => Ok(None)
+            _ => Ok(None),
         }
     }
 }
@@ -271,7 +273,7 @@ pub trait GetRepresentationHash: Serializable + std::fmt::Debug {
                 log::error!("err: {}, wrong hash calculation for {:?}", err, self);
                 Err(err)
             }
-            Ok(cell) => Ok(cell.repr_hash())
+            Ok(cell) => Ok(cell.repr_hash()),
         }
     }
 }
@@ -301,7 +303,10 @@ impl Deserializable for AccountId {
 impl Serializable for AccountId {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
         if self.remaining_bits() != 256 {
-            fail!("account_id must contain 256 bits, but {}", self.remaining_bits())
+            fail!(
+                "account_id must contain 256 bits, but {}",
+                self.remaining_bits()
+            )
         }
         cell.append_bytestring(self)?;
         Ok(())
@@ -313,7 +318,10 @@ impl Deserializable for () {
         if cell.remaining_bits() == 0 && cell.remaining_references() == 0 {
             Ok(())
         } else {
-            fail!("It must be True by TLB, but some data is present: {:x}", cell)
+            fail!(
+                "It must be True by TLB, but some data is present: {:x}",
+                cell
+            )
         }
     }
 }
@@ -326,15 +334,16 @@ impl Serializable for () {
 
 pub fn id_from_key(key: &ed25519_dalek::PublicKey) -> u64 {
     let bytes = key.to_bytes();
-    u64::from_be_bytes([ 
-        bytes[0], bytes[1], bytes[2], bytes[3],
-        bytes[4], bytes[5], bytes[6], bytes[7],
+    u64::from_be_bytes([
+        bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
     ])
 }
 
 #[cfg(test)]
 pub fn write_read_and_assert<T>(s: T) -> T
-where T: Serializable + Deserializable + Default + std::fmt::Debug + PartialEq {
+where
+    T: Serializable + Deserializable + Default + std::fmt::Debug + PartialEq,
+{
     let cell = s.write_to_new_cell().unwrap();
     let mut slice = SliceData::load_builder(cell).unwrap();
     println!("slice: {}", slice);

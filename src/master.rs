@@ -23,10 +23,11 @@ use crate::{
     signature::CryptoSignaturePair,
     types::{ChildCell, CurrencyCollection, InRefValue},
     validators::ValidatorInfo,
-    CopyleftRewards, Deserializable, MaybeDeserialize, MaybeSerialize, Serializable, U15, Augmentation,
+    Augmentation, CopyleftRewards, Deserializable, MaybeDeserialize, MaybeSerialize, Serializable,
+    U15,
 };
 use std::{collections::HashMap, fmt};
-use ton_types::{
+use tvm_types::{
     error, fail, hm_label, AccountId, BuilderData, Cell, HashmapE, HashmapType, IBitstring, Result,
     SliceData, UInt256,
 };
@@ -49,9 +50,9 @@ masterchain_block_extra#cca5
   config:key_block?ConfigParams
 = McBlockExtra;
 */
-define_HashmapE!{ShardHashes, 32, InRefValue<BinTree<ShardDescr>>}
-define_HashmapE!{CryptoSignatures, 16, CryptoSignaturePair}
-define_HashmapAugE!{ShardFees, 96, ShardIdentFull, ShardFeeCreated, ShardFeeCreated}
+define_HashmapE! {ShardHashes, 32, InRefValue<BinTree<ShardDescr>>}
+define_HashmapE! {CryptoSignatures, 16, CryptoSignaturePair}
+define_HashmapAugE! {ShardFees, 96, ShardIdentFull, ShardFeeCreated, ShardFeeCreated}
 
 impl Augmentation<ShardFeeCreated> for ShardFeeCreated {
     fn aug(&self) -> Result<ShardFeeCreated> {
@@ -104,7 +105,9 @@ impl fmt::LowerHex for ShardIdentFull {
 
 impl ShardHashes {
     pub fn iterate_shards_for_workchain<F>(&self, workchain_id: i32, mut func: F) -> Result<()>
-    where F: FnMut(ShardIdent, ShardDescr) -> Result<bool> {
+    where
+        F: FnMut(ShardIdent, ShardDescr) -> Result<bool>,
+    {
         if let Some(InRefValue(shards)) = self.get(&workchain_id)? {
             shards.iterate(|prefix, shard_descr| {
                 let shard_ident = ShardIdent::with_prefix_slice(workchain_id, prefix)?;
@@ -114,7 +117,9 @@ impl ShardHashes {
         Ok(())
     }
     pub fn iterate_shards<F>(&self, mut func: F) -> Result<bool>
-    where F: FnMut(ShardIdent, ShardDescr) -> Result<bool> {
+    where
+        F: FnMut(ShardIdent, ShardDescr) -> Result<bool>,
+    {
         self.iterate_with_keys(|wc_id: i32, InRefValue(shards)| {
             shards.iterate(|prefix, shard_descr| {
                 let shard_ident = ShardIdent::with_prefix_slice(wc_id, prefix)?;
@@ -123,7 +128,9 @@ impl ShardHashes {
         })
     }
     pub fn iterate_shards_with_siblings<F>(&self, mut func: F) -> Result<bool>
-    where F: FnMut(ShardIdent, ShardDescr, Option<ShardDescr>) -> Result<bool> {
+    where
+        F: FnMut(ShardIdent, ShardDescr, Option<ShardDescr>) -> Result<bool>,
+    {
         self.iterate_with_keys(|wc_id: i32, InRefValue(shards)| {
             shards.iterate_pairs(|prefix, shard_descr, sibling| {
                 let prefix = SliceData::load_bitstring(prefix)?;
@@ -133,28 +140,34 @@ impl ShardHashes {
         })
     }
     pub fn iterate_shards_with_siblings_mut<F>(&self, mut _func: F) -> Result<()>
-    where F: FnMut(ShardIdent, ShardDescr, Option<ShardDescr>) -> Result<Option<ShardDescr>> {
+    where
+        F: FnMut(ShardIdent, ShardDescr, Option<ShardDescr>) -> Result<Option<ShardDescr>>,
+    {
         unimplemented!()
     }
     pub fn has_workchain(&self, workchain_id: i32) -> Result<bool> {
-        self.get_as_slice(&workchain_id).map(|result| result.is_some())
+        self.get_as_slice(&workchain_id)
+            .map(|result| result.is_some())
     }
     pub fn find_shard(&self, shard: &ShardIdent) -> Result<Option<McShardRecord>> {
         if let Some(InRefValue(bintree)) = self.get(&shard.workchain_id())? {
             let shard_id = shard.shard_key(false);
             if let Some((key, descr)) = bintree.find(shard_id)? {
                 let shard = ShardIdent::with_prefix_slice(shard.workchain_id(), key)?;
-                return Ok(Some(McShardRecord::from_shard_descr(shard, descr)))
+                return Ok(Some(McShardRecord::from_shard_descr(shard, descr)));
             }
         }
         Ok(None)
     }
-    pub fn find_shard_by_prefix(&self, prefix: &AccountIdPrefixFull) -> Result<Option<McShardRecord>> {
+    pub fn find_shard_by_prefix(
+        &self,
+        prefix: &AccountIdPrefixFull,
+    ) -> Result<Option<McShardRecord>> {
         if let Some(InRefValue(bintree)) = self.get(&prefix.workchain_id())? {
             let shard_id = prefix.shard_key(false);
             if let Some((key, descr)) = bintree.find(shard_id)? {
                 let shard = ShardIdent::with_prefix_slice(prefix.workchain_id(), key)?;
-                return Ok(Some(McShardRecord::from_shard_descr(shard, descr)))
+                return Ok(Some(McShardRecord::from_shard_descr(shard, descr)));
             }
         }
         Ok(None)
@@ -163,7 +176,7 @@ impl ShardHashes {
         if let Some(InRefValue(bintree)) = self.get(&shard.workchain_id())? {
             let shard_id = shard.shard_key(false);
             if let Some(descr) = bintree.get(shard_id)? {
-                return Ok(Some(McShardRecord::from_shard_descr(shard.clone(), descr)))
+                return Ok(Some(McShardRecord::from_shard_descr(shard.clone(), descr)));
             }
         }
         Ok(None)
@@ -192,7 +205,7 @@ impl ShardHashes {
                 file_hash: descr.file_hash,
             };
             if descr.before_split {
-                let (l,r) = shard.split()?;
+                let (l, r) = shard.split()?;
                 new_shards.insert(l, vec![block_id.clone()]);
                 new_shards.insert(r, vec![block_id]);
             } else if descr.before_merge {
@@ -211,30 +224,44 @@ impl ShardHashes {
         }
         ShardIdent::check_workchain_id(shard.workchain_id())?;
 
-        let shard1 = self.find_shard(&shard.left_ancestor_mask()?)?
+        let shard1 = self
+            .find_shard(&shard.left_ancestor_mask()?)?
             .ok_or_else(|| error!("get_shard_cc_seqno: can't find shard1"))?;
 
         if shard1.shard().is_ancestor_for(shard) {
-            return Ok(shard1.descr.next_catchain_seqno)
+            return Ok(shard1.descr.next_catchain_seqno);
         } else if !shard.is_parent_for(shard1.shard()) {
-            fail!("get_shard_cc_seqno: invalid shard1 {} for {}", shard1.shard(), shard)
+            fail!(
+                "get_shard_cc_seqno: invalid shard1 {} for {}",
+                shard1.shard(),
+                shard
+            )
         }
 
-        let shard2 = self.find_shard(&shard.right_ancestor_mask()?)?
+        let shard2 = self
+            .find_shard(&shard.right_ancestor_mask()?)?
             .ok_or_else(|| error!("get_shard_cc_seqno: can't find shard2"))?;
 
         if !shard.is_parent_for(shard2.shard()) {
-            fail!("get_shard_cc_seqno: invalid shard2 {} for {}", shard2.shard(), shard)
+            fail!(
+                "get_shard_cc_seqno: invalid shard2 {} for {}",
+                shard2.shard(),
+                shard
+            )
         }
 
-        Ok(std::cmp::max(shard1.descr.next_catchain_seqno, shard2.descr.next_catchain_seqno) + 1)
+        Ok(std::cmp::max(
+            shard1.descr.next_catchain_seqno,
+            shard2.descr.next_catchain_seqno,
+        ) + 1)
     }
     pub fn split_shard(
         &mut self,
         splitted_shard: &ShardIdent,
-        splitter: impl FnOnce(ShardDescr) -> Result<(ShardDescr, ShardDescr)>
+        splitter: impl FnOnce(ShardDescr) -> Result<(ShardDescr, ShardDescr)>,
     ) -> Result<()> {
-        let mut tree = self.get(&splitted_shard.workchain_id())?
+        let mut tree = self
+            .get(&splitted_shard.workchain_id())?
             .ok_or_else(|| error!("Can't find workchain {}", splitted_shard.workchain_id()))?;
         if !tree.0.split(splitted_shard.shard_key(false), splitter)? {
             fail!("Splitted shard {} is not found", splitted_shard)
@@ -245,9 +272,10 @@ impl ShardHashes {
     pub fn merge_shards(
         &mut self,
         new_shard: &ShardIdent,
-        merger: impl FnOnce(ShardDescr, ShardDescr) -> Result<ShardDescr>
+        merger: impl FnOnce(ShardDescr, ShardDescr) -> Result<ShardDescr>,
     ) -> Result<()> {
-        let mut tree = self.get(&new_shard.workchain_id())?
+        let mut tree = self
+            .get(&new_shard.workchain_id())?
             .ok_or_else(|| error!("Can't find workchain {}", new_shard.workchain_id()))?;
         if !tree.0.merge(new_shard.shard_key(false), merger)? {
             fail!("Merged shards's parent {} is not found", new_shard)
@@ -258,9 +286,10 @@ impl ShardHashes {
     pub fn update_shard(
         &mut self,
         shard: &ShardIdent,
-        mutator: impl FnOnce(ShardDescr) -> Result<ShardDescr>
+        mutator: impl FnOnce(ShardDescr) -> Result<ShardDescr>,
     ) -> Result<()> {
-        let mut tree = self.get(&shard.workchain_id())?
+        let mut tree = self
+            .get(&shard.workchain_id())?
             .ok_or_else(|| error!("Can't find workchain {}", shard.workchain_id()))?;
         if !tree.0.update(shard.shard_key(false), mutator)? {
             fail!("Updated shard {} is not found", shard)
@@ -276,7 +305,6 @@ impl ShardHashes {
         zerostate_file_hash: UInt256,
         collators: Option<ShardCollators>,
     ) -> Result<()> {
-
         if self.has_workchain(workchain_id)? {
             fail!("Workchain {} is already added", workchain_id);
         }
@@ -312,7 +340,8 @@ impl ShardHashes {
                 count += 1;
                 Ok(true)
             })
-        }).unwrap();
+        })
+        .unwrap();
         count
     }
 }
@@ -325,64 +354,80 @@ pub struct McShardRecord {
 
 impl McShardRecord {
     pub fn from_shard_descr(shard: ShardIdent, descr: ShardDescr) -> Self {
-        let block_id = BlockIdExt::with_params(shard, descr.seq_no, descr.root_hash.clone(), descr.file_hash.clone());
+        let block_id = BlockIdExt::with_params(
+            shard,
+            descr.seq_no,
+            descr.root_hash.clone(),
+            descr.file_hash.clone(),
+        );
         Self { descr, block_id }
     }
 
     pub fn from_block(block: &Block, block_id: BlockIdExt) -> Result<Self> {
         let info = block.read_info()?;
         let value_flow = block.read_value_flow()?;
-        Ok(
-            McShardRecord {
-                descr: ShardDescr {
-                    seq_no: info.seq_no(),
-                    reg_mc_seqno: 0xffff_ffff, // by t-node
-                    start_lt: info.start_lt(),
-                    end_lt: info.end_lt(),
-                    root_hash: block_id.root_hash().clone(),
-                    file_hash: block_id.file_hash().clone(),
-                    before_split: info.before_split(),
-                    before_merge: false, // by t-node
-                    want_split: info.want_split(),
-                    want_merge: info.want_merge(),
-                    nx_cc_updated: false, // by t-node
-                    flags: info.flags() & !7,
-                    next_catchain_seqno: info.gen_catchain_seqno(),
-                    next_validator_shard: info.shard().shard_prefix_with_tag(),
-                    min_ref_mc_seqno: info.min_ref_mc_seqno(),
-                    gen_utime: info.gen_utime().into(),
-                    split_merge_at: FutureSplitMerge::None, // is not used in McShardRecord
-                    fees_collected: value_flow.fees_collected,
-                    funds_created: value_flow.created,
-                    copyleft_rewards: value_flow.copyleft_rewards,
-                    proof_chain: None,
-                    collators: None,
-                },
-                block_id,
-            }
-        )
+        Ok(McShardRecord {
+            descr: ShardDescr {
+                seq_no: info.seq_no(),
+                reg_mc_seqno: 0xffff_ffff, // by t-node
+                start_lt: info.start_lt(),
+                end_lt: info.end_lt(),
+                root_hash: block_id.root_hash().clone(),
+                file_hash: block_id.file_hash().clone(),
+                before_split: info.before_split(),
+                before_merge: false, // by t-node
+                want_split: info.want_split(),
+                want_merge: info.want_merge(),
+                nx_cc_updated: false, // by t-node
+                flags: info.flags() & !7,
+                next_catchain_seqno: info.gen_catchain_seqno(),
+                next_validator_shard: info.shard().shard_prefix_with_tag(),
+                min_ref_mc_seqno: info.min_ref_mc_seqno(),
+                gen_utime: info.gen_utime().into(),
+                split_merge_at: FutureSplitMerge::None, // is not used in McShardRecord
+                fees_collected: value_flow.fees_collected,
+                funds_created: value_flow.created,
+                copyleft_rewards: value_flow.copyleft_rewards,
+                proof_chain: None,
+                collators: None,
+            },
+            block_id,
+        })
     }
 
     pub fn from_block_and_proof_chain(
         block: &Block,
         block_id: BlockIdExt,
-        proof_chain: ProofChain
+        proof_chain: ProofChain,
     ) -> Result<Self> {
         let mut record = Self::from_block(block, block_id)?;
         record.descr.proof_chain = Some(proof_chain);
         Ok(record)
     }
 
-    pub fn shard(&self) -> &ShardIdent { self.block_id.shard() }
+    pub fn shard(&self) -> &ShardIdent {
+        self.block_id.shard()
+    }
 
-    pub fn descr(&self) -> &ShardDescr { &self.descr }
+    pub fn descr(&self) -> &ShardDescr {
+        &self.descr
+    }
 
     // to be deleted
-    pub fn blk_id(&self) -> &BlockIdExt { &self.block_id }
+    pub fn blk_id(&self) -> &BlockIdExt {
+        &self.block_id
+    }
 
-    pub fn block_id(&self) -> &BlockIdExt { &self.block_id }
+    pub fn block_id(&self) -> &BlockIdExt {
+        &self.block_id
+    }
 
-    pub fn basic_info_equal(&self, other: &Self, compare_fees: bool, compare_reg_seqno: bool) -> bool {
+    pub fn basic_info_equal(
+        &self,
+        other: &Self,
+        compare_fees: bool,
+        compare_reg_seqno: bool,
+    ) -> bool {
         self.block_id == other.block_id
             && self.descr.start_lt == other.descr.start_lt
             && self.descr.end_lt == other.descr.end_lt
@@ -404,18 +449,21 @@ impl ShardFees {
         &mut self,
         shard: &ShardIdent,
         fees: CurrencyCollection,
-        created: CurrencyCollection
+        created: CurrencyCollection,
     ) -> Result<()> {
-        let id = ShardIdentFull{
+        let id = ShardIdentFull {
             workchain_id: shard.workchain_id(),
             prefix: shard.shard_prefix_with_tag(),
         };
-        let fee = ShardFeeCreated{fees, create: created};
+        let fee = ShardFeeCreated {
+            fees,
+            create: created,
+        };
         self.set(&id, &fee, &fee)
     }
 }
 
-define_HashmapE!{CopyleftMessages, 15, InRefValue<InMsg>}
+define_HashmapE! {CopyleftMessages, 15, InRefValue<InMsg>}
 
 /*
 masterchain_block_extra#cca5
@@ -437,11 +485,10 @@ pub struct McBlockExtra {
     recover_create_msg: Option<ChildCell<InMsg>>,
     copyleft_msgs: CopyleftMessages,
     mint_msg: Option<ChildCell<InMsg>>,
-    config: Option<ConfigParams>
+    config: Option<ConfigParams>,
 }
 
 impl McBlockExtra {
-
     ///
     /// Get all fees for blockchain
     ///
@@ -449,37 +496,63 @@ impl McBlockExtra {
         &self.fees.root_extra().fees
     }
 
-
     ///
     /// Get total fees for shard
     ///
     pub fn fee(&self, ident: &ShardIdent) -> Result<Option<CurrencyCollection>> {
         Ok(match self.fees.get_serialized(ident.full_key()?)? {
             Some(shards) => Some(shards.fees),
-            None => None
+            None => None,
         })
     }
 
-    pub fn is_key_block(&self) -> bool { self.config.is_some() }
+    pub fn is_key_block(&self) -> bool {
+        self.config.is_some()
+    }
 
-    pub fn hashes(&self) -> &ShardHashes { &self.shards }
-    pub fn hashes_mut(&mut self) -> &mut ShardHashes { &mut self.shards }
+    pub fn hashes(&self) -> &ShardHashes {
+        &self.shards
+    }
+    pub fn hashes_mut(&mut self) -> &mut ShardHashes {
+        &mut self.shards
+    }
 
-    pub fn shards(&self) -> &ShardHashes { &self.shards }
-    pub fn shards_mut(&mut self) -> &mut ShardHashes { &mut self.shards }
+    pub fn shards(&self) -> &ShardHashes {
+        &self.shards
+    }
+    pub fn shards_mut(&mut self) -> &mut ShardHashes {
+        &mut self.shards
+    }
 
-    pub fn fees(&self) -> &ShardFees { &self.fees }
-    pub fn fees_mut(&mut self) -> &mut ShardFees { &mut self.fees }
+    pub fn fees(&self) -> &ShardFees {
+        &self.fees
+    }
+    pub fn fees_mut(&mut self) -> &mut ShardFees {
+        &mut self.fees
+    }
 
-    pub fn prev_blk_signatures(&self) -> &CryptoSignatures { &self.prev_blk_signatures }
-    pub fn prev_blk_signatures_mut(&mut self) -> &mut CryptoSignatures { &mut self.prev_blk_signatures }
+    pub fn prev_blk_signatures(&self) -> &CryptoSignatures {
+        &self.prev_blk_signatures
+    }
+    pub fn prev_blk_signatures_mut(&mut self) -> &mut CryptoSignatures {
+        &mut self.prev_blk_signatures
+    }
 
-    pub fn config(&self) -> Option<&ConfigParams> { self.config.as_ref() }
-    pub fn config_mut(&mut self) -> &mut Option<ConfigParams> { &mut self.config }
-    pub fn set_config(&mut self, config: ConfigParams) { self.config = Some(config) }
+    pub fn config(&self) -> Option<&ConfigParams> {
+        self.config.as_ref()
+    }
+    pub fn config_mut(&mut self) -> &mut Option<ConfigParams> {
+        &mut self.config
+    }
+    pub fn set_config(&mut self, config: ConfigParams) {
+        self.config = Some(config)
+    }
 
     pub fn read_recover_create_msg(&self) -> Result<Option<InMsg>> {
-        self.recover_create_msg.as_ref().map(|mr| mr.read_struct()).transpose()
+        self.recover_create_msg
+            .as_ref()
+            .map(|mr| mr.read_struct())
+            .transpose()
     }
     pub fn write_recover_create_msg(&mut self, value: Option<&InMsg>) -> Result<()> {
         self.recover_create_msg = value.map(ChildCell::with_struct).transpose()?;
@@ -490,7 +563,10 @@ impl McBlockExtra {
     }
 
     pub fn read_mint_msg(&self) -> Result<Option<InMsg>> {
-        self.mint_msg.as_ref().map(ChildCell::read_struct).transpose()
+        self.mint_msg
+            .as_ref()
+            .map(ChildCell::read_struct)
+            .transpose()
     }
     pub fn write_mint_msg(&mut self, value: Option<&InMsg>) -> Result<()> {
         self.mint_msg = value.map(ChildCell::with_struct).transpose()?;
@@ -503,31 +579,35 @@ impl McBlockExtra {
     pub fn read_copyleft_msgs(&self) -> Result<Vec<InMsg>> {
         let mut result = Vec::<InMsg>::default();
         for i in 0..self.copyleft_msgs.len()? {
-            result.push(self.copyleft_msgs.get(&U15(i as i16))?.ok_or_else(|| error!("Cant find index {} in map", i))?.inner());
+            result.push(
+                self.copyleft_msgs
+                    .get(&U15(i as i16))?
+                    .ok_or_else(|| error!("Cant find index {} in map", i))?
+                    .inner(),
+            );
         }
         Ok(result)
     }
     pub fn write_copyleft_msgs(&mut self, value: &[InMsg]) -> Result<()> {
         for (i, rec) in value.iter().enumerate() {
-            self.copyleft_msgs.setref(&U15(i as i16), &rec.serialize()?)?;
+            self.copyleft_msgs
+                .setref(&U15(i as i16), &rec.serialize()?)?;
         }
         Ok(())
     }
 }
 
-const MC_BLOCK_EXTRA_TAG : u16 = 0xCCA5;
-const MC_BLOCK_EXTRA_TAG_2 : u16 = 0xdc75;
+const MC_BLOCK_EXTRA_TAG: u16 = 0xCCA5;
+const MC_BLOCK_EXTRA_TAG_2: u16 = 0xdc75;
 
 impl Deserializable for McBlockExtra {
     fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
         let tag = cell.get_next_u16()?;
         if tag != MC_BLOCK_EXTRA_TAG && tag != MC_BLOCK_EXTRA_TAG_2 {
-            fail!(
-                BlockError::InvalidConstructorTag {
-                    t: tag.into(),
-                    s: std::any::type_name::<Self>().to_string()
-                }
-            )
+            fail!(BlockError::InvalidConstructorTag {
+                t: tag.into(),
+                s: std::any::type_name::<Self>().to_string()
+            })
         }
         let key_block = cell.get_next_bit()?;
         self.shards.read_from(cell)?;
@@ -586,14 +666,14 @@ impl Serializable for McBlockExtra {
 #[derive(Default, Clone, Debug, Eq, PartialEq)]
 pub struct KeyMaxLt {
     pub key: bool,
-    pub max_end_lt: u64
+    pub max_end_lt: u64,
 }
 
 impl KeyMaxLt {
     pub const fn new() -> KeyMaxLt {
         KeyMaxLt {
             key: false,
-            max_end_lt: 0
+            max_end_lt: 0,
         }
     }
 }
@@ -630,7 +710,7 @@ impl Augmentable for KeyMaxLt {
 #[derive(Default, Clone, Debug, Eq, PartialEq)]
 pub struct KeyExtBlkRef {
     pub key: bool,
-    pub blk_ref: ExtBlkRef
+    pub blk_ref: ExtBlkRef,
 }
 
 impl KeyExtBlkRef {
@@ -641,7 +721,11 @@ impl KeyExtBlkRef {
         &self.blk_ref
     }
     pub fn master_block_id(self) -> (u64, BlockIdExt, bool) {
-        (self.blk_ref.end_lt, BlockIdExt::from_ext_blk(self.blk_ref), self.key)
+        (
+            self.blk_ref.end_lt,
+            BlockIdExt::from_ext_blk(self.blk_ref),
+            self.key,
+        )
     }
 }
 
@@ -665,7 +749,7 @@ impl Augmentation<KeyMaxLt> for KeyExtBlkRef {
     fn aug(&self) -> Result<KeyMaxLt> {
         Ok(KeyMaxLt {
             key: self.key,
-            max_end_lt: self.blk_ref.end_lt
+            max_end_lt: self.blk_ref.end_lt,
         })
     }
 }
@@ -675,7 +759,6 @@ impl Augmentation<KeyMaxLt> for KeyExtBlkRef {
 define_HashmapAugE!(OldMcBlocksInfo, 32, u32, KeyExtBlkRef, KeyMaxLt);
 
 impl OldMcBlocksInfo {
-
     // returns key block with max block.seqno and block.seqno <= req_seqno
     pub fn get_prev_key_block(&self, req_seqno: u32) -> Result<Option<ExtBlkRef>> {
         let found = self.traverse(|key_prefix, key_prefix_len, aug, value_opt| {
@@ -688,13 +771,16 @@ impl OldMcBlocksInfo {
             let d = 32 - key_prefix_len;
             if d == 0 {
                 return if x <= req_seqno {
-                    let value = value_opt.ok_or_else(|| error!(BlockError::InvalidData(
-                        "OldMcBlocksInfo's node with max key length doesn't have value".to_string()
-                    )))?;
+                    let value = value_opt.ok_or_else(|| {
+                        error!(BlockError::InvalidData(
+                            "OldMcBlocksInfo's node with max key length doesn't have value"
+                                .to_string()
+                        ))
+                    })?;
                     Ok(TraverseNextStep::End(value))
                 } else {
                     Ok(TraverseNextStep::Stop)
-                }
+                };
             }
             let y = req_seqno >> (d - 1);
             match y.cmp(&(2 * x)) {
@@ -732,13 +818,16 @@ impl OldMcBlocksInfo {
             let d = 32 - key_prefix_len;
             if d == 0 {
                 return if x >= req_seqno {
-                    let value = value_opt.ok_or_else(|| error!(BlockError::InvalidData(
-                        "OldMcBlocksInfo's node with max key length doesn't have value".to_string()
-                    )))?;
+                    let value = value_opt.ok_or_else(|| {
+                        error!(BlockError::InvalidData(
+                            "OldMcBlocksInfo's node with max key length doesn't have value"
+                                .to_string()
+                        ))
+                    })?;
                     Ok(TraverseNextStep::End(value))
                 } else {
                     Ok(TraverseNextStep::Stop)
-                }
+                };
             }
             let y = req_seqno >> (d - 1);
             match y.cmp(&(2 * x + 1)) {
@@ -770,25 +859,34 @@ impl OldMcBlocksInfo {
 
     pub fn check_key_block(&self, id: &BlockIdExt, is_key_opt: Option<bool>) -> Result<()> {
         if !id.shard().is_masterchain() {
-            fail!(BlockError::InvalidData("Given id does not belong masterchain".to_string()));
+            fail!(BlockError::InvalidData(
+                "Given id does not belong masterchain".to_string()
+            ));
         }
         let found_id = self
             .get(&id.seq_no())?
             .ok_or_else(|| error!("Block with given seq_no {} is not found", id.seq_no()))?;
 
         if found_id.blk_ref.root_hash != *id.root_hash() {
-            fail!("Given block has invalid root hash: found {:x}, expected {:x}",
-                found_id.blk_ref.root_hash, id.root_hash())
+            fail!(
+                "Given block has invalid root hash: found {:x}, expected {:x}",
+                found_id.blk_ref.root_hash,
+                id.root_hash()
+            )
         }
         if found_id.blk_ref.file_hash != *id.file_hash() {
-            fail!("Given block has invalid file hash: found {:x}, expected {:x}",
-                found_id.blk_ref.file_hash, id.file_hash())
+            fail!(
+                "Given block has invalid file hash: found {:x}, expected {:x}",
+                found_id.blk_ref.file_hash,
+                id.file_hash()
+            )
         }
         if let Some(is_key) = is_key_opt {
             if is_key != found_id.key {
                 fail!(
                     "Given block has key flag set to: {}, expected {}",
-                    found_id.key, is_key
+                    found_id.key,
+                    is_key
                 )
             }
         }
@@ -801,9 +899,7 @@ impl OldMcBlocksInfo {
         }
         let mut key_buf = [0_u8; 4];
         key_buf[..key_prefix.len()].copy_from_slice(key_prefix);
-        Ok(
-            u32::from_be_bytes(key_buf) >> (32 - key_prefix_len)
-        )
+        Ok(u32::from_be_bytes(key_buf) >> (32 - key_prefix_len))
     }
 }
 
@@ -853,10 +949,11 @@ impl Serializable for ShardFeeCreated {
     }
 }
 
-pub fn umulnexps32(x : u64, k : u32, _trunc : bool) -> u64 {
+pub fn umulnexps32(x: u64, k: u32, _trunc: bool) -> u64 {
     (
         (x as f64 * (k as f64 / -65536f64).exp()) // x * exp(-k / 2^16)
-        + 0.5f64 // Need to round up the number to the nearest integer
+        + 0.5f64
+        // Need to round up the number to the nearest integer
     ) as u64
 }
 
@@ -872,9 +969,9 @@ pub struct Counters {
 impl PartialEq for Counters {
     fn eq(&self, other: &Self) -> bool {
         self.last_updated == other.last_updated
-        && self.total == other.total
-        && self.cnt2048 == other.cnt2048
-        && self.cnt65536 == other.cnt65536
+            && self.total == other.total
+            && self.cnt2048 == other.cnt2048
+            && self.cnt65536 == other.cnt65536
     }
 }
 
@@ -908,7 +1005,7 @@ impl Counters {
     }
     pub fn increase_by(&mut self, count: u64, now: u32) -> bool {
         if !self.is_valid() {
-            return false
+            return false;
         }
         let scaled = count << 32;
         if self.total == 0 {
@@ -916,7 +1013,7 @@ impl Counters {
             self.total = count;
             self.cnt2048 = scaled;
             self.cnt65536 = scaled;
-            return true
+            return true;
         }
         if count > !self.total || self.cnt2048 > !scaled || self.cnt65536 > !scaled {
             return false;
@@ -925,7 +1022,9 @@ impl Counters {
         if dt != 0 {
             // more precise version of cnt2048 = llround(cnt2048 * exp(-dt / 2048.));
             // (rounding error has absolute value < 1)
-            self.cnt2048 = if dt >= 48 * 2048 {0} else {
+            self.cnt2048 = if dt >= 48 * 2048 {
+                0
+            } else {
                 umulnexps32(self.cnt2048, dt << 5, false)
             };
             // more precise version of cnt65536 = llround(cnt65536 * exp(-dt / 65536.));
@@ -1001,12 +1100,10 @@ impl Deserializable for CreatorStats {
     fn read_from(&mut self, slice: &mut SliceData) -> Result<()> {
         let tag = slice.get_next_int(Self::tag_len_bits())? as u32;
         if tag != Self::tag() {
-            fail!(
-                BlockError::InvalidConstructorTag {
-                    t: tag,
-                    s: std::any::type_name::<Self>().to_string()
-                }
-            )
+            fail!(BlockError::InvalidConstructorTag {
+                t: tag,
+                s: std::any::type_name::<Self>().to_string()
+            })
         }
 
         self.mc_blocks.read_from(slice)?;
@@ -1025,7 +1122,7 @@ impl Serializable for CreatorStats {
     }
 }
 
-define_HashmapE!{BlockCounters, 256, CreatorStats}
+define_HashmapE! {BlockCounters, 256, CreatorStats}
 
 /// block_create_stats#17 counters:(HashmapE 256 CreatorStats) = BlockCreateStats;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -1047,12 +1144,10 @@ impl Deserializable for BlockCreateStats {
     fn read_from(&mut self, slice: &mut SliceData) -> Result<()> {
         let tag = slice.get_next_int(Self::tag_len_bits())? as u32;
         if tag != Self::tag() {
-            fail!(
-                BlockError::InvalidConstructorTag {
-                    t: tag,
-                    s: std::any::type_name::<Self>().to_string()
-                }
-            )
+            fail!(BlockError::InvalidConstructorTag {
+                t: tag,
+                s: std::any::type_name::<Self>().to_string()
+            })
         }
 
         self.counters.read_from(slice)?;
@@ -1127,7 +1222,7 @@ impl McStateExtra {
     pub fn shard_seq_no(&self, ident: &ShardIdent) -> Result<Option<u32>> {
         Ok(match self.shards.get(&ident.workchain_id())? {
             Some(InRefValue(shards)) => shards.get(ident.shard_key(false))?.map(|s| s.seq_no),
-            None => None
+            None => None,
         })
     }
 
@@ -1137,7 +1232,7 @@ impl McStateExtra {
     pub fn shard_lt(&self, ident: &ShardIdent) -> Result<Option<u64>> {
         Ok(match self.shards.get(&ident.workchain_id())? {
             Some(InRefValue(shards)) => shards.get(ident.shard_key(false))?.map(|s| s.start_lt),
-            None => None
+            None => None,
         })
     }
 
@@ -1147,7 +1242,7 @@ impl McStateExtra {
     pub fn shard_hash(&self, ident: &ShardIdent) -> Result<Option<UInt256>> {
         Ok(match self.shards.get(&ident.workchain_id())? {
             Some(InRefValue(shards)) => shards.get(ident.shard_key(false))?.map(|s| s.root_hash),
-            None => None
+            None => None,
         })
     }
 
@@ -1163,12 +1258,10 @@ impl Deserializable for McStateExtra {
     fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
         let tag = cell.get_next_u16()?;
         if tag != MC_STATE_EXTRA_TAG {
-            fail!(
-                BlockError::InvalidConstructorTag {
-                    t: tag.into(),
-                    s: std::any::type_name::<Self>().to_string()
-                }
-            )
+            fail!(BlockError::InvalidConstructorTag {
+                t: tag.into(),
+                s: std::any::type_name::<Self>().to_string()
+            })
         }
         self.shards.read_from(cell)?;
         self.config.read_from(cell)?;
@@ -1177,11 +1270,10 @@ impl Deserializable for McStateExtra {
         let mut flags = 0u16;
         flags.read_from(cell1)?; // 16 + 0
         if flags > 3 {
-            fail!(
-                BlockError::InvalidData(
-                    format!("Invalid flags value ({}). Must be <= 3.", flags)
-                )
-            )
+            fail!(BlockError::InvalidData(format!(
+                "Invalid flags value ({}). Must be <= 3.",
+                flags
+            )))
         }
         self.validator_info.read_from(cell1)?; // 65 + 0
         self.prev_blocks.read_from(cell1)?; // 1 + 1
@@ -1255,7 +1347,7 @@ pub enum FutureSplitMerge {
     Merge {
         merge_utime: u32,
         interval: u32,
-    }
+    },
 }
 
 impl Deserializable for FutureSplitMerge {
@@ -1282,14 +1374,20 @@ impl Serializable for FutureSplitMerge {
         match self {
             FutureSplitMerge::None => {
                 cell.append_bit_zero()?;
-            },
-            FutureSplitMerge::Split { split_utime, interval } => {
+            }
+            FutureSplitMerge::Split {
+                split_utime,
+                interval,
+            } => {
                 cell.append_bit_one()?;
                 cell.append_bit_zero()?;
                 split_utime.write_to(cell)?;
                 interval.write_to(cell)?;
-            },
-            FutureSplitMerge::Merge { merge_utime, interval } => {
+            }
+            FutureSplitMerge::Merge {
+                merge_utime,
+                interval,
+            } => {
                 cell.append_bit_one()?;
                 cell.append_bit_one()?;
                 merge_utime.write_to(cell)?;
@@ -1381,12 +1479,10 @@ impl Deserializable for ShardCollators {
     fn construct_from(slice: &mut SliceData) -> Result<Self> {
         let tag = slice.get_next_int(4)? as u8;
         if tag != SHARD_COLLATORS_TAG {
-            fail!(
-                BlockError::InvalidConstructorTag {
-                    t: tag as u32,
-                    s: std::any::type_name::<Self>().to_string()
-                }
-            )
+            fail!(BlockError::InvalidConstructorTag {
+                t: tag as u32,
+                s: std::any::type_name::<Self>().to_string()
+            })
         }
         Ok(Self {
             prev: Deserializable::construct_from(slice)?,
@@ -1449,18 +1545,18 @@ impl ShardBlockRef {
 }
 
 // workchain_id -> bintree_of_shards -> (seq_no, root_hash, file_hash)
-define_HashmapE!{RefShardBlocks, 32, BinTree<ShardBlockRef>}
+define_HashmapE! {RefShardBlocks, 32, BinTree<ShardBlockRef>}
 
 impl RefShardBlocks {
     pub fn with_ids<'a>(ids: impl IntoIterator<Item = &'a (BlockIdExt, u64)>) -> Result<Self> {
-        // Naive implementation. 
+        // Naive implementation.
         //TODO optimise me!
 
         let mut ref_shard_blocks = HashMap::new(); // wc -> shard -> id
         for (id, end_lt) in ids {
             let shards = loop {
                 if let Some(wc) = ref_shard_blocks.get_mut(&id.shard().workchain_id()) {
-                    break wc
+                    break wc;
                 }
                 ref_shard_blocks.insert(id.shard().workchain_id(), HashMap::new());
             };
@@ -1475,7 +1571,7 @@ impl RefShardBlocks {
                 bintree = BinTree::with_item(val)?;
             } else {
                 bintree = BinTree::with_item(&ShardBlockRef::default())?;
-                let mut unfinished_keys = vec!(key);
+                let mut unfinished_keys = vec![key];
                 while let Some(key) = unfinished_keys.pop() {
                     bintree.split(key.shard_key(false), |_| {
                         let (left, right) = key.split()?;
@@ -1505,7 +1601,8 @@ impl RefShardBlocks {
     }
 
     pub fn iterate_shard_block_refs<F>(&self, mut func: F) -> Result<bool>
-        where F: FnMut(BlockIdExt, u64) -> Result<bool> 
+    where
+        F: FnMut(BlockIdExt, u64) -> Result<bool>,
     {
         self.iterate_with_keys(|wc_id: i32, shards| {
             shards.iterate(|prefix, info| {
@@ -1520,13 +1617,12 @@ impl RefShardBlocks {
     pub fn ref_shard_block(&self, shard_ident: &ShardIdent) -> Result<Option<ShardBlockRef>> {
         if let Some(shards) = self.get(&shard_ident.workchain_id())? {
             if let Some(sbr) = shards.get(shard_ident.shard_key(false))? {
-                return Ok(Some(sbr))
+                return Ok(Some(sbr));
             }
         }
         Ok(None)
     }
-
-}                                                                                                                                                                         
+}
 
 // Shard description (header)
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
@@ -1536,7 +1632,7 @@ pub struct ShardDescr {
     pub start_lt: u64,
     pub end_lt: u64,
     pub root_hash: UInt256,
-    pub file_hash: UInt256 ,
+    pub file_hash: UInt256,
     pub before_split: bool,
     pub before_merge: bool,
     pub want_split: bool,
@@ -1556,10 +1652,14 @@ pub struct ShardDescr {
 }
 
 impl ShardDescr {
-
     /// Constructs ShardDescr as slice with its params
-    pub fn with_params(seq_no: u32, start_lt: u64, end_lt: u64, root_hash: UInt256, split_merge_at: FutureSplitMerge) -> Self {
-
+    pub fn with_params(
+        seq_no: u32,
+        start_lt: u64,
+        end_lt: u64,
+        root_hash: UInt256,
+        split_merge_at: FutureSplitMerge,
+    ) -> Self {
         ShardDescr {
             seq_no,
             reg_mc_seqno: 0,
@@ -1589,33 +1689,63 @@ impl ShardDescr {
         self.split_merge_at == other.split_merge_at
     }
     pub fn is_fsm_merge(&self) -> bool {
-        matches!(self.split_merge_at, FutureSplitMerge::Merge{merge_utime: _, interval: _})
+        matches!(
+            self.split_merge_at,
+            FutureSplitMerge::Merge {
+                merge_utime: _,
+                interval: _
+            }
+        )
     }
     pub fn is_fsm_split(&self) -> bool {
-        matches!(self.split_merge_at, FutureSplitMerge::Split{split_utime: _, interval: _})
+        matches!(
+            self.split_merge_at,
+            FutureSplitMerge::Split {
+                split_utime: _,
+                interval: _
+            }
+        )
     }
     pub fn is_fsm_none(&self) -> bool {
         matches!(self.split_merge_at, FutureSplitMerge::None)
     }
     pub fn fsm_utime(&self) -> u32 {
         match self.split_merge_at {
-            FutureSplitMerge::Split{split_utime, interval: _} => split_utime,
-            FutureSplitMerge::Merge{merge_utime, interval: _} => merge_utime,
-            _ => 0
+            FutureSplitMerge::Split {
+                split_utime,
+                interval: _,
+            } => split_utime,
+            FutureSplitMerge::Merge {
+                merge_utime,
+                interval: _,
+            } => merge_utime,
+            _ => 0,
         }
     }
     pub fn fsm_utime_end(&self) -> u32 {
         match self.split_merge_at {
-            FutureSplitMerge::Split{split_utime, interval} => split_utime + interval,
-            FutureSplitMerge::Merge{merge_utime, interval} => merge_utime + interval,
-            _ => 0
+            FutureSplitMerge::Split {
+                split_utime,
+                interval,
+            } => split_utime + interval,
+            FutureSplitMerge::Merge {
+                merge_utime,
+                interval,
+            } => merge_utime + interval,
+            _ => 0,
         }
     }
     pub fn fsm_interval(&self) -> u32 {
         match self.split_merge_at {
-            FutureSplitMerge::Split{split_utime: _, interval} => interval,
-            FutureSplitMerge::Merge{merge_utime: _, interval} => interval,
-            _ => 0
+            FutureSplitMerge::Split {
+                split_utime: _,
+                interval,
+            } => interval,
+            FutureSplitMerge::Merge {
+                merge_utime: _,
+                interval,
+            } => interval,
+            _ => 0,
         }
     }
 }
@@ -1630,15 +1760,16 @@ const SHARD_IDENT_TAG_LEN: usize = 4;
 impl Deserializable for ShardDescr {
     fn read_from(&mut self, slice: &mut SliceData) -> Result<()> {
         let tag = slice.get_next_int(SHARD_IDENT_TAG_LEN)? as u8;
-        let wrong_tag = tag != SHARD_IDENT_TAG_A && tag != SHARD_IDENT_TAG_B 
-            && tag != SHARD_IDENT_TAG_C && tag != SHARD_IDENT_TAG_D && tag != SHARD_IDENT_TAG_E;
+        let wrong_tag = tag != SHARD_IDENT_TAG_A
+            && tag != SHARD_IDENT_TAG_B
+            && tag != SHARD_IDENT_TAG_C
+            && tag != SHARD_IDENT_TAG_D
+            && tag != SHARD_IDENT_TAG_E;
         if wrong_tag {
-            fail!(
-                BlockError::InvalidConstructorTag {
-                    t: tag as u32,
-                    s: std::any::type_name::<Self>().to_string()
-                } 
-            )
+            fail!(BlockError::InvalidConstructorTag {
+                t: tag as u32,
+                s: std::any::type_name::<Self>().to_string()
+            })
         }
 
         self.seq_no.read_from(slice)?;
@@ -1697,7 +1828,7 @@ impl Deserializable for ShardDescr {
                 self.proof_chain = Vec::<Cell>::read_maybe_from(&mut slice1)?;
                 self.collators = ShardCollators::read_maybe_from(&mut slice1)?;
             }
-            _ => ()
+            _ => (),
         }
 
         Ok(())
@@ -1764,7 +1895,9 @@ impl Serializable for ShardDescr {
                 self.collators.write_maybe_to(&mut child)?;
             }
             SHARD_IDENT_TAG_D => {
-                let proof_chain = self.proof_chain.as_ref()
+                let proof_chain = self
+                    .proof_chain
+                    .as_ref()
                     .ok_or_else(|| error!("INTARNAL ERROR: proof_chain is None"))?;
                 if !self.copyleft_rewards.is_empty() {
                     child.append_bit_one()?;
@@ -1777,7 +1910,7 @@ impl Serializable for ShardDescr {
             SHARD_IDENT_TAG_C => {
                 self.copyleft_rewards.write_to(&mut child)?;
             }
-            _ => ()
+            _ => (),
         }
         cell.checked_append_reference(child.into_cell()?)?;
 
@@ -1790,11 +1923,11 @@ master_info$_ master:ExtBlkRef = BlkMasterInfo;
 */
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub struct BlkMasterInfo {
-    pub master: ExtBlkRef
+    pub master: ExtBlkRef,
 }
 
 impl Deserializable for BlkMasterInfo {
-     fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
+    fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
         self.master.read_from(cell)
     }
 }
@@ -1805,7 +1938,6 @@ impl Serializable for BlkMasterInfo {
     }
 }
 
-
 define_HashmapE!(Publishers, 256, ());
 /*
 shared_lib_descr$00 lib:^Cell publishers:(Hashmap 256 True) = LibDescr;
@@ -1813,23 +1945,20 @@ shared_lib_descr$00 lib:^Cell publishers:(Hashmap 256 True) = LibDescr;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct LibDescr {
     lib: Cell,
-    publishers: Publishers
+    publishers: Publishers,
 }
 
 impl LibDescr {
     pub fn new(lib: Cell) -> Self {
         Self {
             lib,
-            publishers: Publishers::default()
+            publishers: Publishers::default(),
         }
     }
     pub fn from_lib_data_by_publisher(lib: Cell, publisher: AccountId) -> Self {
         let mut publishers = Publishers::default();
         publishers.set(&publisher, &()).unwrap();
-        Self {
-            lib,
-            publishers
-        }
+        Self { lib, publishers }
     }
     pub fn publishers(&self) -> &Publishers {
         &self.publishers
@@ -1846,12 +1975,10 @@ impl Deserializable for LibDescr {
     fn read_from(&mut self, slice: &mut SliceData) -> Result<()> {
         let tag = slice.get_next_int(2)?;
         if tag != 0 {
-            fail!(
-                BlockError::InvalidConstructorTag {
-                    t: tag as u32,
-                    s: std::any::type_name::<Self>().to_string()
-                }
-            )
+            fail!(BlockError::InvalidConstructorTag {
+                t: tag as u32,
+                s: std::any::type_name::<Self>().to_string()
+            })
         }
         self.lib.read_from(slice)?;
         self.publishers.read_hashmap_root(slice)?;
@@ -1862,7 +1989,9 @@ impl Deserializable for LibDescr {
 impl Serializable for LibDescr {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
         if self.publishers.is_empty() {
-            fail!(BlockError::InvalidData("self.publishers is empty".to_string()))
+            fail!(BlockError::InvalidData(
+                "self.publishers is empty".to_string()
+            ))
         }
         cell.append_bits(0, 2)?;
         self.lib.write_to(cell)?;

@@ -13,13 +13,13 @@
 #![allow(clippy::inconsistent_digit_grouping, clippy::unusual_byte_groupings)]
 
 use super::*;
+use crate::{write_read_and_assert, Serializable, ValidatorDescr, VarUInteger32};
 use rand::Rng;
-use ton_types::read_single_root_boc;
-use crate::{ValidatorDescr, write_read_and_assert, VarUInteger32, Serializable};
+use tvm_types::read_single_root_boc;
 
 fn get_config_param0() -> ConfigParam0 {
     let mut c = ConfigParam0::default();
-    c.config_addr = UInt256::from([1;32]);
+    c.config_addr = UInt256::from([1; 32]);
     c
 }
 
@@ -30,7 +30,7 @@ fn test_config_param_0() {
 
 fn get_config_param1() -> ConfigParam1 {
     let mut c = ConfigParam1::default();
-    c.elector_addr = UInt256::from([1;32]);
+    c.elector_addr = UInt256::from([1; 32]);
     c
 }
 
@@ -83,7 +83,6 @@ fn test_config_storage_prices() {
     }
 }
 
-
 fn get_config_param18() -> ConfigParam18 {
     let mut cp18 = ConfigParam18::default();
     for _ in 0..10 {
@@ -96,10 +95,12 @@ fn get_config_param18() -> ConfigParam18 {
 fn test_config_param_18() {
     let mut cp18 = ConfigParam18::default();
     assert_eq!(cp18.len().unwrap(), 0);
-    cp18.write_to_new_cell().expect_err("Empty ConfigParam18 can't be serialized");
+    cp18.write_to_new_cell()
+        .expect_err("Empty ConfigParam18 can't be serialized");
 
     for i in 0..10 {
-        cp18.get(i).expect_err(&format!("param with index {} must not be present yet", i));
+        cp18.get(i)
+            .expect_err(&format!("param with index {} must not be present yet", i));
         cp18.insert(&get_storage_prices()).unwrap();
         cp18.get(i).unwrap();
         assert_eq!(cp18.len().unwrap(), i as usize + 1);
@@ -109,7 +110,8 @@ fn test_config_param_18() {
     for n in 0..10 {
         cp18.get(n).unwrap();
     }
-    cp18.get(11).expect_err("param with index 11 must not be present");
+    cp18.get(11)
+        .expect_err("param with index 11 must not be present");
 }
 
 fn get_gas_limit_prices() -> GasLimitsPrices {
@@ -137,9 +139,7 @@ fn test_config_gas_limit_price() {
     }
 }
 
-
 fn get_msg_forward_prices() -> MsgForwardPrices {
-        
     let mut rng = rand::thread_rng();
     let mut mfp = MsgForwardPrices::default();
     mfp.lump_price = rng.gen();
@@ -170,14 +170,12 @@ fn get_cat_chain_config() -> CatchainConfig {
     cc
 }
 
-
 #[test]
 fn test_config_cat_chain_config() {
     for _ in 0..10 {
         write_read_and_assert(get_cat_chain_config());
     }
 }
-
 
 fn get_config_param31() -> ConfigParam31 {
     let mut cp31 = ConfigParam31::default();
@@ -200,13 +198,13 @@ fn test_config_param_31() {
         write_read_and_assert(cp31.clone());
     }
 
-
-    cp31.fundamental_smc_addr.iterate_keys(|_key: UInt256| Ok(true) ).unwrap();
-
+    cp31.fundamental_smc_addr
+        .iterate_keys(|_key: UInt256| Ok(true))
+        .unwrap();
 }
 
 fn get_validator_set() -> ValidatorSet {
-    let mut list = vec!();
+    let mut list = vec![];
     let mut rng = rand::thread_rng();
     for n in 0..2 {
         let keypair = ed25519_dalek::Keypair::generate(&mut rng);
@@ -244,13 +242,12 @@ fn get_workchain_desc() -> WorkchainDescr {
     wc.version = 1;
     wc.zerostate_file_hash = UInt256::rand();
     wc.zerostate_root_hash = UInt256::rand();
-    
-    if rand::random::<u8>() > 128  {
+
+    if rand::random::<u8>() > 128 {
         wc.format = WorkchainFormat::Basic(WorkchainFormat1::with_params(123, 453454));
     } else {
-        wc.format = WorkchainFormat::Extended(
-            WorkchainFormat0::with_params(64, 128, 64, 1).unwrap()
-        );
+        wc.format =
+            WorkchainFormat::Extended(WorkchainFormat0::with_params(64, 128, 64, 1).unwrap());
     }
     wc
 }
@@ -294,9 +291,9 @@ fn test_config_param_12() {
     let cp12 = get_config_param12();
     write_read_and_assert(cp12.clone());
 
-    cp12.workchains.iterate(|_| -> Result<bool> {
-        Ok(true)
-    }).unwrap();
+    cp12.workchains
+        .iterate(|_| -> Result<bool> { Ok(true) })
+        .unwrap();
 }
 
 #[test]
@@ -317,38 +314,42 @@ fn test_config_params() {
 
     write_read_and_assert(cp.clone());
 
-    let c2 = ConfigParamEnum::ConfigParam2(ConfigParam2 { minter_addr: UInt256::from([123;32]) });
+    let c2 = ConfigParamEnum::ConfigParam2(ConfigParam2 {
+        minter_addr: UInt256::from([123; 32]),
+    });
     cp.set_config(c2.clone()).unwrap();
     let c = cp.config(2).unwrap().unwrap();
     assert_eq!(c2, c);
 
     write_read_and_assert(cp.clone());
 
-    let c3 = ConfigParamEnum::ConfigParam3(ConfigParam3 { fee_collector_addr: UInt256::from([133;32]) });
+    let c3 = ConfigParamEnum::ConfigParam3(ConfigParam3 {
+        fee_collector_addr: UInt256::from([133; 32]),
+    });
     cp.set_config(c3.clone()).unwrap();
     let c = cp.config(3).unwrap().unwrap();
     assert_eq!(c3, c);
 
     write_read_and_assert(cp.clone());
 
-    let c4 = ConfigParamEnum::ConfigParam4(ConfigParam4 { dns_root_addr: UInt256::from([144;32]) });
+    let c4 = ConfigParamEnum::ConfigParam4(ConfigParam4 {
+        dns_root_addr: UInt256::from([144; 32]),
+    });
     cp.set_config(c4.clone()).unwrap();
     let c = cp.config(4).unwrap().unwrap();
     assert_eq!(c4, c);
 
     write_read_and_assert(cp.clone());
 
-    let c6 = ConfigParamEnum::ConfigParam6(
-        ConfigParam6 {
-            mint_new_price: Grams::new(123).unwrap(),
-            mint_add_price: Grams::new(1458347523).unwrap(),
-        });
+    let c6 = ConfigParamEnum::ConfigParam6(ConfigParam6 {
+        mint_new_price: Grams::new(123).unwrap(),
+        mint_add_price: Grams::new(1458347523).unwrap(),
+    });
     cp.set_config(c6.clone()).unwrap();
     let c = cp.config(6).unwrap().unwrap();
     assert_eq!(c6, c);
 
     write_read_and_assert(cp.clone());
-
 
     let c7 = ConfigParamEnum::ConfigParam7(get_config_param7());
     cp.set_config(c7.clone()).unwrap();
@@ -358,10 +359,10 @@ fn test_config_params() {
     write_read_and_assert(cp.clone());
 
     let c8 = ConfigParamEnum::ConfigParam8(ConfigParam8 {
-        global_version: GlobalVersion{
+        global_version: GlobalVersion {
             version: 123,
             capabilities: 4567890,
-        }
+        },
     });
     cp.set_config(c8.clone()).unwrap();
     let c = cp.config(8).unwrap().unwrap();
@@ -418,7 +419,6 @@ fn test_config_params() {
 
     write_read_and_assert(cp.clone());
 
-
     let c17 = ConfigParamEnum::ConfigParam17(get_config_param17());
     cp.set_config(c17.clone()).unwrap();
     let c = cp.config(17).unwrap().unwrap();
@@ -426,14 +426,12 @@ fn test_config_params() {
 
     write_read_and_assert(cp.clone());
 
-
     let c18 = ConfigParamEnum::ConfigParam18(get_config_param18());
     cp.set_config(c18.clone()).unwrap();
     let c = cp.config(18).unwrap().unwrap();
     assert_eq!(c18, c);
 
     write_read_and_assert(cp.clone());
-
 
     let c20 = ConfigParamEnum::ConfigParam20(get_gas_limit_prices());
     cp.set_config(c20.clone()).unwrap();
@@ -449,13 +447,13 @@ fn test_config_params() {
 
     write_read_and_assert(cp.clone());
 
-    let cp22 = get_block_limits(22);    
+    let cp22 = get_block_limits(22);
     let c22 = ConfigParamEnum::ConfigParam22(cp22);
     cp.set_config(c22.clone()).unwrap();
     let c = cp.config(22).unwrap().unwrap();
     assert_eq!(c22, c);
 
-    let cp23 = get_block_limits(23);    
+    let cp23 = get_block_limits(23);
     let c23 = ConfigParamEnum::ConfigParam23(cp23);
     cp.set_config(c23.clone()).unwrap();
     let c = cp.config(23).unwrap().unwrap();
@@ -498,7 +496,11 @@ fn test_config_params() {
 
     write_read_and_assert(cp.clone());
 
-    assert!(cp.prev_validator_set().expect("it should not fail, but gives empty list").list().is_empty());
+    assert!(cp
+        .prev_validator_set()
+        .expect("it should not fail, but gives empty list")
+        .list()
+        .is_empty());
     assert!(!cp.prev_validator_set_present().unwrap());
 
     let mut cp32 = ConfigParam32::default();
@@ -520,7 +522,11 @@ fn test_config_params() {
 
     write_read_and_assert(cp.clone());
 
-    assert!(cp.next_validator_set().expect("it should not fail, but gives empty list").list().is_empty());
+    assert!(cp
+        .next_validator_set()
+        .expect("it should not fail, but gives empty list")
+        .list()
+        .is_empty());
     assert!(!cp.next_validator_set_present().unwrap());
 
     let mut cp36 = ConfigParam36::default();
@@ -534,7 +540,7 @@ fn test_config_params() {
 
     write_read_and_assert(cp.clone());
 
-    let cp39 = get_config_param_39();    
+    let cp39 = get_config_param_39();
     let c39 = ConfigParamEnum::ConfigParam39(cp39);
     cp.set_config(c39.clone()).unwrap();
     let c = cp.config(39).unwrap().unwrap();
@@ -550,12 +556,14 @@ fn test_config_params() {
     write_read_and_assert(cp.clone());
 
     let c42 = get_config_param42();
-    cp.set_config(ConfigParamEnum::ConfigParam42(c42.clone())).unwrap();
+    cp.set_config(ConfigParamEnum::ConfigParam42(c42.clone()))
+        .unwrap();
     let c = cp.copyleft_config().unwrap();
     assert_eq!(c42, c);
 
     let c44 = get_suspended_addresses();
-    cp.set_config(ConfigParamEnum::ConfigParam44(c44.clone())).unwrap();
+    cp.set_config(ConfigParamEnum::ConfigParam44(c44.clone()))
+        .unwrap();
     let c = cp.suspended_addresses().unwrap().unwrap();
     assert_eq!(c44, c);
 
@@ -568,17 +576,17 @@ fn get_config_param_39() -> ConfigParam39 {
 
     let keypair = ed25519_dalek::Keypair::generate(&mut rng);
     let spk = SigPubKey::from_bytes(&keypair.public.to_bytes()).unwrap();
-    let cs = CryptoSignature::from_r_s(&[1;32], &[2;32]).unwrap();
-    let vtk = ValidatorTempKey::with_params(UInt256::from([3;32]), spk, 100500, 1562663724);
+    let cs = CryptoSignature::from_r_s(&[1; 32], &[2; 32]).unwrap();
+    let vtk = ValidatorTempKey::with_params(UInt256::from([3; 32]), spk, 100500, 1562663724);
     let vstk = ValidatorSignedTempKey::with_key_and_signature(vtk, cs);
-    cp.insert(&UInt256::from([1;32]), &vstk).unwrap();
+    cp.insert(&UInt256::from([1; 32]), &vstk).unwrap();
 
     let keypair = ed25519_dalek::Keypair::generate(&mut rng);
     let spk = SigPubKey::from_bytes(&keypair.public.to_bytes()).unwrap();
-    let cs = CryptoSignature::from_r_s(&[6;32], &[7;32]).unwrap();
-    let vtk = ValidatorTempKey::with_params(UInt256::from([8;32]), spk, 500100, 1562664724);
+    let cs = CryptoSignature::from_r_s(&[6; 32], &[7; 32]).unwrap();
+    let vtk = ValidatorTempKey::with_params(UInt256::from([8; 32]), spk, 500100, 1562664724);
     let vstk = ValidatorSignedTempKey::with_key_and_signature(vtk, cs);
-    cp.insert(&UInt256::from([2;32]), &vstk).unwrap();
+    cp.insert(&UInt256::from([2; 32]), &vstk).unwrap();
 
     cp
 }
@@ -592,7 +600,7 @@ fn get_block_limits(some_val: u32) -> BlockLimits {
     BlockLimits::with_limits(
         ParamLimits::with_limits(some_val + 1, some_val + 2, some_val + 3).unwrap(),
         ParamLimits::with_limits(some_val + 4, some_val + 5, some_val + 6).unwrap(),
-        ParamLimits::with_limits(some_val + 7, some_val + 8, some_val + 9).unwrap()
+        ParamLimits::with_limits(some_val + 7, some_val + 8, some_val + 9).unwrap(),
     )
 }
 
@@ -623,9 +631,9 @@ fn test_param_limits() {
     let soft = 200;
     let hard = 300;
     let medium = (soft + hard) / 2;
-    
+
     let l = ParamLimits::with_limits(underload, soft, hard).unwrap();
-    
+
     assert_eq!(l.underload(), underload);
     assert_eq!(l.soft_limit(), soft);
     assert_eq!(l.hard_limit(), hard);
@@ -655,7 +663,7 @@ fn test_block_limits() {
     let bl = BlockLimits::with_limits(
         ParamLimits::with_limits(100, 200, 300).unwrap(),
         ParamLimits::with_limits(1000, 2000, 3000).unwrap(),
-        ParamLimits::with_limits(10000, 20000, 30000).unwrap()
+        ParamLimits::with_limits(10000, 20000, 30000).unwrap(),
     );
 
     // 0..Underload
@@ -679,7 +687,7 @@ fn test_block_limits() {
     assert!(bl.fits(ParamLimitIndex::Medium, 0, 0, 0));
     assert!(bl.fits(ParamLimitIndex::Medium, 299, 2999, 2999));
     assert!(!bl.fits(ParamLimitIndex::Medium, 350, 1999, 0));
-    
+
     // 0..∞
     assert!(bl.fits(ParamLimitIndex::Hard, 0, 0, 0));
     assert!(bl.fits(ParamLimitIndex::Hard, 249, 2499, 2499));
@@ -690,14 +698,16 @@ fn get_config_param7() -> ConfigParam7 {
     let mut ecc = ExtraCurrencyCollection::default();
     for _ in 1..100 {
         ecc.set(
-            &rand::random::<u32>(), 
+            &rand::random::<u32>(),
             &VarUInteger32::from_two_u128(
                 rand::random::<u128>() & 0x00ffffff_ffffffff_ffffffff_ffffffff, // VarUInteger32 stores 31 bytes NOT 32!!!
-                rand::random::<u128>()).unwrap()).unwrap();
+                rand::random::<u128>(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
     }
-    ConfigParam7 {
-        to_mint: ecc,
-    }
+    ConfigParam7 { to_mint: ecc }
 }
 
 fn get_config_param9() -> ConfigParam9 {
@@ -706,7 +716,7 @@ fn get_config_param9() -> ConfigParam9 {
         mp.set(&rand::random::<u32>(), &()).unwrap();
     }
     ConfigParam9 {
-        mandatory_params: mp
+        mandatory_params: mp,
     }
 }
 
@@ -716,7 +726,7 @@ fn get_config_param10() -> ConfigParam10 {
         cp.set(&rand::random::<u32>(), &()).unwrap();
     }
     ConfigParam10 {
-        critical_params: cp
+        critical_params: cp,
     }
 }
 
@@ -725,7 +735,7 @@ fn get_config_param14() -> ConfigParam14 {
         block_create_fees: BlockCreateFees {
             masterchain_block_fee: Grams::new(1458347523).unwrap(),
             basechain_block_fee: Grams::new(145800000000003).unwrap(),
-        }
+        },
     }
 }
 
@@ -750,22 +760,22 @@ fn get_config_param29() -> ConfigParam29 {
             catchain_max_deps: rand::random::<u32>(),
             max_block_bytes: rand::random::<u32>(),
             max_collated_bytes: rand::random::<u32>(),
-        }
+        },
     }
 }
 
 fn get_config_param40() -> ConfigParam40 {
     ConfigParam40 {
         slashing_config: SlashingConfig {
-            slashing_period_mc_blocks_count : rand::random::<u32>(),
-            resend_mc_blocks_count : rand::random::<u32>(),
-            min_samples_count : rand::random::<u32>(),
-            collations_score_weight : rand::random::<u32>(),
-            signing_score_weight : rand::random::<u32>(),
-            min_slashing_protection_score : rand::random::<u32>(),
-            z_param_numerator : rand::random::<u32>(),
-            z_param_denominator : rand::random::<u32>(),
-        }
+            slashing_period_mc_blocks_count: rand::random::<u32>(),
+            resend_mc_blocks_count: rand::random::<u32>(),
+            min_samples_count: rand::random::<u32>(),
+            collations_score_weight: rand::random::<u32>(),
+            signing_score_weight: rand::random::<u32>(),
+            min_slashing_protection_score: rand::random::<u32>(),
+            z_param_numerator: rand::random::<u32>(),
+            z_param_denominator: rand::random::<u32>(),
+        },
     }
 }
 
@@ -788,7 +798,8 @@ fn test_config_param_42() {
 fn get_suspended_addresses() -> SuspendedAddresses {
     let mut sa = SuspendedAddresses::default();
     for _ in 1..100 {
-        sa.add_suspended_address(rand::random::<i32>() % 2, UInt256::rand()).unwrap();
+        sa.add_suspended_address(rand::random::<i32>() % 2, UInt256::rand())
+            .unwrap();
     }
     sa
 }
@@ -799,16 +810,20 @@ fn test_suspended_addresses() {
 }
 
 #[test]
-fn test_real_ton_config_params() {
+fn test_real_tvm_config_params() {
     let bytes = std::fs::read("src/tests/data/config.boc").unwrap();
     let cell = read_single_root_boc(bytes).unwrap();
     let config1 = ConfigParams::with_address_and_params(UInt256::from([1; 32]), Some(cell));
     dump_config(&config1.config_params);
     assert!(!config1.valid_config_data(false, None).unwrap()); // fake config address
-    assert!(config1.valid_config_data(true, None).unwrap());   // but other are ok
+    assert!(config1.valid_config_data(true, None).unwrap()); // but other are ok
     let mut config2 = config1.clone();
-    assert!(!config1.important_config_parameters_changed(&config2, true).unwrap());
-    assert!(!config1.important_config_parameters_changed(&config2, false).unwrap());
+    assert!(!config1
+        .important_config_parameters_changed(&config2, true)
+        .unwrap());
+    assert!(!config1
+        .important_config_parameters_changed(&config2, false)
+        .unwrap());
 
     if let Some(ConfigParamEnum::ConfigParam0(param)) = config1.config(0).unwrap() {
         config2.config_addr = param.config_addr;
@@ -816,14 +831,24 @@ fn test_real_ton_config_params() {
     assert!(config2.valid_config_data(false, None).unwrap()); // real adress
     assert!(config2.valid_config_data(true, None).unwrap());
 
-    assert!(!config1.important_config_parameters_changed(&config2, true).unwrap());
-    assert!(!config1.important_config_parameters_changed(&config2, false).unwrap());
+    assert!(!config1
+        .important_config_parameters_changed(&config2, true)
+        .unwrap());
+    assert!(!config1
+        .important_config_parameters_changed(&config2, false)
+        .unwrap());
 
     if let Ok(Some(ConfigParamEnum::ConfigParam9(param))) = config1.config(9) {
-        println!("Mandatory params indeces {:?}", param.mandatory_params.export_keys::<i32>());
+        println!(
+            "Mandatory params indeces {:?}",
+            param.mandatory_params.export_keys::<i32>()
+        );
     }
     if let Ok(Some(ConfigParamEnum::ConfigParam10(param))) = config1.config(10) {
-        println!("Critical params indeces {:?}", param.critical_params.export_keys::<i32>());
+        println!(
+            "Critical params indeces {:?}",
+            param.critical_params.export_keys::<i32>()
+        );
     }
     //  remove mandatory parameter - make config not valid
     let key = SliceData::load_builder(14u32.write_to_new_cell().unwrap()).unwrap();

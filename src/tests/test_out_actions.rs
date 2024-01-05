@@ -11,19 +11,24 @@
 * limitations under the License.
 */
 
-use ton_types::AccountId;
 use super::*;
+use tvm_types::AccountId;
 
 #[test]
 fn test_out_action_create() {
     let msg = Message::default();
     let action_send = OutAction::new_send(0, msg.clone());
-    assert_eq!(action_send, OutAction::SendMsg{mode: 0, out_msg: msg});
+    assert_eq!(
+        action_send,
+        OutAction::SendMsg {
+            mode: 0,
+            out_msg: msg
+        }
+    );
     let new_code = Cell::default();
     let action_set = OutAction::new_set(new_code.clone());
-    assert_eq!(action_set, OutAction::SetCode{ new_code });
+    assert_eq!(action_set, OutAction::SetCode { new_code });
 }
-
 
 fn test_action_serde_equality(action: OutAction) {
     let action_cell = action.serialize().unwrap();
@@ -34,7 +39,10 @@ fn test_action_serde_equality(action: OutAction) {
 #[test]
 fn test_sendmsg_action_serde() {
     test_action_serde_equality(OutAction::new_send(SENDMSG_ORDINARY, Message::default()));
-    test_action_serde_equality(OutAction::new_send(SENDMSG_PAY_FEE_SEPARATELY, Message::default()));
+    test_action_serde_equality(OutAction::new_send(
+        SENDMSG_PAY_FEE_SEPARATELY,
+        Message::default(),
+    ));
     test_action_serde_equality(OutAction::new_send(SENDMSG_ALL_BALANCE, Message::default()));
 }
 
@@ -46,8 +54,14 @@ fn test_setcode_action_serde() {
 
 #[test]
 fn test_reserve_action_serde() {
-    test_action_serde_equality(OutAction::new_reserve(RESERVE_EXACTLY, CurrencyCollection::with_grams(12345)));
-    test_action_serde_equality(OutAction::new_reserve(RESERVE_EXACTLY | RESERVE_IGNORE_ERROR, CurrencyCollection::with_grams(54321)));
+    test_action_serde_equality(OutAction::new_reserve(
+        RESERVE_EXACTLY,
+        CurrencyCollection::with_grams(12345),
+    ));
+    test_action_serde_equality(OutAction::new_reserve(
+        RESERVE_EXACTLY | RESERVE_IGNORE_ERROR,
+        CurrencyCollection::with_grams(54321),
+    ));
 }
 
 #[test]
@@ -69,10 +83,24 @@ fn get_out_actions() -> OutActions {
     oa.push_back(OutAction::new_set(Cell::default()));
     oa.push_back(OutAction::new_set(Cell::default()));
     oa.push_back(OutAction::new_set(Cell::default()));
-    oa.push_back(OutAction::new_reserve(RESERVE_EXACTLY, CurrencyCollection::with_grams(12345678)));
-    oa.push_back(OutAction::new_reserve(RESERVE_ALL_BUT, CurrencyCollection::with_grams(87654321)));
-    oa.push_back(OutAction::new_change_library(CHANGE_LIB_REMOVE, None, Some(code.repr_hash())));
-    oa.push_back(OutAction::new_change_library(SET_LIB_CODE_REMOVE, Some(code), None));
+    oa.push_back(OutAction::new_reserve(
+        RESERVE_EXACTLY,
+        CurrencyCollection::with_grams(12345678),
+    ));
+    oa.push_back(OutAction::new_reserve(
+        RESERVE_ALL_BUT,
+        CurrencyCollection::with_grams(87654321),
+    ));
+    oa.push_back(OutAction::new_change_library(
+        CHANGE_LIB_REMOVE,
+        None,
+        Some(code.repr_hash()),
+    ));
+    oa.push_back(OutAction::new_change_library(
+        SET_LIB_CODE_REMOVE,
+        Some(code),
+        None,
+    ));
     let acc_id = AccountId::from([0x11; 32]);
     oa.push_back(OutAction::new_copyleft(0, acc_id));
     oa
@@ -89,8 +117,8 @@ fn test_outactions() {
 }
 
 #[test]
-fn test_outactions_serialization() {    
-    let oa = get_out_actions();    
+fn test_outactions_serialization() {
+    let oa = get_out_actions();
     let b = oa.serialize().unwrap();
     let mut s = SliceData::load_cell(b).unwrap();
 
@@ -98,7 +126,7 @@ fn test_outactions_serialization() {
 
     let mut oa_restored = OutActions::new();
     oa_restored.read_from(&mut s).unwrap();
-    
+
     for a in oa_restored.iter() {
         println!("action {:?}", a);
     }

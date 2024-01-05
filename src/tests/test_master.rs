@@ -17,9 +17,9 @@ use crate::{
     BlockExtra, Deserializable, ExtBlkRef, HashmapAugType, MsgAddressInt, ShardStateUnsplit,
     BASE_WORKCHAIN_ID,
 };
-use std::collections::{HashMap, HashSet};
-use ton_types::read_single_root_boc;
 use rand::Rng;
+use std::collections::{HashMap, HashSet};
+use tvm_types::read_single_root_boc;
 
 #[test]
 fn test_libraries() {
@@ -44,8 +44,10 @@ fn test_libraries() {
 
     let mut data = HashmapE::with_bit_len(256);
     let key = SliceData::load_builder(acc_id.write_to_new_cell().unwrap()).unwrap();
-    data.set_builder(key.clone(), &lib1.write_to_new_cell().unwrap()).unwrap();
-    data.set_builder(key, &lib2.write_to_new_cell().unwrap()).unwrap();
+    data.set_builder(key.clone(), &lib1.write_to_new_cell().unwrap())
+        .unwrap();
+    data.set_builder(key, &lib2.write_to_new_cell().unwrap())
+        .unwrap();
 
     let cell = data.serialize().unwrap();
     let mut restored_data = HashmapE::with_bit_len(256);
@@ -56,9 +58,28 @@ fn test_libraries() {
 
 #[test]
 fn test_shard_descr() {
-    let descr_none = ShardDescr::with_params(42, 17, 25, UInt256::from([70; 32]), FutureSplitMerge::None);
-    let descr_split = ShardDescr::with_params(42, 17, 25, UInt256::from([70; 32]), FutureSplitMerge::Split{split_utime: 0x12345678, interval: 0x87654321});
-    let descr_merge = ShardDescr::with_params(42, 17, 25, UInt256::from([70; 32]), FutureSplitMerge::Merge{merge_utime: 0x12345678, interval: 0x87654321});
+    let descr_none =
+        ShardDescr::with_params(42, 17, 25, UInt256::from([70; 32]), FutureSplitMerge::None);
+    let descr_split = ShardDescr::with_params(
+        42,
+        17,
+        25,
+        UInt256::from([70; 32]),
+        FutureSplitMerge::Split {
+            split_utime: 0x12345678,
+            interval: 0x87654321,
+        },
+    );
+    let descr_merge = ShardDescr::with_params(
+        42,
+        17,
+        25,
+        UInt256::from([70; 32]),
+        FutureSplitMerge::Merge {
+            merge_utime: 0x12345678,
+            interval: 0x87654321,
+        },
+    );
 
     write_read_and_assert(descr_none);
     write_read_and_assert(descr_split);
@@ -69,15 +90,38 @@ fn test_shard_descr() {
 fn test_shard_descr_with_copyleft() {
     let mut copyleft_rewards = CopyleftRewards::default();
     let address = MsgAddressInt::with_standart(None, 0, AccountId::from([1; 32])).unwrap();
-    copyleft_rewards.set(&address.address(), &100.into()).unwrap();
+    copyleft_rewards
+        .set(&address.address(), &100.into())
+        .unwrap();
     let address = MsgAddressInt::with_standart(None, 0, AccountId::from([2; 32])).unwrap();
-    copyleft_rewards.set(&address.address(), &200.into()).unwrap();
+    copyleft_rewards
+        .set(&address.address(), &200.into())
+        .unwrap();
 
-    let mut descr_none = ShardDescr::with_params(42, 17, 25, UInt256::from([70; 32]), FutureSplitMerge::None);
+    let mut descr_none =
+        ShardDescr::with_params(42, 17, 25, UInt256::from([70; 32]), FutureSplitMerge::None);
     descr_none.copyleft_rewards = copyleft_rewards.clone();
-    let mut descr_split = ShardDescr::with_params(42, 17, 25, UInt256::from([70; 32]), FutureSplitMerge::Split{split_utime: 0x12345678, interval: 0x87654321});
+    let mut descr_split = ShardDescr::with_params(
+        42,
+        17,
+        25,
+        UInt256::from([70; 32]),
+        FutureSplitMerge::Split {
+            split_utime: 0x12345678,
+            interval: 0x87654321,
+        },
+    );
     descr_split.copyleft_rewards = copyleft_rewards.clone();
-    let mut descr_merge = ShardDescr::with_params(42, 17, 25, UInt256::from([70; 32]), FutureSplitMerge::Merge{merge_utime: 0x12345678, interval: 0x87654321});
+    let mut descr_merge = ShardDescr::with_params(
+        42,
+        17,
+        25,
+        UInt256::from([70; 32]),
+        FutureSplitMerge::Merge {
+            merge_utime: 0x12345678,
+            interval: 0x87654321,
+        },
+    );
     descr_merge.copyleft_rewards = copyleft_rewards.clone();
 
     write_read_and_assert(descr_none);
@@ -89,7 +133,8 @@ fn test_shard_descr_with_copyleft() {
 fn test_shard_descr_fast_finality() {
     std::env::set_var("RUST_BACKTRACE", "full");
 
-    let mut descr_none = ShardDescr::with_params(42, 17, 25, UInt256::from([70; 32]), FutureSplitMerge::None);
+    let mut descr_none =
+        ShardDescr::with_params(42, 17, 25, UInt256::from([70; 32]), FutureSplitMerge::None);
     descr_none.collators = Some(ShardCollators {
         prev: gen_collator(),
         prev2: None,
@@ -99,7 +144,16 @@ fn test_shard_descr_fast_finality() {
         updated_at: 0x12345678,
     });
 
-    let mut descr_split = ShardDescr::with_params(42, 17, 25, UInt256::from([70; 32]), FutureSplitMerge::Split{split_utime: 0x12345678, interval: 0x87654321});
+    let mut descr_split = ShardDescr::with_params(
+        42,
+        17,
+        25,
+        UInt256::from([70; 32]),
+        FutureSplitMerge::Split {
+            split_utime: 0x12345678,
+            interval: 0x87654321,
+        },
+    );
     descr_split.collators = Some(ShardCollators {
         prev: gen_collator(),
         prev2: None,
@@ -109,7 +163,16 @@ fn test_shard_descr_fast_finality() {
         updated_at: 0x12345678,
     });
 
-    let mut descr_merge = ShardDescr::with_params(42, 17, 25, UInt256::from([70; 32]), FutureSplitMerge::Merge{merge_utime: 0x12345678, interval: 0x87654321});
+    let mut descr_merge = ShardDescr::with_params(
+        42,
+        17,
+        25,
+        UInt256::from([70; 32]),
+        FutureSplitMerge::Merge {
+            merge_utime: 0x12345678,
+            interval: 0x87654321,
+        },
+    );
     descr_merge.collators = Some(ShardCollators {
         prev: gen_collator(),
         prev2: Some(gen_collator()),
@@ -122,51 +185,100 @@ fn test_shard_descr_fast_finality() {
     write_read_and_assert(descr_none);
     write_read_and_assert(descr_split);
     write_read_and_assert(descr_merge);
-
 }
 
 #[test]
 fn test_mc_state_extra() {
     let mut extra = McStateExtra::default();
-    let shard1 = ShardDescr::with_params(23, 77, 234, UInt256::from([131; 32]), FutureSplitMerge::None);
-    let shard1_1 = ShardDescr::with_params(25, 177, 230, UInt256::from([131; 32]), FutureSplitMerge::None);
-    let shard2 = ShardDescr::with_params(15, 78, 235, UInt256::from([77; 32]), FutureSplitMerge::Split{split_utime: 0x12345678, interval: 0x87654321});
-    let shard2_2 = ShardDescr::with_params(115, 8, 35, UInt256::from([77; 32]), FutureSplitMerge::Split{split_utime: 0x12345678, interval: 0x87654321});
+    let shard1 = ShardDescr::with_params(
+        23,
+        77,
+        234,
+        UInt256::from([131; 32]),
+        FutureSplitMerge::None,
+    );
+    let shard1_1 = ShardDescr::with_params(
+        25,
+        177,
+        230,
+        UInt256::from([131; 32]),
+        FutureSplitMerge::None,
+    );
+    let shard2 = ShardDescr::with_params(
+        15,
+        78,
+        235,
+        UInt256::from([77; 32]),
+        FutureSplitMerge::Split {
+            split_utime: 0x12345678,
+            interval: 0x87654321,
+        },
+    );
+    let shard2_2 = ShardDescr::with_params(
+        115,
+        8,
+        35,
+        UInt256::from([77; 32]),
+        FutureSplitMerge::Split {
+            split_utime: 0x12345678,
+            interval: 0x87654321,
+        },
+    );
     let ident = extra.add_workchain(11, &shard1).unwrap();
-    extra.shards.split_shard(&ident, |_| Ok((shard1, shard1_1))).unwrap();
+    extra
+        .shards
+        .split_shard(&ident, |_| Ok((shard1, shard1_1)))
+        .unwrap();
     let ident = extra.add_workchain(22, &shard2).unwrap();
-    extra.shards.split_shard(&ident, |_| Ok((shard2, shard2_2))).unwrap();
+    extra
+        .shards
+        .split_shard(&ident, |_| Ok((shard2, shard2_2)))
+        .unwrap();
 
     let key = SliceData::load_builder(123u32.write_to_new_cell().unwrap()).unwrap();
     let value = 0x11u8.write_to_new_cell().unwrap();
     extra.config.config_params.set_builder(key, &value).unwrap();
 
-    extra.prev_blocks.set(&2342, &KeyExtBlkRef {
-        key: false,
-        blk_ref: ExtBlkRef {
-            end_lt: 1,
-            seq_no: 999,
-            root_hash: UInt256::from([10;32]),
-            file_hash: UInt256::from([10;32])
-        }
-    }, &KeyMaxLt {
-        key: false,
-        max_end_lt: 1000001
-    }).unwrap();
-    extra.prev_blocks.set(&664324, &KeyExtBlkRef {
-        key: false,
-        blk_ref: ExtBlkRef {
-            end_lt: 1000,
-            seq_no: 1999,
-            root_hash: UInt256::from([13;32]),
-            file_hash: UInt256::from([14;32])
-        }
-    }, &KeyMaxLt {
-        key: false,
-        max_end_lt: 1000002
-    }).unwrap();
+    extra
+        .prev_blocks
+        .set(
+            &2342,
+            &KeyExtBlkRef {
+                key: false,
+                blk_ref: ExtBlkRef {
+                    end_lt: 1,
+                    seq_no: 999,
+                    root_hash: UInt256::from([10; 32]),
+                    file_hash: UInt256::from([10; 32]),
+                },
+            },
+            &KeyMaxLt {
+                key: false,
+                max_end_lt: 1000001,
+            },
+        )
+        .unwrap();
+    extra
+        .prev_blocks
+        .set(
+            &664324,
+            &KeyExtBlkRef {
+                key: false,
+                blk_ref: ExtBlkRef {
+                    end_lt: 1000,
+                    seq_no: 1999,
+                    root_hash: UInt256::from([13; 32]),
+                    file_hash: UInt256::from([14; 32]),
+                },
+            },
+            &KeyMaxLt {
+                key: false,
+                max_end_lt: 1000002,
+            },
+        )
+        .unwrap();
 
-   write_read_and_assert(extra);
+    write_read_and_assert(extra);
 }
 
 #[test]
@@ -174,23 +286,81 @@ fn test_mc_block_extra() {
     std::env::set_var("RUST_BACKTRACE", "full");
 
     let mut extra = McBlockExtra::default();
-    let shard1 = ShardDescr::with_params(23, 77, 234, UInt256::from([131; 32]), FutureSplitMerge::None);
-    let shard1_1 = ShardDescr::with_params(25, 177, 230, UInt256::from([131; 32]), FutureSplitMerge::None);
-    let shard2 = ShardDescr::with_params(15, 78, 235, UInt256::from([77; 32]), FutureSplitMerge::Split{split_utime: 0x12345678, interval: 0x87654321});
-    let shard2_2 = ShardDescr::with_params(115, 8, 35, UInt256::from([77; 32]), FutureSplitMerge::Split{split_utime: 0x12345678, interval: 0x87654321});
+    let shard1 = ShardDescr::with_params(
+        23,
+        77,
+        234,
+        UInt256::from([131; 32]),
+        FutureSplitMerge::None,
+    );
+    let shard1_1 = ShardDescr::with_params(
+        25,
+        177,
+        230,
+        UInt256::from([131; 32]),
+        FutureSplitMerge::None,
+    );
+    let shard2 = ShardDescr::with_params(
+        15,
+        78,
+        235,
+        UInt256::from([77; 32]),
+        FutureSplitMerge::Split {
+            split_utime: 0x12345678,
+            interval: 0x87654321,
+        },
+    );
+    let shard2_2 = ShardDescr::with_params(
+        115,
+        8,
+        35,
+        UInt256::from([77; 32]),
+        FutureSplitMerge::Split {
+            split_utime: 0x12345678,
+            interval: 0x87654321,
+        },
+    );
     let ident = ShardIdent::with_workchain_id(11).unwrap();
-    extra.shards.add_workchain(11, 134, UInt256::default(), UInt256::default(), None).unwrap();
-    extra.fees.store_shard_fees(&ident, CurrencyCollection::with_grams(1), CurrencyCollection::with_grams(1)).unwrap();
-    extra.shards.split_shard(&ident, |_| Ok((shard1, shard1_1))).unwrap();
+    extra
+        .shards
+        .add_workchain(11, 134, UInt256::default(), UInt256::default(), None)
+        .unwrap();
+    extra
+        .fees
+        .store_shard_fees(
+            &ident,
+            CurrencyCollection::with_grams(1),
+            CurrencyCollection::with_grams(1),
+        )
+        .unwrap();
+    extra
+        .shards
+        .split_shard(&ident, |_| Ok((shard1, shard1_1)))
+        .unwrap();
     let ident = ShardIdent::with_workchain_id(22).unwrap();
-    extra.shards.add_workchain(22, 135, UInt256::default(), UInt256::default(), None).unwrap();
-    extra.fees.store_shard_fees(&ident, CurrencyCollection::with_grams(1), CurrencyCollection::with_grams(1)).unwrap();
-    extra.shards.split_shard(&ident, |_| Ok((shard2, shard2_2))).unwrap();
+    extra
+        .shards
+        .add_workchain(22, 135, UInt256::default(), UInt256::default(), None)
+        .unwrap();
+    extra
+        .fees
+        .store_shard_fees(
+            &ident,
+            CurrencyCollection::with_grams(1),
+            CurrencyCollection::with_grams(1),
+        )
+        .unwrap();
+    extra
+        .shards
+        .split_shard(&ident, |_| Ok((shard2, shard2_2)))
+        .unwrap();
 
     let extra = write_read_and_assert(extra);
 
     let mut block_extra = BlockExtra::default();
-    block_extra.write_account_blocks(&generate_test_shard_account_block()).unwrap();
+    block_extra
+        .write_account_blocks(&generate_test_shard_account_block())
+        .unwrap();
     block_extra.write_custom(Some(&extra)).unwrap();
 
     write_read_and_assert(block_extra);
@@ -209,20 +379,78 @@ fn test_mc_block_extra() {
 #[test]
 fn test_mc_block_extra_2() {
     let mut extra = McBlockExtra::default();
-    let shard1 = ShardDescr::with_params(23, 77, 234, UInt256::from([131; 32]), FutureSplitMerge::None);
-    let shard1_1 = ShardDescr::with_params(25, 177, 230, UInt256::from([131; 32]), FutureSplitMerge::None);
-    let shard2 = ShardDescr::with_params(15, 78, 235, UInt256::from([77; 32]), FutureSplitMerge::Split { split_utime: 0x12345678, interval: 0x87654321 });
-    let shard2_2 = ShardDescr::with_params(115, 8, 35, UInt256::from([77; 32]), FutureSplitMerge::Split { split_utime: 0x12345678, interval: 0x87654321 });
+    let shard1 = ShardDescr::with_params(
+        23,
+        77,
+        234,
+        UInt256::from([131; 32]),
+        FutureSplitMerge::None,
+    );
+    let shard1_1 = ShardDescr::with_params(
+        25,
+        177,
+        230,
+        UInt256::from([131; 32]),
+        FutureSplitMerge::None,
+    );
+    let shard2 = ShardDescr::with_params(
+        15,
+        78,
+        235,
+        UInt256::from([77; 32]),
+        FutureSplitMerge::Split {
+            split_utime: 0x12345678,
+            interval: 0x87654321,
+        },
+    );
+    let shard2_2 = ShardDescr::with_params(
+        115,
+        8,
+        35,
+        UInt256::from([77; 32]),
+        FutureSplitMerge::Split {
+            split_utime: 0x12345678,
+            interval: 0x87654321,
+        },
+    );
     let ident = ShardIdent::with_workchain_id(11).unwrap();
-    extra.shards.add_workchain(11, 134, UInt256::default(), UInt256::default(), None).unwrap();
-    extra.fees.store_shard_fees(&ident, CurrencyCollection::with_grams(1), CurrencyCollection::with_grams(1)).unwrap();
-    extra.shards.split_shard(&ident, |_| Ok((shard1, shard1_1))).unwrap();
+    extra
+        .shards
+        .add_workchain(11, 134, UInt256::default(), UInt256::default(), None)
+        .unwrap();
+    extra
+        .fees
+        .store_shard_fees(
+            &ident,
+            CurrencyCollection::with_grams(1),
+            CurrencyCollection::with_grams(1),
+        )
+        .unwrap();
+    extra
+        .shards
+        .split_shard(&ident, |_| Ok((shard1, shard1_1)))
+        .unwrap();
     let ident = ShardIdent::with_workchain_id(22).unwrap();
-    extra.shards.add_workchain(22, 135, UInt256::default(), UInt256::default(), None).unwrap();
-    extra.fees.store_shard_fees(&ident, CurrencyCollection::with_grams(1), CurrencyCollection::with_grams(1)).unwrap();
-    extra.shards.split_shard(&ident, |_| Ok((shard2, shard2_2))).unwrap();
+    extra
+        .shards
+        .add_workchain(22, 135, UInt256::default(), UInt256::default(), None)
+        .unwrap();
+    extra
+        .fees
+        .store_shard_fees(
+            &ident,
+            CurrencyCollection::with_grams(1),
+            CurrencyCollection::with_grams(1),
+        )
+        .unwrap();
+    extra
+        .shards
+        .split_shard(&ident, |_| Ok((shard2, shard2_2)))
+        .unwrap();
 
-    extra.write_copyleft_msgs(&[InMsg::default(), InMsg::default()]).unwrap();
+    extra
+        .write_copyleft_msgs(&[InMsg::default(), InMsg::default()])
+        .unwrap();
 
     write_read_and_assert(extra);
 }
@@ -232,7 +460,13 @@ fn test_serialization_shard_hashes() {
     let mut shard_hashes = ShardHashes::default();
 
     for n in 0..12i32 {
-        let descr = ShardDescr::with_params(42, 17, 25, UInt256::from([n as u8; 32]), FutureSplitMerge::None);
+        let descr = ShardDescr::with_params(
+            42,
+            17,
+            25,
+            UInt256::from([n as u8; 32]),
+            FutureSplitMerge::None,
+        );
         let shards = BinTree::with_item(&descr).unwrap();
         shard_hashes.set(&n, &InRefValue(shards)).unwrap();
     }
@@ -243,36 +477,55 @@ fn test_serialization_shard_hashes() {
 #[test]
 fn test_real_shard_hashes() {
     let block = Block::construct_from_file("src/tests/data/key_block_not_all_shardes.boc").unwrap();
-    let extra = block.read_extra().unwrap().read_custom().unwrap().expect("need key block");
+    let extra = block
+        .read_extra()
+        .unwrap()
+        .read_custom()
+        .unwrap()
+        .expect("need key block");
     let shards = extra.shards();
     let mut count = shards.dump("shards");
     println!("total: {}", count);
 
     let mut result = vec![];
     println!("---- pairs ----");
-    shards.iterate_shards_with_siblings(|shard, _descr, sibling| {
-        let sib = shard.sibling();
-        result.iter().for_each(|item| assert_ne!(item, &sib));
-        println!("shard: {}:{:064b} sibling: {}",
-            shard.workchain_id(), shard.shard_prefix_with_tag(), sibling.is_some());
-        result.push(shard);
-        count -= 1;
-        count -= sibling.is_some() as usize;
-        Ok(true)
-    }).unwrap();
+    shards
+        .iterate_shards_with_siblings(|shard, _descr, sibling| {
+            let sib = shard.sibling();
+            result.iter().for_each(|item| assert_ne!(item, &sib));
+            println!(
+                "shard: {}:{:064b} sibling: {}",
+                shard.workchain_id(),
+                shard.shard_prefix_with_tag(),
+                sibling.is_some()
+            );
+            result.push(shard);
+            count -= 1;
+            count -= sibling.is_some() as usize;
+            Ok(true)
+        })
+        .unwrap();
     println!("total: {}", result.len());
     println!("----  end  ----");
     assert_eq!(count, 0);
 
     // 0400000000000000
 
-    let shard = ShardIdent::with_tagged_prefix(0, 0b0000010000000000000000000000000000000000000000000000000000000000).unwrap();
+    let shard = ShardIdent::with_tagged_prefix(
+        0,
+        0b0000010000000000000000000000000000000000000000000000000000000000,
+    )
+    .unwrap();
 
     let found_shard = shards.get_shard(&shard).unwrap();
     assert!(found_shard.is_some());
     assert_eq!(*found_shard.unwrap().shard(), shard);
 
-    let shard2 = ShardIdent::with_tagged_prefix(0, 0b0000011000000000000000000000000000000000000000000000000000000000).unwrap();
+    let shard2 = ShardIdent::with_tagged_prefix(
+        0,
+        0b0000011000000000000000000000000000000000000000000000000000000000,
+    )
+    .unwrap();
     let found_shard = shards.get_shard(&shard2).unwrap();
     assert!(found_shard.is_none());
 
@@ -296,17 +549,24 @@ fn test_real_shard_hashes() {
     let found_shard = shards.find_shard(&right_ancestor_mask).unwrap();
     assert!(found_shard.is_some());
     assert_eq!(*found_shard.unwrap().shard(), shard);
-
 
     // 5400000000000000
 
-    let shard = ShardIdent::with_tagged_prefix(0, 0b0101010000000000000000000000000000000000000000000000000000000000).unwrap();
+    let shard = ShardIdent::with_tagged_prefix(
+        0,
+        0b0101010000000000000000000000000000000000000000000000000000000000,
+    )
+    .unwrap();
 
     let found_shard = shards.get_shard(&shard).unwrap();
     assert!(found_shard.is_some());
     assert_eq!(*found_shard.unwrap().shard(), shard);
 
-    let shard2 = ShardIdent::with_tagged_prefix(0, 0b0101010010000000000100000000000000000000000000000000000000000000).unwrap();
+    let shard2 = ShardIdent::with_tagged_prefix(
+        0,
+        0b0101010010000000000100000000000000000000000000000000000000000000,
+    )
+    .unwrap();
     let found_shard = shards.get_shard(&shard2).unwrap();
     assert!(found_shard.is_none());
 
@@ -330,7 +590,6 @@ fn test_real_shard_hashes() {
     let found_shard = shards.find_shard(&right_ancestor_mask).unwrap();
     assert!(found_shard.is_some());
     assert_eq!(*found_shard.unwrap().shard(), shard);
-
 
     // 1400000000000000 + 1c00000000000000 = 1800000000000000
 
@@ -371,7 +630,6 @@ fn test_serialization_shard_fees() {
 
 #[test]
 fn test_get_next_prev_key_block() {
-
     let bytes = std::fs::read("src/tests/data/free-ton-mc-state-61884").unwrap();
     let root = read_single_root_boc(&bytes).unwrap();
     let shard_state = ShardStateUnsplit::construct_from_cell(root).unwrap();
@@ -379,16 +637,18 @@ fn test_get_next_prev_key_block() {
 
     // Find all key blocks by full hashmap's enumerating (brute force)
     let mut all_key_blocks = HashMap::new();
-    prev_blocks.iterate_with_keys_and_aug(|seqno, id, aug| {
-        if aug.key && seqno != 0{
-            println!("{:?}", id);
-            all_key_blocks.insert(seqno, id);
-        }
-        Ok(true)
-    }).unwrap();
+    prev_blocks
+        .iterate_with_keys_and_aug(|seqno, id, aug| {
+            if aug.key && seqno != 0 {
+                println!("{:?}", id);
+                all_key_blocks.insert(seqno, id);
+            }
+            Ok(true)
+        })
+        .unwrap();
 
     let mut seqno = 0;
-    let mut key_blocks = vec!();
+    let mut key_blocks = vec![];
     while let Some(id) = prev_blocks.get_next_key_block(seqno + 1).unwrap() {
         println!("{:?}", id);
         seqno = id.seq_no;
@@ -400,11 +660,14 @@ fn test_get_next_prev_key_block() {
     }
 
     let key_id = key_blocks[key_blocks.len() - 1].clone();
-    let id = prev_blocks.get_prev_key_block(key_id.seq_no).unwrap().unwrap();
+    let id = prev_blocks
+        .get_prev_key_block(key_id.seq_no)
+        .unwrap()
+        .unwrap();
     assert_eq!(id.root_hash, key_id.root_hash);
 
     let mut seqno = key_blocks[key_blocks.len() - 1].seq_no + 2;
-    let mut key_blocks2 = vec!();
+    let mut key_blocks2 = vec![];
     while let Some(id) = prev_blocks.get_prev_key_block(seqno - 1).unwrap() {
         println!("{:?}", id);
         seqno = id.seq_no;
@@ -416,12 +679,11 @@ fn test_get_next_prev_key_block() {
     assert_eq!(key_blocks, key_blocks2);
 
     for id in key_blocks {
-
         let id = BlockIdExt {
             shard_id: ShardIdent::masterchain(),
             seq_no: id.seq_no,
             root_hash: id.root_hash,
-            file_hash: id.file_hash
+            file_hash: id.file_hash,
         };
         assert!(prev_blocks.check_block(&id).is_ok());
 
@@ -463,7 +725,6 @@ fn gen_collator() -> CollatorRange {
 
 #[test]
 fn test_shard_collators() {
-    
     let collators = ShardCollators {
         prev: gen_collator(),
         prev2: Some(gen_collator()),
@@ -503,7 +764,6 @@ fn test_shard_collators() {
         updated_at: 0x12345678,
     };
     write_read_and_assert(collators);
-
 }
 
 impl RefShardBlocks {
@@ -522,151 +782,209 @@ fn test_shard_descr_ref_shard_blocks_err() {
     std::env::set_var("RUST_BACKTRACE", "full");
 
     let mut ids = HashSet::new();
-    ids.insert((BlockIdExt {
-        shard_id: ShardIdent::with_tagged_prefix(1, 0x4000_0000_0000_0000).unwrap(),
-        seq_no: 25,
-        root_hash: UInt256::rand(),
-        file_hash: UInt256::rand(),
-    }, 1000200));
-    ids.insert((BlockIdExt {
-        shard_id: ShardIdent::with_tagged_prefix(1, 0x9000_0000_0000_0000).unwrap(),
-        seq_no: 26,
-        root_hash: UInt256::rand(),
-        file_hash: UInt256::rand(),
-    }, 1000300));
-    ids.insert((BlockIdExt {
-        shard_id: ShardIdent::with_tagged_prefix(1, 0xb000_0000_0000_0000).unwrap(),
-        seq_no: 26,
-        root_hash: UInt256::rand(),
-        file_hash: UInt256::rand(),
-    }, 1000400));
-    ids.insert((BlockIdExt {
-        shard_id: ShardIdent::with_tagged_prefix(1, 0xc800_0000_0000_0000).unwrap(),
-        seq_no: 26,
-        root_hash: UInt256::rand(),
-        file_hash: UInt256::rand(),
-    }, 1000100));
-    ids.insert((BlockIdExt {
-        shard_id: ShardIdent::with_tagged_prefix(1, 0xd800_0000_0000_0000).unwrap(),
-        seq_no: 26,
-        root_hash: UInt256::rand(),
-        file_hash: UInt256::rand(),
-    }, 1000101));
+    ids.insert((
+        BlockIdExt {
+            shard_id: ShardIdent::with_tagged_prefix(1, 0x4000_0000_0000_0000).unwrap(),
+            seq_no: 25,
+            root_hash: UInt256::rand(),
+            file_hash: UInt256::rand(),
+        },
+        1000200,
+    ));
+    ids.insert((
+        BlockIdExt {
+            shard_id: ShardIdent::with_tagged_prefix(1, 0x9000_0000_0000_0000).unwrap(),
+            seq_no: 26,
+            root_hash: UInt256::rand(),
+            file_hash: UInt256::rand(),
+        },
+        1000300,
+    ));
+    ids.insert((
+        BlockIdExt {
+            shard_id: ShardIdent::with_tagged_prefix(1, 0xb000_0000_0000_0000).unwrap(),
+            seq_no: 26,
+            root_hash: UInt256::rand(),
+            file_hash: UInt256::rand(),
+        },
+        1000400,
+    ));
+    ids.insert((
+        BlockIdExt {
+            shard_id: ShardIdent::with_tagged_prefix(1, 0xc800_0000_0000_0000).unwrap(),
+            seq_no: 26,
+            root_hash: UInt256::rand(),
+            file_hash: UInt256::rand(),
+        },
+        1000100,
+    ));
+    ids.insert((
+        BlockIdExt {
+            shard_id: ShardIdent::with_tagged_prefix(1, 0xd800_0000_0000_0000).unwrap(),
+            seq_no: 26,
+            root_hash: UInt256::rand(),
+            file_hash: UInt256::rand(),
+        },
+        1000101,
+    ));
     assert!(RefShardBlocks::with_ids(ids.iter()).is_err());
 
     let mut ids = HashSet::new();
-    ids.insert((BlockIdExt {
-        shard_id: ShardIdent::with_tagged_prefix(1, 0xa000_0000_0000_0000).unwrap(),
-        seq_no: 25,
-        root_hash: UInt256::rand(),
-        file_hash: UInt256::rand(),
-    }, 1000103));
-    assert!(RefShardBlocks::with_ids(ids.iter()).is_err());
-
-
-    let mut ids = HashSet::new();
-    ids.insert((BlockIdExt {
-        shard_id: ShardIdent::with_tagged_prefix(1, 0x4000_0000_0000_0000).unwrap(),
-        seq_no: 25,
-        root_hash: UInt256::rand(),
-        file_hash: UInt256::rand(),
-    }, 1000105));
-    ids.insert((BlockIdExt {
-        shard_id: ShardIdent::with_tagged_prefix(1, 0xa000_0000_0000_0000).unwrap(),
-        seq_no: 25,
-        root_hash: UInt256::rand(),
-        file_hash: UInt256::rand(),
-    }, 1000100));
+    ids.insert((
+        BlockIdExt {
+            shard_id: ShardIdent::with_tagged_prefix(1, 0xa000_0000_0000_0000).unwrap(),
+            seq_no: 25,
+            root_hash: UInt256::rand(),
+            file_hash: UInt256::rand(),
+        },
+        1000103,
+    ));
     assert!(RefShardBlocks::with_ids(ids.iter()).is_err());
 
     let mut ids = HashSet::new();
-    ids.insert((BlockIdExt {
-        shard_id: ShardIdent::with_tagged_prefix(1, 0x4000_0000_0000_0000).unwrap(),
-        seq_no: 25,
-        root_hash: UInt256::rand(),
-        file_hash: UInt256::rand(),
-    }, 2000100));
-    ids.insert((BlockIdExt {
-        shard_id: ShardIdent::with_tagged_prefix(1, 0xc000_0000_0000_0000).unwrap(),
-        seq_no: 25,
-        root_hash: UInt256::rand(),
-        file_hash: UInt256::rand(),
-    }, 3000100));
-    ids.insert((BlockIdExt {
-        shard_id: ShardIdent::with_tagged_prefix(1, 0xb000_0000_0000_0000).unwrap(),
-        seq_no: 25,
-        root_hash: UInt256::rand(),
-        file_hash: UInt256::rand(),
-    }, 4000100));
+    ids.insert((
+        BlockIdExt {
+            shard_id: ShardIdent::with_tagged_prefix(1, 0x4000_0000_0000_0000).unwrap(),
+            seq_no: 25,
+            root_hash: UInt256::rand(),
+            file_hash: UInt256::rand(),
+        },
+        1000105,
+    ));
+    ids.insert((
+        BlockIdExt {
+            shard_id: ShardIdent::with_tagged_prefix(1, 0xa000_0000_0000_0000).unwrap(),
+            seq_no: 25,
+            root_hash: UInt256::rand(),
+            file_hash: UInt256::rand(),
+        },
+        1000100,
+    ));
+    assert!(RefShardBlocks::with_ids(ids.iter()).is_err());
+
+    let mut ids = HashSet::new();
+    ids.insert((
+        BlockIdExt {
+            shard_id: ShardIdent::with_tagged_prefix(1, 0x4000_0000_0000_0000).unwrap(),
+            seq_no: 25,
+            root_hash: UInt256::rand(),
+            file_hash: UInt256::rand(),
+        },
+        2000100,
+    ));
+    ids.insert((
+        BlockIdExt {
+            shard_id: ShardIdent::with_tagged_prefix(1, 0xc000_0000_0000_0000).unwrap(),
+            seq_no: 25,
+            root_hash: UInt256::rand(),
+            file_hash: UInt256::rand(),
+        },
+        3000100,
+    ));
+    ids.insert((
+        BlockIdExt {
+            shard_id: ShardIdent::with_tagged_prefix(1, 0xb000_0000_0000_0000).unwrap(),
+            seq_no: 25,
+            root_hash: UInt256::rand(),
+            file_hash: UInt256::rand(),
+        },
+        4000100,
+    ));
     assert!(RefShardBlocks::with_ids(ids.iter()).is_err());
 }
 
 #[test]
 fn test_shard_descr_ref_shard_blocks() {
     let mut ids = HashSet::new();
-    ids.insert((BlockIdExt {
-        shard_id: ShardIdent::with_tagged_prefix(1, 0x4000_0000_0000_0000).unwrap(),
-        seq_no: 25,
-        root_hash: UInt256::rand(),
-        file_hash: UInt256::rand(),
-    }, 1000100));
-    ids.insert((BlockIdExt {
-        shard_id: ShardIdent::with_tagged_prefix(1, 0x9000_0000_0000_0000).unwrap(),
-        seq_no: 26,
-        root_hash: UInt256::rand(),
-        file_hash: UInt256::rand(),
-    }, 1000100));
-    ids.insert((BlockIdExt {
-        shard_id: ShardIdent::with_tagged_prefix(1, 0xb000_0000_0000_0000).unwrap(),
-        seq_no: 26,
-        root_hash: UInt256::rand(),
-        file_hash: UInt256::rand(),
-    }, 1000101));
-    ids.insert((BlockIdExt {
-        shard_id: ShardIdent::with_tagged_prefix(1, 0xc800_0000_0000_0000).unwrap(),
-        seq_no: 26,
-        root_hash: UInt256::rand(),
-        file_hash: UInt256::rand(),
-    }, 1000100));
-    ids.insert((BlockIdExt {
-        shard_id: ShardIdent::with_tagged_prefix(1, 0xd800_0000_0000_0000).unwrap(),
-        seq_no: 26,
-        root_hash: UInt256::rand(),
-        file_hash: UInt256::rand(),
-    }, 1000102));
-    ids.insert((BlockIdExt {
-        shard_id: ShardIdent::with_tagged_prefix(1, 0xf000_0000_0000_0000).unwrap(),
-        seq_no: 26,
-        root_hash: UInt256::rand(),
-        file_hash: UInt256::rand(),
-    }, 1000100));
+    ids.insert((
+        BlockIdExt {
+            shard_id: ShardIdent::with_tagged_prefix(1, 0x4000_0000_0000_0000).unwrap(),
+            seq_no: 25,
+            root_hash: UInt256::rand(),
+            file_hash: UInt256::rand(),
+        },
+        1000100,
+    ));
+    ids.insert((
+        BlockIdExt {
+            shard_id: ShardIdent::with_tagged_prefix(1, 0x9000_0000_0000_0000).unwrap(),
+            seq_no: 26,
+            root_hash: UInt256::rand(),
+            file_hash: UInt256::rand(),
+        },
+        1000100,
+    ));
+    ids.insert((
+        BlockIdExt {
+            shard_id: ShardIdent::with_tagged_prefix(1, 0xb000_0000_0000_0000).unwrap(),
+            seq_no: 26,
+            root_hash: UInt256::rand(),
+            file_hash: UInt256::rand(),
+        },
+        1000101,
+    ));
+    ids.insert((
+        BlockIdExt {
+            shard_id: ShardIdent::with_tagged_prefix(1, 0xc800_0000_0000_0000).unwrap(),
+            seq_no: 26,
+            root_hash: UInt256::rand(),
+            file_hash: UInt256::rand(),
+        },
+        1000100,
+    ));
+    ids.insert((
+        BlockIdExt {
+            shard_id: ShardIdent::with_tagged_prefix(1, 0xd800_0000_0000_0000).unwrap(),
+            seq_no: 26,
+            root_hash: UInt256::rand(),
+            file_hash: UInt256::rand(),
+        },
+        1000102,
+    ));
+    ids.insert((
+        BlockIdExt {
+            shard_id: ShardIdent::with_tagged_prefix(1, 0xf000_0000_0000_0000).unwrap(),
+            seq_no: 26,
+            root_hash: UInt256::rand(),
+            file_hash: UInt256::rand(),
+        },
+        1000100,
+    ));
     let rsb = RefShardBlocks::with_ids(ids.iter()).unwrap();
     assert_eq!(rsb.collect_ref_shard_blocks().unwrap(), ids);
 
     let mut ids = HashSet::new();
-    ids.insert((BlockIdExt {
-        shard_id: ShardIdent::with_tagged_prefix(1, 0x8000_0000_0000_0000).unwrap(),
-        seq_no: 25,
-        root_hash: UInt256::rand(),
-        file_hash: UInt256::rand(),
-    }, 1000104));
+    ids.insert((
+        BlockIdExt {
+            shard_id: ShardIdent::with_tagged_prefix(1, 0x8000_0000_0000_0000).unwrap(),
+            seq_no: 25,
+            root_hash: UInt256::rand(),
+            file_hash: UInt256::rand(),
+        },
+        1000104,
+    ));
     let rsb = RefShardBlocks::with_ids(ids.iter()).unwrap();
     assert_eq!(rsb.collect_ref_shard_blocks().unwrap(), ids);
 
     let mut ids = HashSet::new();
-    ids.insert((BlockIdExt {
-        shard_id: ShardIdent::with_tagged_prefix(1, 0x4000_0000_0000_0000).unwrap(),
-        seq_no: 25,
-        root_hash: UInt256::rand(),
-        file_hash: UInt256::rand(),
-    }, 1000105));
-    ids.insert((BlockIdExt {
-        shard_id: ShardIdent::with_tagged_prefix(1, 0xc000_0000_0000_0000).unwrap(),
-        seq_no: 26,
-        root_hash: UInt256::rand(),
-        file_hash: UInt256::rand(),
-    }, 1000100));
+    ids.insert((
+        BlockIdExt {
+            shard_id: ShardIdent::with_tagged_prefix(1, 0x4000_0000_0000_0000).unwrap(),
+            seq_no: 25,
+            root_hash: UInt256::rand(),
+            file_hash: UInt256::rand(),
+        },
+        1000105,
+    ));
+    ids.insert((
+        BlockIdExt {
+            shard_id: ShardIdent::with_tagged_prefix(1, 0xc000_0000_0000_0000).unwrap(),
+            seq_no: 26,
+            root_hash: UInt256::rand(),
+            file_hash: UInt256::rand(),
+        },
+        1000100,
+    ));
     let rsb = RefShardBlocks::with_ids(ids.iter()).unwrap();
     assert_eq!(rsb.collect_ref_shard_blocks().unwrap(), ids);
-
 }

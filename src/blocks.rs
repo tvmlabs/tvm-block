@@ -11,6 +11,7 @@
 * limitations under the License.
 */
 
+use crate::RefShardBlocks;
 use crate::{
     config_params::{CatchainConfig, GlobalVersion},
     define_HashmapE,
@@ -22,11 +23,10 @@ use crate::{
     shard::ShardIdent,
     signature::BlockSignatures,
     transactions::ShardAccountBlocks,
-    types::{ChildCell, CurrencyCollection, Grams, InRefValue, UnixTime32, AddSub},
+    types::{AddSub, ChildCell, CurrencyCollection, Grams, InRefValue, UnixTime32},
     validators::ValidatorSet,
     Deserializable, MaybeDeserialize, MaybeSerialize, Serializable,
 };
-use crate::RefShardBlocks;
 use std::borrow::Cow;
 use std::{
     cmp::Ordering,
@@ -34,7 +34,7 @@ use std::{
     io::{Cursor, Write},
     str::FromStr,
 };
-use ton_types::{
+use tvm_types::{
     error, fail, AccountId, BuilderData, Cell, ExceptionCode, HashmapE, HashmapType, IBitstring,
     Result, SliceData, UInt256,
 };
@@ -86,9 +86,13 @@ impl BlockIdExt {
         }
     }
 
-    pub fn shard(&self) -> &ShardIdent { &self.shard_id }
+    pub fn shard(&self) -> &ShardIdent {
+        &self.shard_id
+    }
 
-    pub fn seq_no(&self) -> u32 { self.seq_no }
+    pub fn seq_no(&self) -> u32 {
+        self.seq_no
+    }
 
     pub fn root_hash(&self) -> &UInt256 {
         &self.root_hash
@@ -121,12 +125,15 @@ impl Deserializable for BlockIdExt {
 
 impl Display for BlockIdExt {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "({}:{}, {}, rh {:x}, fh {:x})",
+        write!(
+            f,
+            "({}:{}, {}, rh {:x}, fh {:x})",
             self.shard_id.workchain_id(),
             self.shard_id.shard_prefix_as_str_with_tag(),
             self.seq_no,
             self.root_hash,
-            self.file_hash)
+            self.file_hash
+        )
     }
 }
 
@@ -148,9 +155,13 @@ impl FromStr for BlockIdExt {
             .parse()
             .map_err(|e| error!("Can't read workchain_id from {}: {}", s, e))?;
         let shard = u64::from_str_radix(
-            shard_parts.next().ok_or_else(|| error!("Can't read shard from {}", s))?.trim(),
-            16
-        ).map_err(|e| error!("Can't read shard from {}: {}", s, e))?;
+            shard_parts
+                .next()
+                .ok_or_else(|| error!("Can't read shard from {}", s))?
+                .trim(),
+            16,
+        )
+        .map_err(|e| error!("Can't read shard from {}: {}", s, e))?;
         let seq_no: u32 = parts
             .next()
             .ok_or_else(|| error!("Can't read seq_no from {}", s))?
@@ -225,7 +236,6 @@ block_info#9bc7a987
 */
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlockInfo {
-
     version: u32,
     after_merge: bool,
     before_split: bool,
@@ -288,35 +298,61 @@ impl Default for BlockInfo {
 }
 
 impl BlockInfo {
-
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn version(&self) -> u32 { self.version }
-    pub fn set_version(&mut self, version: u32) { self.version = version; }
+    pub fn version(&self) -> u32 {
+        self.version
+    }
+    pub fn set_version(&mut self, version: u32) {
+        self.version = version;
+    }
 
-    pub fn before_split(&self) -> bool { self.before_split }
-    pub fn set_before_split(&mut self, before_split: bool) { self.before_split = before_split }
+    pub fn before_split(&self) -> bool {
+        self.before_split
+    }
+    pub fn set_before_split(&mut self, before_split: bool) {
+        self.before_split = before_split
+    }
 
-    pub fn after_split(&self) -> bool { self.after_split }
-    pub fn set_after_split(&mut self, after_split: bool) { self.after_split = after_split }
+    pub fn after_split(&self) -> bool {
+        self.after_split
+    }
+    pub fn set_after_split(&mut self, after_split: bool) {
+        self.after_split = after_split
+    }
 
-    pub fn want_split(&self) -> bool { self.want_split }
-    pub fn set_want_split(&mut self, want_split: bool) { self.want_split = want_split }
+    pub fn want_split(&self) -> bool {
+        self.want_split
+    }
+    pub fn set_want_split(&mut self, want_split: bool) {
+        self.want_split = want_split
+    }
 
-    pub fn want_merge(&self) -> bool { self.want_merge }
-    pub fn set_want_merge(&mut self, want_merge: bool) { self.want_merge = want_merge }
+    pub fn want_merge(&self) -> bool {
+        self.want_merge
+    }
+    pub fn set_want_merge(&mut self, want_merge: bool) {
+        self.want_merge = want_merge
+    }
 
-    pub fn key_block(&self) -> bool { self.key_block }
-    pub fn set_key_block(&mut self, key_block: bool) { self.key_block = key_block }
+    pub fn key_block(&self) -> bool {
+        self.key_block
+    }
+    pub fn set_key_block(&mut self, key_block: bool) {
+        self.key_block = key_block
+    }
 
-
-    pub fn flags(&self) -> u8 { self.flags }
+    pub fn flags(&self) -> u8 {
+        self.flags
+    }
     // For now flags is related only on gen_software, so it is set automatically if need
     //pub fn set_flags(&mut self, flags) { self.flags = flags }
 
-    pub fn seq_no(&self) -> u32 { self.seq_no }
+    pub fn seq_no(&self) -> u32 {
+        self.seq_no
+    }
     pub fn set_seq_no(&mut self, seq_no: u32) -> Result<()> {
         if seq_no == 0 {
             fail!(BlockError::InvalidArg("`seq_no` can't be zero".to_string()))
@@ -325,14 +361,23 @@ impl BlockInfo {
         Ok(())
     }
 
+    pub fn shard(&self) -> &ShardIdent {
+        &self.shard
+    }
+    pub fn set_shard(&mut self, shard: ShardIdent) {
+        self.shard = shard
+    }
 
-    pub fn shard(&self) -> &ShardIdent { &self.shard }
-    pub fn set_shard(&mut self, shard: ShardIdent) { self.shard = shard }
-
-    pub fn gen_utime(&self) -> UnixTime32 { self.gen_utime }
-    pub fn gen_utime_ms(&self) -> u64 { self.gen_utime_ms_part as u64 + self.gen_utime().as_u32() as u64 * 1000 }
-    pub fn gen_utime_ms_part(&self) -> u16 { self.gen_utime_ms_part }
-    pub fn set_gen_utime(&mut self, gen_utime: UnixTime32) { 
+    pub fn gen_utime(&self) -> UnixTime32 {
+        self.gen_utime
+    }
+    pub fn gen_utime_ms(&self) -> u64 {
+        self.gen_utime_ms_part as u64 + self.gen_utime().as_u32() as u64 * 1000
+    }
+    pub fn gen_utime_ms_part(&self) -> u16 {
+        self.gen_utime_ms_part
+    }
+    pub fn set_gen_utime(&mut self, gen_utime: UnixTime32) {
         self.gen_utime = gen_utime;
         self.gen_utime_ms_part = 0;
     }
@@ -341,25 +386,51 @@ impl BlockInfo {
         self.gen_utime_ms_part = (gen_utime_millis % 1000) as u16;
     }
 
-    pub fn start_lt(&self) -> u64 { self.start_lt }
-    pub fn set_start_lt(&mut self, start_lt: u64) { self.start_lt = start_lt }
+    pub fn start_lt(&self) -> u64 {
+        self.start_lt
+    }
+    pub fn set_start_lt(&mut self, start_lt: u64) {
+        self.start_lt = start_lt
+    }
 
-    pub fn end_lt(&self) -> u64 { self.end_lt }
-    pub fn set_end_lt(&mut self, end_lt: u64) { self.end_lt = end_lt }
+    pub fn end_lt(&self) -> u64 {
+        self.end_lt
+    }
+    pub fn set_end_lt(&mut self, end_lt: u64) {
+        self.end_lt = end_lt
+    }
 
-    pub fn gen_validator_list_hash_short(&self) -> u32 { self.gen_validator_list_hash_short }
-    pub fn set_gen_validator_list_hash_short(&mut self, hash: u32) { self.gen_validator_list_hash_short = hash }
+    pub fn gen_validator_list_hash_short(&self) -> u32 {
+        self.gen_validator_list_hash_short
+    }
+    pub fn set_gen_validator_list_hash_short(&mut self, hash: u32) {
+        self.gen_validator_list_hash_short = hash
+    }
 
-    pub fn gen_catchain_seqno(&self) -> u32 { self.gen_catchain_seqno }
-    pub fn set_gen_catchain_seqno(&mut self, cc_seqno: u32) { self.gen_catchain_seqno = cc_seqno }
+    pub fn gen_catchain_seqno(&self) -> u32 {
+        self.gen_catchain_seqno
+    }
+    pub fn set_gen_catchain_seqno(&mut self, cc_seqno: u32) {
+        self.gen_catchain_seqno = cc_seqno
+    }
 
-    pub fn min_ref_mc_seqno(&self) -> u32 { self.min_ref_mc_seqno }
-    pub fn set_min_ref_mc_seqno(&mut self, min_ref_mc_seqno: u32) { self.min_ref_mc_seqno = min_ref_mc_seqno }
+    pub fn min_ref_mc_seqno(&self) -> u32 {
+        self.min_ref_mc_seqno
+    }
+    pub fn set_min_ref_mc_seqno(&mut self, min_ref_mc_seqno: u32) {
+        self.min_ref_mc_seqno = min_ref_mc_seqno
+    }
 
-    pub fn prev_key_block_seqno(&self) -> u32 { self.prev_key_block_seqno }
-    pub fn set_prev_key_block_seqno(&mut self, prev_key_block_seqno: u32) { self.prev_key_block_seqno = prev_key_block_seqno }
+    pub fn prev_key_block_seqno(&self) -> u32 {
+        self.prev_key_block_seqno
+    }
+    pub fn set_prev_key_block_seqno(&mut self, prev_key_block_seqno: u32) {
+        self.prev_key_block_seqno = prev_key_block_seqno
+    }
 
-    pub fn gen_software(&self) -> Option<&GlobalVersion> { self.gen_software.as_ref() }
+    pub fn gen_software(&self) -> Option<&GlobalVersion> {
+        self.gen_software.as_ref()
+    }
     pub fn set_gen_software(&mut self, gen_software: Option<GlobalVersion>) {
         self.gen_software = gen_software;
         if self.gen_software.is_some() {
@@ -370,7 +441,10 @@ impl BlockInfo {
     }
 
     pub fn read_master_ref(&self) -> Result<Option<BlkMasterInfo>> {
-        self.master_ref.as_ref().map(|mr| mr.read_struct()).transpose()
+        self.master_ref
+            .as_ref()
+            .map(|mr| mr.read_struct())
+            .transpose()
     }
 
     pub fn write_master_ref(&mut self, value: Option<&BlkMasterInfo>) -> Result<()> {
@@ -381,12 +455,14 @@ impl BlockInfo {
     pub fn read_master_id(&self) -> Result<ExtBlkRef> {
         match self.master_ref {
             Some(ref mr) => Ok(mr.read_struct()?.master),
-            None => self.read_prev_ref()?.prev1()
+            None => self.read_prev_ref()?.prev1(),
         }
     }
 
-    pub fn after_merge(&self) -> bool { self.after_merge }
-    pub fn prev_ref_cell(&self)-> Cell {
+    pub fn after_merge(&self) -> bool {
+        self.after_merge
+    }
+    pub fn prev_ref_cell(&self) -> Cell {
         self.prev_ref.cell()
     }
     pub fn read_prev_ref(&self) -> Result<BlkPrevInfo> {
@@ -402,57 +478,73 @@ impl BlockInfo {
         let prev = self.read_prev_ref()?;
         if let Some(prev2) = prev.prev2()? {
             let (shard1, shard2) = self.shard.split()?;
-            Ok(vec![prev.prev1()?.workchain_block_id(shard1).1, prev2.workchain_block_id(shard2).1])
+            Ok(vec![
+                prev.prev1()?.workchain_block_id(shard1).1,
+                prev2.workchain_block_id(shard2).1,
+            ])
         } else if self.after_split {
-            Ok(vec!(prev.prev1()?.workchain_block_id(self.shard.merge()?).1))
+            Ok(vec![
+                prev.prev1()?.workchain_block_id(self.shard.merge()?).1,
+            ])
         } else {
-            Ok(vec!(prev.prev1()?.workchain_block_id(self.shard.clone()).1))
+            Ok(vec![prev.prev1()?.workchain_block_id(self.shard.clone()).1])
         }
     }
     pub fn set_prev_stuff(&mut self, after_merge: bool, prev_ref: &BlkPrevInfo) -> Result<()> {
         if !after_merge ^ prev_ref.is_one_prev() {
             fail!(BlockError::InvalidArg(
-                "`prev_ref` may handle two blocks only if `after_merge`".to_string()))
+                "`prev_ref` may handle two blocks only if `after_merge`".to_string()
+            ))
         }
         self.after_merge = after_merge;
         self.prev_ref.write_struct(prev_ref)
     }
 
-    pub fn vert_seq_no(&self) -> u32 { self.vert_seq_no }
-    pub fn vert_seqno_incr(&self) -> u32 { self.vert_seqno_incr }
+    pub fn vert_seq_no(&self) -> u32 {
+        self.vert_seq_no
+    }
+    pub fn vert_seqno_incr(&self) -> u32 {
+        self.vert_seqno_incr
+    }
     pub fn read_prev_vert_ref(&self) -> Result<Option<BlkPrevInfo>> {
-        self.prev_vert_ref.as_ref().map(|mr| mr.read_struct()).transpose()
+        self.prev_vert_ref
+            .as_ref()
+            .map(|mr| mr.read_struct())
+            .transpose()
     }
     pub fn set_vertical_stuff(
         &mut self,
         vert_seqno_incr: u32,
         vert_seq_no: u32,
-        prev_vert_ref: Option<BlkPrevInfo>
+        prev_vert_ref: Option<BlkPrevInfo>,
     ) -> Result<()> {
         if vert_seq_no < vert_seqno_incr {
             fail!(BlockError::InvalidArg(
-                "`vert_seq_no` can't be less then `vert_seqno_incr`".to_string()))
+                "`vert_seq_no` can't be less then `vert_seqno_incr`".to_string()
+            ))
         }
         if (vert_seqno_incr == 0) ^ prev_vert_ref.is_none() {
             fail!(BlockError::InvalidArg(
-                "`prev_vert_ref` may be Some only if `vert_seqno_incr != 0` and vice versa".to_string()))
+                "`prev_vert_ref` may be Some only if `vert_seqno_incr != 0` and vice versa"
+                    .to_string()
+            ))
         }
 
         self.vert_seqno_incr = vert_seqno_incr;
         self.vert_seq_no = vert_seq_no;
-        self.prev_vert_ref = prev_vert_ref.map(|v| ChildCell::with_struct(&v)).transpose()?;
+        self.prev_vert_ref = prev_vert_ref
+            .map(|v| ChildCell::with_struct(&v))
+            .transpose()?;
         Ok(())
     }
 
     pub fn read_from_ex(&mut self, slice: &mut SliceData, allow_v2: bool) -> Result<()> {
         let tag = slice.get_next_u32()?;
         if tag != BLOCK_INFO_TAG_1 && (!allow_v2 || tag != BLOCK_INFO_TAG_2) {
-            fail!(
-                BlockError::InvalidConstructorTag {
-                    t: tag,
-                    s: "BlockInfo".to_string()
-                }
-            )
+            fail!(BlockError::InvalidConstructorTag {
+                t: tag,
+                s: "BlockInfo".to_string()
+            })
         }
         self.version = slice.get_next_u32()?;
 
@@ -472,7 +564,7 @@ impl BlockInfo {
         let vert_seq_no = slice.get_next_u32()?;
         self.shard.read_from(slice)?;
         self.gen_utime = slice.get_next_u32()?.into();
-        if tag == BLOCK_INFO_TAG_2{
+        if tag == BLOCK_INFO_TAG_2 {
             self.gen_utime_ms_part = slice.get_next_u16()?;
         } else {
             self.gen_utime_ms_part = 0;
@@ -529,22 +621,23 @@ prev_blks_info$_
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BlkPrevInfo {
     Block {
-        prev: ExtBlkRef
+        prev: ExtBlkRef,
     },
     Blocks {
         prev1: ChildCell<ExtBlkRef>,
-        prev2: ChildCell<ExtBlkRef>
+        prev2: ChildCell<ExtBlkRef>,
     },
 }
 
 impl Default for BlkPrevInfo {
     fn default() -> BlkPrevInfo {
-        BlkPrevInfo::Block{ prev: ExtBlkRef::default() }
+        BlkPrevInfo::Block {
+            prev: ExtBlkRef::default(),
+        }
     }
 }
 
 impl BlkPrevInfo {
-
     pub fn new(mut ext_block_refs: Vec<ExtBlkRef>) -> Result<Self> {
         match ext_block_refs.len() {
             2 => {
@@ -554,15 +647,15 @@ impl BlkPrevInfo {
             }
             1 => {
                 let prev = ext_block_refs.remove(0);
-                Ok(BlkPrevInfo::Block{ prev })
+                Ok(BlkPrevInfo::Block { prev })
             }
-            _ => fail!("prev blocks must be 1 or 2")
+            _ => fail!("prev blocks must be 1 or 2"),
         }
     }
 
     pub fn default_block() -> Self {
         BlkPrevInfo::Block {
-            prev: ExtBlkRef::default()
+            prev: ExtBlkRef::default(),
         }
     }
 
@@ -575,44 +668,36 @@ impl BlkPrevInfo {
 
     pub fn is_one_prev(&self) -> bool {
         match self {
-            BlkPrevInfo::Block{prev: _} => true,
-            BlkPrevInfo::Blocks{prev1: _, prev2: _} => false,
+            BlkPrevInfo::Block { prev: _ } => true,
+            BlkPrevInfo::Blocks { prev1: _, prev2: _ } => false,
         }
     }
 
     pub fn prev1(&self) -> Result<ExtBlkRef> {
-        Ok(
-            match self {
-                BlkPrevInfo::Block{prev} => prev.clone(),
-                BlkPrevInfo::Blocks{prev1, prev2: _} => {
-                    prev1.read_struct()?
-                },
-            }
-        )
+        Ok(match self {
+            BlkPrevInfo::Block { prev } => prev.clone(),
+            BlkPrevInfo::Blocks { prev1, prev2: _ } => prev1.read_struct()?,
+        })
     }
 
     pub fn prev2(&self) -> Result<Option<ExtBlkRef>> {
-        Ok(
-            match self {
-                BlkPrevInfo::Block{prev: _} => None,
-                BlkPrevInfo::Blocks{prev1: _, prev2} => {
-                    Some(prev2.read_struct()?)
-                },
-            }
-        )
+        Ok(match self {
+            BlkPrevInfo::Block { prev: _ } => None,
+            BlkPrevInfo::Blocks { prev1: _, prev2 } => Some(prev2.read_struct()?),
+        })
     }
 }
 
 impl Deserializable for BlkPrevInfo {
     fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
         match self {
-            BlkPrevInfo::Block{prev} => {
+            BlkPrevInfo::Block { prev } => {
                 prev.read_from(cell)?;
-            },
-            BlkPrevInfo::Blocks{prev1, prev2} => {
+            }
+            BlkPrevInfo::Blocks { prev1, prev2 } => {
                 prev1.read_from_reference(cell)?;
                 prev2.read_from_reference(cell)?;
-            },
+            }
         }
         Ok(())
     }
@@ -621,13 +706,13 @@ impl Deserializable for BlkPrevInfo {
 impl Serializable for BlkPrevInfo {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
         match self {
-            BlkPrevInfo::Block{prev} => {
+            BlkPrevInfo::Block { prev } => {
                 prev.write_to(cell)?;
             }
-            BlkPrevInfo::Blocks{prev1, prev2} => {
+            BlkPrevInfo::Blocks { prev1, prev2 } => {
                 cell.checked_append_reference(prev1.cell())?;
                 cell.checked_append_reference(prev2.cell())?;
-            },
+            }
         }
         Ok(())
     }
@@ -636,14 +721,14 @@ impl Serializable for BlkPrevInfo {
 #[derive(Debug, Default, Clone, Eq, PartialEq)]
 pub struct OutQueueUpdate {
     pub is_empty: bool,
-    pub update: MerkleUpdate
+    pub update: MerkleUpdate,
 }
 
 impl Deserializable for OutQueueUpdate {
     fn construct_from(slice: &mut SliceData) -> Result<Self> {
         let is_empty = slice.get_next_bit()?;
         let update = MerkleUpdate::construct_from_cell(slice.checked_drain_reference()?)?;
-        Ok(OutQueueUpdate {is_empty, update})
+        Ok(OutQueueUpdate { is_empty, update })
     }
 }
 
@@ -678,7 +763,7 @@ block#11ef55bb
     extra: ^BlockExtra
 = Block;
 */
-define_HashmapE!{OutQueueUpdates, 32, OutQueueUpdate}
+define_HashmapE! {OutQueueUpdates, 32, OutQueueUpdate}
 
 #[derive(Debug, Default, Clone, Eq, PartialEq)]
 pub struct Block {
@@ -742,7 +827,7 @@ impl Block {
         self.info.write_struct(value)
     }
 
-    pub fn info_cell(&self)-> Cell {
+    pub fn info_cell(&self) -> Cell {
         self.info.cell()
     }
 
@@ -754,7 +839,7 @@ impl Block {
         self.value_flow.write_struct(value)
     }
 
-    pub fn value_flow_cell(&self)-> Cell {
+    pub fn value_flow_cell(&self) -> Cell {
         self.value_flow.cell()
     }
 
@@ -766,7 +851,7 @@ impl Block {
         self.state_update.write_struct(value)
     }
 
-    pub fn state_update_cell(&self)-> Cell {
+    pub fn state_update_cell(&self) -> Cell {
         self.state_update.cell()
     }
 
@@ -778,14 +863,17 @@ impl Block {
         self.extra.write_struct(value)
     }
 
-    pub fn extra_cell(&self)-> Cell {
+    pub fn extra_cell(&self) -> Cell {
         self.extra.cell()
     }
 
     const DATA_FOR_SIGN_SIZE: usize = 4 + 32 + 32;
     const DATA_FOR_SIGN_TAG: [u8; 4] = [0x70, 0x6e, 0x0b, 0xc5];
 
-    pub fn build_data_for_sign(root_hash: &UInt256, file_hash: &UInt256) -> [u8; Self::DATA_FOR_SIGN_SIZE] {
+    pub fn build_data_for_sign(
+        root_hash: &UInt256,
+        file_hash: &UInt256,
+    ) -> [u8; Self::DATA_FOR_SIGN_SIZE] {
         let mut data = [0_u8; Self::DATA_FOR_SIGN_SIZE];
         {
             let mut cur = Cursor::new(&mut data[..]);
@@ -813,7 +901,10 @@ impl Block {
 
 impl Ord for Block {
     fn cmp(&self, other: &Block) -> Ordering {
-        self.read_info().unwrap().seq_no.cmp(&other.read_info().unwrap().seq_no)
+        self.read_info()
+            .unwrap()
+            .seq_no
+            .cmp(&other.read_info().unwrap().seq_no)
     }
 }
 
@@ -864,7 +955,7 @@ impl BlockExtra {
         self.in_msg_descr.write_struct(value)
     }
 
-    pub fn in_msg_descr_cell(&self)-> Cell {
+    pub fn in_msg_descr_cell(&self) -> Cell {
         self.in_msg_descr.cell()
     }
 
@@ -876,7 +967,7 @@ impl BlockExtra {
         self.out_msg_descr.write_struct(value)
     }
 
-    pub fn out_msg_descr_cell(&self)-> Cell {
+    pub fn out_msg_descr_cell(&self) -> Cell {
         self.out_msg_descr.cell()
     }
 
@@ -888,7 +979,7 @@ impl BlockExtra {
         self.account_blocks.write_struct(value)
     }
 
-    pub fn account_blocks_cell(&self)-> Cell {
+    pub fn account_blocks_cell(&self) -> Cell {
         self.account_blocks.cell()
     }
 
@@ -942,16 +1033,16 @@ impl Deserializable for BlockExtra {
         let tag = cell.get_next_u32()?;
         if tag != BLOCK_EXTRA_TAG && tag != BLOCK_EXTRA_TAG_2 {
             fail!(BlockError::InvalidConstructorTag {
-                    t: tag,
-                    s: "BlockExtra".to_string()
-                })
+                t: tag,
+                s: "BlockExtra".to_string()
+            })
         }
         self.in_msg_descr.read_from_reference(cell)?;
         self.out_msg_descr.read_from_reference(cell)?;
         self.account_blocks.read_from_reference(cell)?;
         self.rand_seed.read_from(cell)?;
         self.created_by.read_from(cell)?;
-        
+
         if tag == BLOCK_EXTRA_TAG {
             self.custom = ChildCell::construct_maybe_from_reference(cell)?;
             self.ref_shard_blocks = RefShardBlocks::default();
@@ -992,10 +1083,14 @@ impl Serializable for BlockExtra {
     }
 }
 
-define_HashmapE!{CopyleftRewards, 256, Grams}
+define_HashmapE! {CopyleftRewards, 256, Grams}
 
 impl CopyleftRewards {
-    pub fn add_copyleft_reward(&mut self, reward_address: &AccountId, reward: &Grams) -> Result<()> {
+    pub fn add_copyleft_reward(
+        &mut self,
+        reward_address: &AccountId,
+        reward: &Grams,
+    ) -> Result<()> {
         if let Some(mut value) = self.get(reward_address)? {
             value.add(reward)?;
             self.set(reward_address, &value)?;
@@ -1017,9 +1112,13 @@ impl CopyleftRewards {
         Ok(())
     }
 
-    pub fn merge_rewards_with_threshold(&mut self, other: &Self, threshold: &Grams) -> Result<Vec<(AccountId, Grams)>> {
+    pub fn merge_rewards_with_threshold(
+        &mut self,
+        other: &Self,
+        threshold: &Grams,
+    ) -> Result<Vec<(AccountId, Grams)>> {
         // if map size is big, iterating will be long
-        let mut send_rewards = vec!();
+        let mut send_rewards = vec![];
         other.iterate_with_keys(|key: AccountId, mut value| {
             if let Some(new_value) = self.get(&key)? {
                 value.add(&new_value)?;
@@ -1078,7 +1177,9 @@ pub struct ValueFlow {
 
 impl fmt::Display for ValueFlow {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "\
+        write!(
+            f,
+            "\
             from_prev_blk: {}, \
             to_next_blk: {}, \
             imported: {}, \
@@ -1172,7 +1273,6 @@ const BLOCK_INFO_TAG_2: u32 = 0x9bc7a988;
 
 impl Serializable for BlockInfo {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
-
         let mut byte = 0;
         if self.master_ref.is_some() {
             byte |= 1 << 7
@@ -1229,15 +1329,18 @@ impl Serializable for BlockInfo {
             .append_u32(self.min_ref_mc_seqno)?
             .append_u32(self.prev_key_block_seqno)?;
 
-
         if self.flags & GEN_SOFTWARE_EXISTS_FLAG != 0 {
             if let Some(gen_software) = self.gen_software.as_ref() {
                 gen_software.write_to(cell)?;
             } else {
-                fail!(BlockError::InvalidData("GEN_SOFTWARE_EXISTS_FLAG is set but gen_software is None".to_string()))
+                fail!(BlockError::InvalidData(
+                    "GEN_SOFTWARE_EXISTS_FLAG is set but gen_software is None".to_string()
+                ))
             }
         } else if self.gen_software.is_some() {
-            fail!(BlockError::InvalidData("GEN_SOFTWARE_EXISTS_FLAG is not set but gen_software is Some".to_string()))
+            fail!(BlockError::InvalidData(
+                "GEN_SOFTWARE_EXISTS_FLAG is not set but gen_software is Some".to_string()
+            ))
         }
 
         if let Some(ref master) = self.master_ref {
@@ -1291,12 +1394,10 @@ impl Deserializable for ValueFlow {
     fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
         let tag = cell.get_next_u32()?;
         if tag != VALUE_FLOW_TAG && tag != VALUE_FLOW_TAG_V2 {
-            fail!(
-                BlockError::InvalidConstructorTag {
-                    t: tag,
-                    s: "ValueFlow".to_string()
-                }
-            )
+            fail!(BlockError::InvalidConstructorTag {
+                t: tag,
+                s: "ValueFlow".to_string()
+            })
         }
         let cell1 = &mut SliceData::load_cell(cell.checked_drain_reference()?)?;
         self.from_prev_blk.read_from(cell1)?;
@@ -1330,12 +1431,10 @@ impl Deserializable for Block {
     fn read_from(&mut self, slice: &mut SliceData) -> Result<()> {
         let tag = slice.get_next_u32()?;
         if tag != BLOCK_TAG_1 && tag != BLOCK_TAG_2 {
-            fail!(
-                BlockError::InvalidConstructorTag {
-                    t: tag,
-                    s: "Block".to_string()
-                }
-            )
+            fail!(BlockError::InvalidConstructorTag {
+                t: tag,
+                s: "Block".to_string()
+            })
         }
         self.global_id.read_from(slice)?;
         self.info.read_from_reference(slice)?;
@@ -1357,7 +1456,7 @@ impl Serializable for Block {
     fn write_to(&self, builder: &mut BuilderData) -> Result<()> {
         let tag = match self.out_msg_queue_updates {
             None => BLOCK_TAG_1,
-            Some(_) => BLOCK_TAG_2
+            Some(_) => BLOCK_TAG_2,
         };
         builder.append_u32(tag)?;
         builder.append_i32(self.global_id)?;
@@ -1398,7 +1497,7 @@ chain_link$_
 pub type ProofChain = Vec<Cell>;
 
 // 32 is max len in fast finality. Anyway the length is additionaly checked in high level code
-const MAX_PROOF_CHAIN_LEN: usize = 32; 
+const MAX_PROOF_CHAIN_LEN: usize = 32;
 
 impl Serializable for ProofChain {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
@@ -1421,11 +1520,10 @@ impl Deserializable for ProofChain {
     fn read_from(&mut self, slice: &mut SliceData) -> Result<()> {
         let len = slice.get_next_int(8)? as usize;
         if !(1..=MAX_PROOF_CHAIN_LEN).contains(&len) {
-            fail!(
-                BlockError::InvalidData(
-                    format!("Failed check: `{} >= 1 && {} <= {}`", len, len, MAX_PROOF_CHAIN_LEN)
-                )
-            )
+            fail!(BlockError::InvalidData(format!(
+                "Failed check: `{} >= 1 && {} <= {}`",
+                len, len, MAX_PROOF_CHAIN_LEN
+            )))
         }
 
         let mut slice = Cow::Borrowed(slice);
@@ -1438,7 +1536,9 @@ impl Deserializable for ProofChain {
                 if slice.remaining_references() == 0 {
                     fail!(ExceptionCode::CellUnderflow)
                 }
-                slice = Cow::Owned(SliceData::load_cell(slice.to_mut().checked_drain_reference()?)?);
+                slice = Cow::Owned(SliceData::load_cell(
+                    slice.to_mut().checked_drain_reference()?,
+                )?);
             }
         }
         Ok(())
@@ -1461,10 +1561,7 @@ pub struct TopBlockDescr {
 }
 
 impl TopBlockDescr {
-    pub fn with_id_and_signatures(
-        proof_for: BlockIdExt,
-        signatures: BlockSignatures,
-    ) -> Self {
+    pub fn with_id_and_signatures(proof_for: BlockIdExt, signatures: BlockSignatures) -> Self {
         Self {
             proof_for,
             signatures: Some(InRefValue(signatures)),
@@ -1505,12 +1602,10 @@ impl Deserializable for TopBlockDescr {
     fn read_from(&mut self, slice: &mut SliceData) -> Result<()> {
         let tag = slice.get_next_byte()?;
         if tag != TOP_BLOCK_DESCR_TAG {
-            fail!(
-                BlockError::InvalidConstructorTag {
-                    t: tag.into(),
-                    s: "TopBlockDescr".to_string()
-                }
-            )
+            fail!(BlockError::InvalidConstructorTag {
+                t: tag.into(),
+                s: "TopBlockDescr".to_string()
+            })
         }
         self.proof_for.read_from(slice)?;
         self.signatures = BlockSignatures::read_maybe_from(slice)?;
@@ -1519,26 +1614,26 @@ impl Deserializable for TopBlockDescr {
     }
 }
 
-define_HashmapE!{TopBlockDescrCollection, 96, InRefValue<TopBlockDescr>}
+define_HashmapE! {TopBlockDescrCollection, 96, InRefValue<TopBlockDescr>}
 /*
 top_block_descr_set#4ac789f3 collection:(HashmapE 96 ^TopBlockDescr) = TopBlockDescrSet;
 */
 #[derive(Clone, Debug, Default)]
 pub struct TopBlockDescrSet {
-    collection: TopBlockDescrCollection
+    collection: TopBlockDescrCollection,
 }
 
 impl TopBlockDescrSet {
     pub fn get_top_block_descr(&self, shard: &ShardIdent) -> Result<Option<TopBlockDescr>> {
         match self.collection.0.get(shard.full_key_with_tag()?)? {
             Some(slice) => TopBlockDescr::construct_from_cell(slice.reference(0)?).map(Some),
-            None => Ok(None)
+            None => Ok(None),
         }
     }
     pub fn insert(&mut self, shard: &ShardIdent, descr: &TopBlockDescr) -> Result<()> {
         let key = shard.full_key_with_tag()?;
         let value = descr.serialize()?;
-        self.collection.0.setref(key, &value).map(|_|())
+        self.collection.0.setref(key, &value).map(|_| ())
     }
     pub fn is_empty(&self) -> bool {
         self.collection.is_empty()
@@ -1566,12 +1661,10 @@ impl Deserializable for TopBlockDescrSet {
     fn construct_from(slice: &mut SliceData) -> Result<Self> {
         let tag = slice.get_next_u32()?;
         if tag != TOPBLOCK_DESCR_SET_TAG {
-            fail!(
-                BlockError::InvalidConstructorTag {
-                    t: tag,
-                    s: "TopBlockDescrSet".to_string()
-                }
-            )
+            fail!(BlockError::InvalidConstructorTag {
+                t: tag,
+                s: "TopBlockDescrSet".to_string()
+            })
         }
         let collection = Deserializable::construct_from(slice)?;
         Ok(Self { collection })

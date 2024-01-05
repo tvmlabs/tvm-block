@@ -1,24 +1,23 @@
-<p align="center">
-  <a href="https://github.com/venom-blockchain/developer-program">
-    <img src="https://raw.githubusercontent.com/venom-blockchain/developer-program/main/vf-dev-program.png" alt="Logo" width="366.8" height="146.4">
-  </a>
-</p>
+# tvm-block
 
-# ever-block
-
-Blockchain-specific data types for Everscale/Venom nodes
+Blockchain-specific data types for TVM nodes
 
 ## Table of Contents
 
-- [About](#about)
-- [Getting Started](#getting-started)
-- [Usage](#usage)
-- [Contributing](#contributing)
-- [License](#license)
+- [tvm-block](#tvm-block)
+  - [Table of Contents](#table-of-contents)
+  - [About](#about)
+  - [Getting Started](#getting-started)
+    - [Prerequisites](#prerequisites)
+    - [Installing](#installing)
+  - [Usage](#usage)
+  - [Contributing](#contributing)
+  - [License](#license)
+  - [Tags](#tags)
 
 ## About
 
-Safe Rust implementation of operations with blockchain-specific data types for Everscale/Venom nodes.
+Safe Rust implementation of operations with blockchain-specific data types for TVM nodes.
 
 ## Getting Started
 
@@ -29,14 +28,14 @@ Rust complier v1.65+.
 ### Installing
 
 ```
-git clone --recurse-submodules https://github.com/tonlabs/ever-block.git
-cd ever-block
+git clone --recurse-submodules https://github.com/tvmlabs/tvm-block.git
+cd tvm-block
 cargo build --release
 ```
 
 ## Usage
 
-This project output is the library which is used as a part of Everscale/Venom node. Also it can be used in standalone tools.
+This project output is the library which is used as a part of TVM node. Also it can be used in standalone tools.
 
 ## Contributing
 
@@ -48,4 +47,4 @@ See the [LICENSE](LICENSE) file for details.
 
 ## Tags
 
-`blockchain` `everscale` `rust` `venom-blockchain` `venom-developer-program`
+`blockchain` `rust` `tvm`

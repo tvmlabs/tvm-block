@@ -14,8 +14,8 @@
 use std::fs::{read, read_dir};
 use std::path::Path;
 
-use ton_types::{AccountId, Cell, read_boc};
-use ton_types::read_single_root_boc;
+use tvm_types::{AccountId, Cell, read_boc};
+use tvm_types::read_single_root_boc;
 
 use crate::{
     hashmapaug::HashmapAugType,
@@ -292,7 +292,7 @@ fn read_file_de_and_serialise(filename: &Path) -> Cell {
 }
 
 #[test]
-fn test_real_ton_boc() {
+fn test_real_tvm_boc() {
     for entry in read_dir(Path::new("src/tests/data")).expect("Error reading BOCs dir") {
         let entry = entry.unwrap();
         let in_path = entry.path();
@@ -309,7 +309,7 @@ fn test_real_ton_boc() {
 }
 
 #[test]
-fn test_real_ton_mgs() {
+fn test_real_tvm_mgs() {
     //let in_path = Path::new("src/tests/data/wallet-query.boc");
     //let in_path = Path::new("src/tests/data/new-wallet-query.boc");
     //let in_path = Path::new("src/tests/data/send-to-query.boc"); 
@@ -411,21 +411,21 @@ fn test_real_block(in_path: &Path) -> Block {
 }
 
 #[test]
-fn test_real_ton_key_block() {
+fn test_real_tvm_key_block() {
     let in_path = Path::new("src/tests/data/key_block.boc");
     let block = test_real_block(in_path);
 
     if let Some(custom) = block.read_extra().unwrap().read_custom().unwrap() {
         if let Some(c) = custom.config() {
             crate::config_params::dump_config(&c.config_params);
-            // let bytes = ton_types::serialize_toc(c.config_params.data().unwrap()).unwrap();
+            // let bytes = tvm_types::serialize_toc(c.config_params.data().unwrap()).unwrap();
             // std::fs::write("src/tests/data/config.boc", bytes).unwrap();
         }
     }
 }
 
 #[test]
-fn test_all_real_ton_block_with_transaction() {
+fn test_all_real_tvm_block_with_transaction() {
     for entry in read_dir(
         Path::new("src/tests/data/block_with_transaction")
     ).expect("Error reading BOCs dir") {
@@ -443,7 +443,7 @@ fn test_all_real_ton_block_with_transaction() {
 }
 
 #[test]
-fn test_real_ton_config() {
+fn test_real_tvm_config() {
     // to get current config run lite_client with saveconfig config.boc
     let in_path = Path::new("src/tests/data/config.boc");
     println!("Config file: {:?}", in_path);

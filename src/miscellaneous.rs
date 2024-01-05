@@ -11,13 +11,9 @@
 * limitations under the License.
 */
 
-use crate::{
-    define_HashmapE,
-    Serializable, Deserializable,
-};
-use ton_types::{
-    Result, BuilderData, Cell, SliceData, UInt256,
-    HashmapE, HashmapType, HashmapSubtree, fail,
+use crate::{define_HashmapE, Deserializable, Serializable};
+use tvm_types::{
+    fail, BuilderData, Cell, HashmapE, HashmapSubtree, HashmapType, Result, SliceData, UInt256,
 };
 
 #[cfg(test)]
@@ -25,7 +21,7 @@ use ton_types::{
 mod tests;
 
 /*
-// key is [ shard:uint64 mc_seqno:uint32 ]  
+// key is [ shard:uint64 mc_seqno:uint32 ]
 _ (HashmapE 96 ProcessedUpto) = ProcessedInfo;
 */
 define_HashmapE!(ProcessedInfo, 96, ProcessedUpto);
@@ -40,10 +36,7 @@ pub struct ProcessedInfoKey {
 impl ProcessedInfoKey {
     // New instance ProcessedInfoKey structure
     pub fn with_params(shard: u64, mc_seqno: u32) -> Self {
-        ProcessedInfoKey {
-            shard,
-            mc_seqno,
-        }
+        ProcessedInfoKey { shard, mc_seqno }
     }
     pub fn seq_no(&self) -> u32 {
         self.mc_seqno
@@ -66,10 +59,9 @@ impl Deserializable for ProcessedInfoKey {
     }
 }
 
-
 ///
 /// Struct ProcessedUpto
-/// 
+///
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct ProcessedUpto {
     pub last_msg_lt: u64,
@@ -110,7 +102,7 @@ impl Deserializable for ProcessedUpto {
         self.original_shard = match cell.remaining_bits() {
             0 => None,
             64 => Some(cell.get_next_u64()?),
-            // Compatibility with data serialized with old version of the library 
+            // Compatibility with data serialized with old version of the library
             // (with "fast_finality" feature)
             1 => None,
             65 => Deserializable::construct_maybe_from(cell)?,
@@ -131,13 +123,13 @@ impl IhrPendingInfo {
 
 ///
 /// IhrPendingSince structure
-/// 
+///
 /// ihr_pending$_
 ///     import_lt:uint64
 /// = IhrPendingSince;
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct IhrPendingSince {
-	import_lt: u64,
+    import_lt: u64,
 }
 
 impl IhrPendingSince {
@@ -148,9 +140,7 @@ impl IhrPendingSince {
 
     // New instance IhrPendingSince structure
     pub fn with_import_lt(import_lt: u64) -> Self {
-        IhrPendingSince {
-            import_lt,
-        }   
+        IhrPendingSince { import_lt }
     }
 
     pub fn import_lt(&self) -> u64 {

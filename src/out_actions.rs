@@ -15,15 +15,15 @@ use crate::{
     error::BlockError, messages::Message, types::CurrencyCollection, Deserializable, Serializable,
 };
 use std::collections::LinkedList;
-use ton_types::{
+use tvm_types::{
     error, fail, AccountId, BuilderData, Cell, IBitstring, Result, SliceData, UInt256,
 };
 
-pub const ACTION_SEND_MSG:   u32 = 0x0ec3c86d;
-pub const ACTION_SET_CODE:   u32 = 0xad4de08e;
-pub const ACTION_RESERVE:    u32 = 0x36e6b809;
+pub const ACTION_SEND_MSG: u32 = 0x0ec3c86d;
+pub const ACTION_SET_CODE: u32 = 0xad4de08e;
+pub const ACTION_RESERVE: u32 = 0x36e6b809;
 pub const ACTION_CHANGE_LIB: u32 = 0x26fa1dd4;
-pub const ACTION_COPYLEFT:   u32 = 0x24486f7a;
+pub const ACTION_COPYLEFT: u32 = 0x24486f7a;
 
 #[cfg(test)]
 #[path = "tests/test_out_actions.rs"]
@@ -37,19 +37,16 @@ action_send_msg#0ec3c86d out_msg:^Message = OutAction;
 action_set_code#ad4de08e new_code:^Cell = OutAction;
 */
 
-
 ///
 /// List of output actions
 ///
 pub type OutActions = LinkedList<OutAction>;
-
 
 ///
 /// Implementation of Serializable for OutActions
 ///
 impl Serializable for OutActions {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
-
         let mut builder = BuilderData::new();
 
         for action in self.iter() {
@@ -65,7 +62,6 @@ impl Serializable for OutActions {
         Ok(())
     }
 }
-
 
 ///
 /// Implementation of Deserializable for OutActions
@@ -86,29 +82,21 @@ impl Deserializable for OutActions {
     }
 }
 
-
-
 ///
 /// Enum OutAction
 ///
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[allow(clippy::large_enum_variant)]
 pub enum OutAction {
-
     ///
     /// Action for send message
     ///
-    SendMsg {
-        mode: u8,
-        out_msg: Message,
-    },
+    SendMsg { mode: u8, out_msg: Message },
 
     ///
     /// Action for set new code of smart-contract
     ///
-    SetCode {
-        new_code: Cell,
-    },
+    SetCode { new_code: Cell },
 
     ///
     /// Action for reserving some account balance.
@@ -117,10 +105,7 @@ pub enum OutAction {
     /// the subsequent output actions would not be able
     /// to spend more money than the remainder.
     ///
-    ReserveCurrency {
-        mode: u8,
-        value: CurrencyCollection,
-    },
+    ReserveCurrency { mode: u8, value: CurrencyCollection },
 
     ///
     /// Action for change library.
@@ -134,13 +119,10 @@ pub enum OutAction {
     ///
     /// Action for revert reward for code to code creater.
     ///
-    CopyLeft {
-        license: u8,
-        address: AccountId,
-    },
+    CopyLeft { license: u8, address: AccountId },
 
     #[default]
-    None
+    None,
 }
 
 /// Flags of SendMsg action
@@ -151,8 +133,7 @@ pub const SENDMSG_DELETE_IF_EMPTY: u8 = 32;
 pub const SENDMSG_REMAINING_MSG_BALANCE: u8 = 64;
 pub const SENDMSG_ALL_BALANCE: u8 = 128;
 //mask for cheking valid flags
-pub const SENDMSG_VALID_FLAGS: u8 =
-    SENDMSG_ORDINARY
+pub const SENDMSG_VALID_FLAGS: u8 = SENDMSG_ORDINARY
     | SENDMSG_PAY_FEE_SEPARATELY
     | SENDMSG_IGNORE_ERROR
     | SENDMSG_DELETE_IF_EMPTY
@@ -166,11 +147,7 @@ pub const RESERVE_IGNORE_ERROR: u8 = 2;
 pub const RESERVE_PLUS_ORIG: u8 = 4;
 pub const RESERVE_REVERSE: u8 = 8;
 pub const RESERVE_VALID_MODES: u8 =
-    RESERVE_EXACTLY
-    | RESERVE_ALL_BUT
-    | RESERVE_IGNORE_ERROR
-    | RESERVE_PLUS_ORIG
-    | RESERVE_REVERSE;
+    RESERVE_EXACTLY | RESERVE_ALL_BUT | RESERVE_IGNORE_ERROR | RESERVE_PLUS_ORIG | RESERVE_REVERSE;
 
 pub const CHANGE_LIB_REMOVE: u8 = 0;
 pub const SET_LIB_CODE_REMOVE: u8 = 1;
@@ -181,7 +158,6 @@ pub const SET_LIB_CODE_ADD_PUBLIC: u8 = 2 * 2 + 1;
 /// Implementation of Output Actions
 ///
 impl OutAction {
-
     ///
     /// Create new instance OutAction::ActionSend
     ///
@@ -209,10 +185,9 @@ impl OutAction {
     pub fn new_change_library(mode: u8, code: Option<Cell>, hash: Option<UInt256>) -> Self {
         debug_assert!(match mode {
             CHANGE_LIB_REMOVE => code.is_none() && hash.is_some(),
-            SET_LIB_CODE_REMOVE |
-            SET_LIB_CODE_ADD_PRIVATE |
-            SET_LIB_CODE_ADD_PUBLIC => code.is_some() && hash.is_none(),
-            _ => false
+            SET_LIB_CODE_REMOVE | SET_LIB_CODE_ADD_PRIVATE | SET_LIB_CODE_ADD_PUBLIC =>
+                code.is_some() && hash.is_none(),
+            _ => false,
         });
         OutAction::ChangeLibrary { mode, code, hash }
     }
@@ -228,21 +203,31 @@ impl OutAction {
 impl Serializable for OutAction {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
         match self {
-            OutAction::SendMsg{ref mode, ref out_msg} => {
+            OutAction::SendMsg {
+                ref mode,
+                ref out_msg,
+            } => {
                 ACTION_SEND_MSG.write_to(cell)?; // tag
                 mode.write_to(cell)?;
                 cell.checked_append_reference(out_msg.serialize()?)?;
             }
-            OutAction::SetCode{ref new_code} => {
+            OutAction::SetCode { ref new_code } => {
                 ACTION_SET_CODE.write_to(cell)?; //tag
                 cell.checked_append_reference(new_code.clone())?;
             }
-            OutAction::ReserveCurrency{ref mode, ref value} => {
+            OutAction::ReserveCurrency {
+                ref mode,
+                ref value,
+            } => {
                 ACTION_RESERVE.write_to(cell)?; // tag
                 mode.write_to(cell)?;
                 value.write_to(cell)?;
             }
-            OutAction::ChangeLibrary{ref mode, ref code, ref hash} => {
+            OutAction::ChangeLibrary {
+                ref mode,
+                ref code,
+                ref hash,
+            } => {
                 ACTION_CHANGE_LIB.write_to(cell)?; // tag
                 mode.write_to(cell)?;
                 if let Some(value) = hash {
@@ -252,14 +237,15 @@ impl Serializable for OutAction {
                     cell.checked_append_reference(value.clone())?;
                 }
             }
-            OutAction::CopyLeft{ref license, ref address} => {
+            OutAction::CopyLeft {
+                ref license,
+                ref address,
+            } => {
                 ACTION_COPYLEFT.write_to(cell)?; // tag
                 license.write_to(cell)?;
                 address.write_to(cell)?;
             }
-            OutAction::None => fail!(
-                BlockError::InvalidOperation("self is None".to_string())
-            )
+            OutAction::None => fail!(BlockError::InvalidOperation("self is None".to_string())),
         }
         Ok(())
     }
@@ -268,9 +254,9 @@ impl Serializable for OutAction {
 impl Deserializable for OutAction {
     fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
         if cell.remaining_bits() < std::mem::size_of::<u32>() * 8 {
-            fail!(
-                BlockError::InvalidArg("cell can't be shorter than 32 bits".to_string())
-            )
+            fail!(BlockError::InvalidArg(
+                "cell can't be shorter than 32 bits".to_string()
+            ))
         }
         let tag = cell.get_next_u32()?;
         match tag {
@@ -279,9 +265,7 @@ impl Deserializable for OutAction {
                 let msg = Message::construct_from_reference(cell)?;
                 *self = OutAction::new_send(mode, msg);
             }
-            ACTION_SET_CODE => {
-                *self = OutAction::new_set(cell.checked_drain_reference()?)
-            }
+            ACTION_SET_CODE => *self = OutAction::new_set(cell.checked_drain_reference()?),
             ACTION_RESERVE => {
                 let mut mode = 0u8;
                 let mut value = CurrencyCollection::default();
@@ -309,12 +293,10 @@ impl Deserializable for OutAction {
                 address.read_from(cell)?;
                 *self = OutAction::new_copyleft(license, address);
             }
-            tag => fail!(
-                BlockError::InvalidConstructorTag {
-                    t: tag,
-                    s: "OutAction".to_string()
-                }
-            )
+            tag => fail!(BlockError::InvalidConstructorTag {
+                t: tag,
+                s: "OutAction".to_string()
+            }),
         }
         Ok(())
     }
