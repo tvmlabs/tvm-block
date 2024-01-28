@@ -1,27 +1,52 @@
-/*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
 
-use std::{fs::read, path::Path, time::Instant};
-use tvm_types::{read_single_root_boc, write_boc, AccountId, BocWriter, ExceptionCode, UsageTree};
+use std::fs::read;
+use std::path::Path;
+use std::time::Instant;
+
+use tvm_types::read_single_root_boc;
+use tvm_types::write_boc;
+use tvm_types::AccountId;
+use tvm_types::BocWriter;
+use tvm_types::ExceptionCode;
+use tvm_types::UsageTree;
 
 use super::*;
-use crate::{
-    define_HashmapE, generate_test_account_by_init_code_hash, hashmapaug::HashmapAugType, Block,
-    CurrencyCollection, Grams, HashmapE, HashmapType, InternalMessageHeader, MerkleProof, Message,
-    MsgAddressInt, MsgEnvelope, Number5, OutMsgQueueInfo, OutMsgQueueKey, OutQueueUpdate,
-    OutQueueUpdates, ProcessedInfoKey, ProcessedUpto, ShardIdent, ShardState, ShardStateSplit,
-    ShardStateUnsplit, StateInit, TickTock,
-};
+use crate::define_HashmapE;
+use crate::generate_test_account_by_init_code_hash;
+use crate::hashmapaug::HashmapAugType;
+use crate::Block;
+use crate::CurrencyCollection;
+use crate::Grams;
+use crate::HashmapE;
+use crate::HashmapType;
+use crate::InternalMessageHeader;
+use crate::MerkleProof;
+use crate::Message;
+use crate::MsgAddressInt;
+use crate::MsgEnvelope;
+use crate::Number5;
+use crate::OutMsgQueueInfo;
+use crate::OutMsgQueueKey;
+use crate::OutQueueUpdate;
+use crate::OutQueueUpdates;
+use crate::ProcessedInfoKey;
+use crate::ProcessedUpto;
+use crate::ShardIdent;
+use crate::ShardState;
+use crate::ShardStateSplit;
+use crate::ShardStateUnsplit;
+use crate::StateInit;
+use crate::TickTock;
 
 #[test]
 fn test_merkle_update() {
@@ -117,14 +142,8 @@ fn test_empty_merkle_update2() {
 
 #[test]
 fn test_merkle_update_for_other_bags() {
-    let cell1 = BuilderData::with_raw(vec![1, 2, 3, 0x80], 4)
-        .unwrap()
-        .into_cell()
-        .unwrap();
-    let cell2 = BuilderData::with_raw(vec![5, 6, 7, 0x80], 4)
-        .unwrap()
-        .into_cell()
-        .unwrap();
+    let cell1 = BuilderData::with_raw(vec![1, 2, 3, 0x80], 4).unwrap().into_cell().unwrap();
+    let cell2 = BuilderData::with_raw(vec![5, 6, 7, 0x80], 4).unwrap().into_cell().unwrap();
     let mupd = MerkleUpdate::create(&cell1, &cell2).unwrap();
     let cell3 = mupd.apply_for(&cell1).unwrap();
     assert_eq!(cell2, cell3);
@@ -164,8 +183,7 @@ fn test_merkle_update_with_hasmaps() {
     let _rng = rand::thread_rng();
     let mut map = MerkleUpdates::default();
     for _ in 0..100 {
-        map.set(&rand::random::<u32>(), &gen(rand::random::<u32>()))
-            .unwrap();
+        map.set(&rand::random::<u32>(), &gen(rand::random::<u32>())).unwrap();
     }
 
     let map_cell = map.serialize().unwrap();
@@ -184,9 +202,7 @@ fn test_merkle_update3() {
     b.append_raw(&[2], 8).unwrap();
 
     a.checked_append_reference(b.into_cell().unwrap()).unwrap();
-    root1
-        .checked_append_reference(a.into_cell().unwrap())
-        .unwrap();
+    root1.checked_append_reference(a.into_cell().unwrap()).unwrap();
 
     let mut root2 = BuilderData::new();
     let mut a = BuilderData::new();
@@ -196,14 +212,9 @@ fn test_merkle_update3() {
     a.append_raw(&[1], 8).unwrap();
     b.append_raw(&[2], 8).unwrap();
 
-    a.checked_append_reference(b.clone().into_cell().unwrap())
-        .unwrap();
-    root2
-        .checked_append_reference(b.into_cell().unwrap())
-        .unwrap();
-    root2
-        .checked_append_reference(a.into_cell().unwrap())
-        .unwrap();
+    a.checked_append_reference(b.clone().into_cell().unwrap()).unwrap();
+    root2.checked_append_reference(b.into_cell().unwrap()).unwrap();
+    root2.checked_append_reference(a.into_cell().unwrap()).unwrap();
 
     let root1 = root1.into_cell().unwrap();
     let root2 = root2.into_cell().unwrap();
@@ -223,21 +234,14 @@ fn check_one_mu(index: u64) {
     let (new_shard_state, _new_ss_len) = ss_from_file(&format!("{}{}", PATH_TO_SS, index));
 
     // apply update from block and compare result with new state
-    let updated_shard_state = block
-        .read_state_update()
-        .unwrap()
-        .apply_for(&shard_state)
-        .unwrap();
+    let updated_shard_state = block.read_state_update().unwrap().apply_for(&shard_state).unwrap();
     assert_eq!(new_shard_state.repr_hash(), updated_shard_state.repr_hash());
 
     // calculate own mu, apply it and compare result with new state
     let mu = MerkleUpdate::create(&shard_state, &new_shard_state).unwrap();
 
     let updated_shard_state_2 = mu.apply_for(&shard_state).unwrap();
-    assert_eq!(
-        new_shard_state.repr_hash(),
-        updated_shard_state_2.repr_hash()
-    );
+    assert_eq!(new_shard_state.repr_hash(), updated_shard_state_2.repr_hash());
 }
 
 fn block_from_file(path: &str) -> (Block, usize) {
@@ -260,12 +264,12 @@ fn ss_from_file(path: &str) -> (Cell, usize) {
 #[test]
 fn test_merkle_update_real_data() {
     for i in 2660..=2665
-    /*2690*/
+    // 2690
     {
         check_one_mu(i);
     }
     for i in 571525..=571527
-    /*571555*/
+    // 571555
     {
         check_one_mu(i);
     }
@@ -287,10 +291,7 @@ fn test_merkle_update_create_fast() {
                 .unwrap();
 
         let updated_shard_state_2 = mu.apply_for(&shard_state).unwrap();
-        assert_eq!(
-            new_shard_state.repr_hash(),
-            updated_shard_state_2.repr_hash()
-        );
+        assert_eq!(new_shard_state.repr_hash(), updated_shard_state_2.repr_hash());
     }
 }
 
@@ -309,9 +310,10 @@ fn prepare_data_for_bench(
     (ss, updates)
 }
 
-// To perform benchmark you should provide needed number of blocks (`blocks_count`)
-// named by their seqno starting from `start_number` in the `root_path`/blocks dir,
-// and shard state for start block in `root_path`/states dir (named like the start block)
+// To perform benchmark you should provide needed number of blocks
+// (`blocks_count`) named by their seqno starting from `start_number` in the
+// `root_path`/blocks dir, and shard state for start block in `root_path`/states
+// dir (named like the start block)
 #[ignore]
 #[test]
 fn merkle_update_apply_benchmark() {
@@ -325,12 +327,7 @@ fn merkle_update_apply_benchmark() {
         // Prepare
         let mut data = vec![];
         for _ in 0..threads {
-            data.push(prepare_data_for_bench(
-                root_path,
-                shard,
-                start_block,
-                blocks_count,
-            ));
+            data.push(prepare_data_for_bench(root_path, shard, start_block, blocks_count));
         }
 
         // Go
@@ -363,12 +360,8 @@ fn test_merkle_update4() {
     for i in 0..1024 {
         let mut new_root = BuilderData::new();
         new_root.append_raw(&[i as u8], 8).unwrap();
-        new_root
-            .checked_append_reference(root1.clone().into_cell().unwrap())
-            .unwrap();
-        new_root
-            .checked_append_reference(root1.into_cell().unwrap())
-            .unwrap();
+        new_root.checked_append_reference(root1.clone().into_cell().unwrap()).unwrap();
+        new_root.checked_append_reference(root1.into_cell().unwrap()).unwrap();
         root1 = new_root;
     }
 
@@ -380,14 +373,9 @@ fn test_merkle_update4() {
     a.append_raw(&[1], 8).unwrap();
     b.append_raw(&[2], 8).unwrap();
 
-    a.checked_append_reference(b.clone().into_cell().unwrap())
-        .unwrap();
-    root2
-        .checked_append_reference(b.into_cell().unwrap())
-        .unwrap();
-    root2
-        .checked_append_reference(a.into_cell().unwrap())
-        .unwrap();
+    a.checked_append_reference(b.clone().into_cell().unwrap()).unwrap();
+    root2.checked_append_reference(b.into_cell().unwrap()).unwrap();
+    root2.checked_append_reference(a.into_cell().unwrap()).unwrap();
 
     let root1 = root1.into_cell().unwrap();
     let root2 = root2.into_cell().unwrap();
@@ -417,12 +405,11 @@ fn test_merkle_update5() {
         c.into_cell().unwrap()
     }
 
-    /* old tree
-          root
-      c5        c6
-    c1  c2    c3  c4
-              c1  c2
-    */
+    // old tree
+    // root
+    // c5        c6
+    // c1  c2    c3  c4
+    // c1  c2
     let c1 = create_cell(&[1, 1, 1], &[]);
     let c2 = create_cell(&[2, 2, 2], &[]);
     let c3 = create_cell(&[3, 3, 3], &[]);
@@ -431,12 +418,11 @@ fn test_merkle_update5() {
     let c6 = create_cell(&[6, 6, 6], &[&c3, &c4]);
     let old_tree = create_cell(&[1], &[&c5, &c6]);
 
-    /* new tree
-          root'
-      c5        c6'
-    c1  c2    c3'  c4'
-              c1
-    */
+    // new tree
+    // root'
+    // c5        c6'
+    // c1  c2    c3'  c4'
+    // c1
     let c3_ = create_cell(&[3, 3, 4], &[]);
     let c4_ = create_cell(&[4, 4, 5, 6], &[]);
     let c6_ = create_cell(&[6, 6, 6], &[&c3_, &c4_]);
@@ -451,23 +437,14 @@ fn test_merkle_update5() {
         c1.repr_hash(),
         c2.repr_hash(),
     ];
-    let old_proof = MerkleProof::create(&old_tree, |h| cells.contains(h))
-        .unwrap()
-        .serialize()
-        .unwrap();
+    let old_proof =
+        MerkleProof::create(&old_tree, |h| cells.contains(h)).unwrap().serialize().unwrap();
 
     // merkle proof of c6' subtree in new tree
-    let cells = [
-        new_tree.repr_hash(),
-        c6_.repr_hash(),
-        c3_.repr_hash(),
-        c4_.repr_hash(),
-        c1.repr_hash(),
-    ];
-    let new_proof = MerkleProof::create(&new_tree, |h| cells.contains(h))
-        .unwrap()
-        .serialize()
-        .unwrap();
+    let cells =
+        [new_tree.repr_hash(), c6_.repr_hash(), c3_.repr_hash(), c4_.repr_hash(), c1.repr_hash()];
+    let new_proof =
+        MerkleProof::create(&new_tree, |h| cells.contains(h)).unwrap().serialize().unwrap();
 
     for i in 0..2 {
         println!("old_proof\n{:#.100}", old_proof);
@@ -477,16 +454,13 @@ fn test_merkle_update5() {
         let update = if i == 0 {
             // without optimisations
             let update = MerkleUpdate::create(&old_proof, &new_proof).unwrap();
-            println!(
-                "update (without optimisations)\n{:#.100}",
-                update.serialize().unwrap()
-            );
+            println!("update (without optimisations)\n{:#.100}", update.serialize().unwrap());
             update.serialize().unwrap()
         } else {
             // "fast"
             let cells = [
                 old_tree.repr_hash(),
-                c6.repr_hash(), /*c3.repr_hash(), c4.repr_hash(), c1.repr_hash()*/
+                c6.repr_hash(), // c3.repr_hash(), c4.repr_hash(), c1.repr_hash()
             ];
 
             let update =
@@ -521,13 +495,7 @@ fn test_merkle_update5() {
         let block = proof.proof.clone().virtualize(1);
 
         let update = MerkleUpdate::construct_from_cell(
-            block
-                .reference(0)
-                .unwrap()
-                .reference(0)
-                .unwrap()
-                .reference(0)
-                .unwrap(),
+            block.reference(0).unwrap().reference(0).unwrap().reference(0).unwrap(),
         )
         .unwrap();
 
@@ -586,27 +554,13 @@ fn test_out_msg_queue_updates() -> Result<()> {
     )?;
 
     let mut out_msg_queue_info = old_state.read_out_msg_queue_info()?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(0, 0x1234_5678_8765_4321, &get_message(1), 100500)?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(0, 0x1234_5678_8765_4322, &get_message(2), 100501)?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(1, 0x1234_5678_8765_4323, &get_message(3), 100502)?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(1, 0x1234_5678_8765_4324, &get_message(4), 100503)?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(2, 0x1234_5678_8765_4325, &get_message(5), 100504)?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(3, 0x1234_5670_8765_4325, &get_message(6), 100505)?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(2, 0x1234_5678_8765_4326, &get_message(7), 100504)?;
+    out_msg_queue_info.out_queue_mut().insert(0, 0x1234_5678_8765_4321, &get_message(1), 100500)?;
+    out_msg_queue_info.out_queue_mut().insert(0, 0x1234_5678_8765_4322, &get_message(2), 100501)?;
+    out_msg_queue_info.out_queue_mut().insert(1, 0x1234_5678_8765_4323, &get_message(3), 100502)?;
+    out_msg_queue_info.out_queue_mut().insert(1, 0x1234_5678_8765_4324, &get_message(4), 100503)?;
+    out_msg_queue_info.out_queue_mut().insert(2, 0x1234_5678_8765_4325, &get_message(5), 100504)?;
+    out_msg_queue_info.out_queue_mut().insert(3, 0x1234_5670_8765_4325, &get_message(6), 100505)?;
+    out_msg_queue_info.out_queue_mut().insert(2, 0x1234_5678_8765_4326, &get_message(7), 100504)?;
 
     let msg = get_message(7);
     let wc2_msg_key = OutMsgQueueKey::with_workchain_id_and_prefix(
@@ -614,11 +568,7 @@ fn test_out_msg_queue_updates() -> Result<()> {
         0x1234_5678_8765_4326,
         msg.message_cell().repr_hash(),
     );
-    out_msg_queue_info
-        .out_queue()
-        .get(&wc2_msg_key)
-        .unwrap()
-        .unwrap();
+    out_msg_queue_info.out_queue().get(&wc2_msg_key).unwrap().unwrap();
 
     old_state.write_out_msg_queue_info(&out_msg_queue_info)?;
 
@@ -626,12 +576,8 @@ fn test_out_msg_queue_updates() -> Result<()> {
 
     let mut new_state = old_state.clone();
     let mut out_msg_queue_info = new_state.read_out_msg_queue_info()?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(0, 0x1234_5678_8765_4322, &get_message(8), 200500)?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(0, 0x1234_5678_8765_4333, &get_message(9), 200501)?;
+    out_msg_queue_info.out_queue_mut().insert(0, 0x1234_5678_8765_4322, &get_message(8), 200500)?;
+    out_msg_queue_info.out_queue_mut().insert(0, 0x1234_5678_8765_4333, &get_message(9), 200501)?;
     out_msg_queue_info.out_queue_mut().insert(
         1,
         0x1234_5678_8765_4344,
@@ -641,13 +587,11 @@ fn test_out_msg_queue_updates() -> Result<()> {
 
     let mut key = ProcessedInfoKey::default();
     let mut val = ProcessedUpto::default();
-    out_msg_queue_info
-        .proc_info()
-        .iterate_with_keys(|k: ProcessedInfoKey, v: ProcessedUpto| {
-            key = k;
-            val = v;
-            Ok(false)
-        })?;
+    out_msg_queue_info.proc_info().iterate_with_keys(|k: ProcessedInfoKey, v: ProcessedUpto| {
+        key = k;
+        val = v;
+        Ok(false)
+    })?;
     val.last_msg_lt += 11000;
     out_msg_queue_info.proc_info_mut().set(&key, &val)?;
     new_state.write_out_msg_queue_info(&out_msg_queue_info)?;
@@ -674,8 +618,8 @@ fn test_out_msg_queue_updates() -> Result<()> {
     let update_e = OutMsgQueueInfo::prepare_update_for_wc(&old_root, &usage_tree_e, &new_root, 2)?;
     assert!(update_e.is_empty);
 
-    // Visit all cells in old state - in the test it is ok for optimised merkle update alg.
-    // In real collator we will use real usage tree.
+    // Visit all cells in old state - in the test it is ok for optimised merkle
+    // update alg. In real collator we will use real usage tree.
     let usage_tree_1 = UsageTree::with_root(old_root.clone());
     let _ = format!("{:#.100}", usage_tree_1.root_cell());
 
@@ -691,10 +635,7 @@ fn test_out_msg_queue_updates() -> Result<()> {
 
     let mut out_msg_queue_updates = OutQueueUpdates::default();
     out_msg_queue_updates.set(&1_i32, &update)?;
-    let block = Block {
-        out_msg_queue_updates: Some(out_msg_queue_updates),
-        ..Block::default()
-    };
+    let block = Block { out_msg_queue_updates: Some(out_msg_queue_updates), ..Block::default() };
 
     let block = Block::construct_from_bytes(&block.write_to_bytes()?)?;
 
@@ -702,12 +643,7 @@ fn test_out_msg_queue_updates() -> Result<()> {
 
     // Apply update from block to part of queue
 
-    let update = block
-        .out_msg_queue_updates
-        .as_ref()
-        .unwrap()
-        .get(&1_i32)?
-        .unwrap();
+    let update = block.out_msg_queue_updates.as_ref().unwrap().get(&1_i32)?.unwrap();
     let new_proof_root_2 = update.update.apply_for(&old_proof_root)?;
 
     assert_eq!(new_proof_root, new_proof_root_2);
@@ -716,14 +652,12 @@ fn test_out_msg_queue_updates() -> Result<()> {
 
     let virt_state: ShardStateUnsplit =
         MerkleProof::construct_from_cell(new_proof_root_2)?.virtualize()?;
-    let out_msg_queue = virt_state
-        .read_out_msg_queue_info()?
-        .out_queue()
-        .queue_for_wc_with_prefix(1)?;
+    let out_msg_queue =
+        virt_state.read_out_msg_queue_info()?.out_queue().queue_for_wc_with_prefix(1)?;
 
     out_msg_queue.iterate_with_keys(|_k, v| {
         let _m = v.read_out_msg()?.read_message()?;
-        //println!("{:x}  {}", k, m);
+        // println!("{:x}  {}", k, m);
         Ok(true)
     })?;
 
@@ -748,19 +682,14 @@ fn test_out_msg_queue_updates() -> Result<()> {
         }
     }
 
-    // Try to get message for another (pruned) WC. Make sure we get erorr about pruned branch
-    let result = virt_state
-        .read_out_msg_queue_info()?
-        .out_queue()
-        .queue_for_wc_with_prefix(3);
+    // Try to get message for another (pruned) WC. Make sure we get erorr about
+    // pruned branch
+    let result = virt_state.read_out_msg_queue_info()?.out_queue().queue_for_wc_with_prefix(3);
     assert!(result.is_err());
     test_for_pruned_branch_error(result);
 
     // Try to get pruned value
-    let result = virt_state
-        .read_out_msg_queue_info()?
-        .out_queue()
-        .get(&wc2_msg_key);
+    let result = virt_state.read_out_msg_queue_info()?.out_queue().get(&wc2_msg_key);
     assert!(result.is_err());
     test_for_pruned_branch_error(result);
 
@@ -776,24 +705,14 @@ fn test_prepare_empty_update_for_wc() -> Result<()> {
     )?;
 
     let mut out_msg_queue_info = old_state.read_out_msg_queue_info()?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(0, 0x1234_5678_8765_4321, &get_message(1), 100500)?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(1, 0x1234_5678_8765_4323, &get_message(2), 100502)?;
+    out_msg_queue_info.out_queue_mut().insert(0, 0x1234_5678_8765_4321, &get_message(1), 100500)?;
+    out_msg_queue_info.out_queue_mut().insert(1, 0x1234_5678_8765_4323, &get_message(2), 100502)?;
     let msg = get_message(3);
     let hash = msg.message_cell().repr_hash();
     let wc2_msg_key = OutMsgQueueKey::with_workchain_id_and_prefix(1, 0x1234_5678_8765_4326, hash);
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(1, 0x1234_5678_8765_4326, &msg, 100504)?;
+    out_msg_queue_info.out_queue_mut().insert(1, 0x1234_5678_8765_4326, &msg, 100504)?;
 
-    out_msg_queue_info
-        .out_queue()
-        .get(&wc2_msg_key)
-        .unwrap()
-        .unwrap();
+    out_msg_queue_info.out_queue().get(&wc2_msg_key).unwrap().unwrap();
 
     old_state.write_out_msg_queue_info(&out_msg_queue_info)?;
     let old_root = old_state.serialize()?;
@@ -811,20 +730,18 @@ fn test_prepare_empty_update_for_wc() -> Result<()> {
 
     let mut key = ProcessedInfoKey::default();
     let mut val = ProcessedUpto::default();
-    out_msg_queue_info
-        .proc_info()
-        .iterate_with_keys(|k: ProcessedInfoKey, v: ProcessedUpto| {
-            key = k;
-            val = v;
-            Ok(false)
-        })?;
+    out_msg_queue_info.proc_info().iterate_with_keys(|k: ProcessedInfoKey, v: ProcessedUpto| {
+        key = k;
+        val = v;
+        Ok(false)
+    })?;
     val.last_msg_lt += 11000;
     out_msg_queue_info.proc_info_mut().set(&key, &val)?;
     new_state.write_out_msg_queue_info(&out_msg_queue_info)?;
     let new_root = new_state.serialize()?;
 
-    // Visit all cells in old state - in the test it is ok for optimised merkle update alg.
-    // In real collator we will use real usage tree.
+    // Visit all cells in old state - in the test it is ok for optimised merkle
+    // update alg. In real collator we will use real usage tree.
     let usage_tree_1 = UsageTree::with_root(old_root.clone());
     let _ = format!("{:#.100}", usage_tree_1.root_cell());
 
@@ -862,15 +779,9 @@ fn test_out_msg_queue_merge_updates() -> Result<()> {
     old_state_left.set_shard(ShardIdent::with_tagged_prefix(0, 0x4000000000000000).unwrap());
 
     let mut out_msg_queue_info = old_state_left.read_out_msg_queue_info()?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(0, 0x1234_5678_8765_4321, &get_message(1), 100500)?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(0, 0x1234_5678_8765_4322, &get_message(2), 100501)?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(1, 0x1234_5678_8765_4323, &get_message(3), 100502)?;
+    out_msg_queue_info.out_queue_mut().insert(0, 0x1234_5678_8765_4321, &get_message(1), 100500)?;
+    out_msg_queue_info.out_queue_mut().insert(0, 0x1234_5678_8765_4322, &get_message(2), 100501)?;
+    out_msg_queue_info.out_queue_mut().insert(1, 0x1234_5678_8765_4323, &get_message(3), 100502)?;
     old_state_left.write_out_msg_queue_info(&out_msg_queue_info)?;
 
     // generate "old right" shard state with out messages
@@ -881,18 +792,10 @@ fn test_out_msg_queue_merge_updates() -> Result<()> {
     old_state_right.set_shard(ShardIdent::with_tagged_prefix(0, 0xc000000000000000).unwrap());
 
     let mut out_msg_queue_info = old_state_right.read_out_msg_queue_info()?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(1, 0x1234_5678_8765_4324, &get_message(4), 100503)?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(2, 0x1234_5678_8765_4325, &get_message(5), 100504)?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(3, 0x1234_5670_8765_4325, &get_message(6), 100505)?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(2, 0x1234_5678_8765_4326, &get_message(7), 100504)?;
+    out_msg_queue_info.out_queue_mut().insert(1, 0x1234_5678_8765_4324, &get_message(4), 100503)?;
+    out_msg_queue_info.out_queue_mut().insert(2, 0x1234_5678_8765_4325, &get_message(5), 100504)?;
+    out_msg_queue_info.out_queue_mut().insert(3, 0x1234_5670_8765_4325, &get_message(6), 100505)?;
+    out_msg_queue_info.out_queue_mut().insert(2, 0x1234_5678_8765_4326, &get_message(7), 100504)?;
     old_state_right.write_out_msg_queue_info(&out_msg_queue_info)?;
 
     // generate "new" shard state
@@ -902,34 +805,20 @@ fn test_out_msg_queue_merge_updates() -> Result<()> {
     )?;
     new_state.set_shard(ShardIdent::with_tagged_prefix(0, 0x8000000000000000).unwrap());
     let mut out_msg_queue_info = new_state.read_out_msg_queue_info()?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(0, 0x1234_5678_8765_4321, &get_message(1), 100500)?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(1, 0x1234_5678_8765_4323, &get_message(3), 100502)?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(1, 0x1234_5678_8765_4324, &get_message(4), 100503)?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(3, 0x1234_5670_8765_4325, &get_message(6), 100505)?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(2, 0x1234_5678_8765_4326, &get_message(7), 100504)?;
-    out_msg_queue_info
-        .out_queue_mut()
-        .insert(2, 0x1234_5678_8765_4111, &get_message(8), 100544)?;
+    out_msg_queue_info.out_queue_mut().insert(0, 0x1234_5678_8765_4321, &get_message(1), 100500)?;
+    out_msg_queue_info.out_queue_mut().insert(1, 0x1234_5678_8765_4323, &get_message(3), 100502)?;
+    out_msg_queue_info.out_queue_mut().insert(1, 0x1234_5678_8765_4324, &get_message(4), 100503)?;
+    out_msg_queue_info.out_queue_mut().insert(3, 0x1234_5670_8765_4325, &get_message(6), 100505)?;
+    out_msg_queue_info.out_queue_mut().insert(2, 0x1234_5678_8765_4326, &get_message(7), 100504)?;
+    out_msg_queue_info.out_queue_mut().insert(2, 0x1234_5678_8765_4111, &get_message(8), 100544)?;
 
     let mut key = ProcessedInfoKey::default();
     let mut val = ProcessedUpto::default();
-    out_msg_queue_info
-        .proc_info()
-        .iterate_with_keys(|k: ProcessedInfoKey, v: ProcessedUpto| {
-            key = k;
-            val = v;
-            Ok(false)
-        })?;
+    out_msg_queue_info.proc_info().iterate_with_keys(|k: ProcessedInfoKey, v: ProcessedUpto| {
+        key = k;
+        val = v;
+        Ok(false)
+    })?;
     val.last_msg_lt += 11000;
     out_msg_queue_info.proc_info_mut().set(&key, &val)?;
     new_state.write_out_msg_queue_info(&out_msg_queue_info)?;
@@ -948,13 +837,9 @@ fn test_out_msg_queue_merge_updates() -> Result<()> {
 
     // create merkle update from old queue proof to new
 
-    // Visit all cells in old state - in the test it is ok for optimised merkle update alg.
-    // In real collator we will use real usage tree.
-    let old_root = (ShardStateSplit {
-        left: old_root_left,
-        right: old_root_right,
-    })
-    .serialize()?;
+    // Visit all cells in old state - in the test it is ok for optimised merkle
+    // update alg. In real collator we will use real usage tree.
+    let old_root = (ShardStateSplit { left: old_root_left, right: old_root_right }).serialize()?;
     let usage_tree_1 = UsageTree::with_root(old_root.clone());
     let _ = format!("{:#.100}", usage_tree_1.root_cell());
 
@@ -963,10 +848,7 @@ fn test_out_msg_queue_merge_updates() -> Result<()> {
     let update = OutQueueUpdate::construct_from_bytes(&update.write_to_bytes()?)?;
 
     // construct split root
-    let ss_split = ShardStateSplit {
-        left: old_proof_left.proof,
-        right: old_proof_right.proof,
-    };
+    let ss_split = ShardStateSplit { left: old_proof_left.proof, right: old_proof_right.proof };
     let old_proof_root = ss_split.serialize()?;
     let old_proof_root = MerkleProof {
         hash: old_proof_root.hash(0),
@@ -1006,10 +888,7 @@ fn test_prepare_first_update_for_wc() -> Result<()> {
     // println!("\n\n\nupdate\n{:#.100}", update.serialize()?);
     // println!("\n\n\n next_state_root \n{:#.100}", next_state_root);
 
-    assert_eq!(
-        queue_proof.proof.virtualize(1).repr_hash(),
-        next_state_root.repr_hash()
-    );
+    assert_eq!(queue_proof.proof.virtualize(1).repr_hash(), next_state_root.repr_hash());
 
     Ok(())
 }

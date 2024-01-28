@@ -1,48 +1,66 @@
-/*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
 
-use crate::{
-    define_HashmapAugE,
-    envelope_message::MsgEnvelope,
-    error::BlockError,
-    hashmapaug::{Augmentable, Augmentation, HashmapAugType},
-    inbound_messages::InMsg,
-    messages::{CommonMsgInfo, Message},
-    miscellaneous::{IhrPendingInfo, ProcessedInfo},
-    shard::{AccountIdPrefixFull, ShardState},
-    transactions::Transaction,
-    types::{AddSub, ChildCell, CurrencyCollection},
-    Deserializable, MerkleProof, MerkleUpdate, OutQueueUpdate, Serializable, ShardStateUnsplit,
-};
-use std::{collections::HashSet, fmt};
-use tvm_types::{
-    error, fail, hm_label, AccountId, BuilderData, Cell, HashmapSubtree, HashmapType, IBitstring,
-    Result, SliceData, UInt256, UsageTree,
-};
+use std::collections::HashSet;
+use std::fmt;
+
+use tvm_types::error;
+use tvm_types::fail;
+use tvm_types::hm_label;
+use tvm_types::AccountId;
+use tvm_types::BuilderData;
+use tvm_types::Cell;
+use tvm_types::HashmapSubtree;
+use tvm_types::HashmapType;
+use tvm_types::IBitstring;
+use tvm_types::Result;
+use tvm_types::SliceData;
+use tvm_types::UInt256;
+use tvm_types::UsageTree;
+
+use crate::define_HashmapAugE;
+use crate::envelope_message::MsgEnvelope;
+use crate::error::BlockError;
+use crate::hashmapaug::Augmentable;
+use crate::hashmapaug::Augmentation;
+use crate::hashmapaug::HashmapAugType;
+use crate::inbound_messages::InMsg;
+use crate::messages::CommonMsgInfo;
+use crate::messages::Message;
+use crate::miscellaneous::IhrPendingInfo;
+use crate::miscellaneous::ProcessedInfo;
+use crate::shard::AccountIdPrefixFull;
+use crate::shard::ShardState;
+use crate::transactions::Transaction;
+use crate::types::AddSub;
+use crate::types::ChildCell;
+use crate::types::CurrencyCollection;
+use crate::Deserializable;
+use crate::MerkleProof;
+use crate::MerkleUpdate;
+use crate::OutQueueUpdate;
+use crate::Serializable;
+use crate::ShardStateUnsplit;
 
 #[cfg(test)]
 #[path = "tests/test_out_msgs.rs"]
 mod tests;
 
-/*
-        3.3 Outbound message queue and descriptors
- This section discusses OutMsgDescr, the structure representing all outbound
- messages of a block, along with their envelopes and brief descriptions of the
- reasons for including them into OutMsgDescr. This structure also describes
- all modifications of OutMsgQueue, which is a part of the shardchain state.
-*/
+// 3.3 Outbound message queue and descriptors
+// This section discusses OutMsgDescr, the structure representing all outbound
+// messages of a block, along with their envelopes and brief descriptions of the
+// reasons for including them into OutMsgDescr. This structure also describes
+// all modifications of OutMsgQueue, which is a part of the shardchain state.
 
-//constructor tags of InMsg variants (only wrote bits are used (3 or 4))
+// constructor tags of InMsg variants (only wrote bits are used (3 or 4))
 const OUT_MSG_EXT: u8 = 0b000;
 const OUT_MSG_IMM: u8 = 0b010;
 const OUT_MSG_NEW: u8 = 0b001;
@@ -52,13 +70,9 @@ const OUT_MSG_DEQ: u8 = 0b1100; // is not used due CapShortDequeue
 const OUT_MSG_DEQ_SHORT: u8 = 0b1101;
 const OUT_MSG_TRDEQ: u8 = 0b111; // is not used due CapOffHypercube
 
-/*
-_ enqueued_lt:uint64 out_msg:^MsgEnvelope = EnqueuedMsg;
-*/
+// _ enqueued_lt:uint64 out_msg:^MsgEnvelope = EnqueuedMsg;
 
-///
 /// EnqueuedMsg structure
-///
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct EnqueuedMsg {
     pub enqueued_lt: u64,
@@ -73,17 +87,13 @@ impl EnqueuedMsg {
 
     /// New instance EnqueuedMsg structure
     pub fn with_param(enqueued_lt: u64, env: &MsgEnvelope) -> Result<Self> {
-        Ok(EnqueuedMsg {
-            enqueued_lt,
-            out_msg: ChildCell::with_struct(env)?,
-        })
+        Ok(EnqueuedMsg { enqueued_lt, out_msg: ChildCell::with_struct(env)? })
     }
 
     pub fn created_lt(&self) -> Result<u64> {
         let env = self.read_out_msg()?;
         let msg = env.read_message()?;
-        msg.lt()
-            .ok_or_else(|| error!("wrong message type {:x}", env.message_cell().repr_hash()))
+        msg.lt().ok_or_else(|| error!("wrong message type {:x}", env.message_cell().repr_hash()))
     }
 
     pub fn enqueued_lt(&self) -> u64 {
@@ -101,10 +111,7 @@ impl EnqueuedMsg {
 
 impl Augmentation<u64> for EnqueuedMsg {
     fn aug(&self) -> Result<u64> {
-        self.read_out_msg()?
-            .read_message()?
-            .lt()
-            .ok_or_else(|| error!("wrong message type"))
+        self.read_out_msg()?.read_message()?.lt().ok_or_else(|| error!("wrong message type"))
     }
 }
 
@@ -130,7 +137,8 @@ impl Deserializable for EnqueuedMsg {
 define_HashmapAugE!(OutMsgDescr, 256, UInt256, OutMsg, CurrencyCollection);
 
 impl OutMsgDescr {
-    /// insert new or replace existing (returning prev existing value), key - hash of Message
+    /// insert new or replace existing (returning prev existing value), key -
+    /// hash of Message
     pub fn insert_with_key_return_prev(
         &mut self,
         key: UInt256,
@@ -139,6 +147,7 @@ impl OutMsgDescr {
         let aug = out_msg.aug()?;
         self.set_return_prev(&key, out_msg, &aug)
     }
+
     /// insert new or replace existing, key - hash of Message
     pub fn insert_with_key(&mut self, key: UInt256, out_msg: &OutMsg) -> Result<()> {
         self.insert_with_key_return_prev(key, out_msg)?;
@@ -149,6 +158,7 @@ impl OutMsgDescr {
     pub fn insert_return_prev(&mut self, out_msg: &OutMsg) -> Result<()> {
         self.insert_with_key(out_msg.read_message_hash()?, out_msg)
     }
+
     /// insert new or replace existing
     pub fn insert(&mut self, out_msg: &OutMsg) -> Result<()> {
         self.insert_return_prev(out_msg)?;
@@ -164,12 +174,9 @@ impl OutMsgDescr {
         exported: &CurrencyCollection,
     ) -> Result<Option<SliceData>> {
         self.set_builder_serialized(key.clone(), &msg_slice.as_builder(), exported)
-            .map_err(|_| {
-                error!(BlockError::Other(
-                    "Error insert serialized message".to_string()
-                ))
-            })
+            .map_err(|_| error!(BlockError::Other("Error insert serialized message".to_string())))
     }
+
     pub fn insert_serialized(
         &mut self,
         key: &SliceData,
@@ -188,10 +195,12 @@ impl OutMsgDescr {
 /////////////////////////////////////////////////////////////////////////////////////////
 // Blockchain: 3.3.6
 // _ (HashmapAugE 352 EnqueuedMsg uint64) = OutMsgQueue;
-// 352 = 32 - dest workchain_id, 64 - first 64 bit of dest account address, 256 - message hash
+// 352 = 32 - dest workchain_id, 64 - first 64 bit of dest account address, 256
+// - message hash
 define_HashmapAugE!(OutMsgQueue, 352, OutMsgQueueKey, EnqueuedMsg, MsgTime);
 impl HashmapSubtree for OutMsgQueue {}
-// impl HashmapAugRemover<OutMsgQueueKey, EnqueuedMsg, MsgTime> for OutMsgQueue {}
+// impl HashmapAugRemover<OutMsgQueueKey, EnqueuedMsg, MsgTime> for OutMsgQueue
+// {}
 
 pub type MsgTime = u64;
 
@@ -234,11 +243,9 @@ impl OutMsgQueue {
     }
 }
 
-///
 /// The key used for an outbound message m is the concatenation of its 32-bit
 /// next-hop workchain_id, the first 64 bits of the next-hop address inside that
 /// workchain, and the representation hash Hash(m) of the message m itself
-///
 
 #[derive(Clone, Eq, Hash, Debug, PartialEq, Default)]
 pub struct OutMsgQueueKey {
@@ -249,11 +256,7 @@ pub struct OutMsgQueueKey {
 
 impl OutMsgQueueKey {
     pub fn with_workchain_id_and_prefix(workchain_id: i32, prefix: u64, hash: UInt256) -> Self {
-        Self {
-            workchain_id,
-            prefix,
-            hash,
-        }
+        Self { workchain_id, prefix, hash }
     }
 
     // Note! hash of Message
@@ -290,18 +293,12 @@ impl fmt::LowerHex for OutMsgQueueKey {
         if f.alternate() {
             write!(f, "0x")?;
         }
-        write!(
-            f,
-            "{}:{:016X}, hash: {:x}",
-            self.workchain_id, self.prefix, self.hash
-        )
+        write!(f, "{}:{:016X}, hash: {:x}", self.workchain_id, self.prefix, self.hash)
     }
 }
 
-/*
-_ out_queue:OutMsgQueue proc_info:ProcessedInfo
-ihr_pending:IhrPendingInfo = OutMsgQueueInfo;
-*/
+// _ out_queue:OutMsgQueue proc_info:ProcessedInfo
+// ihr_pending:IhrPendingInfo = OutMsgQueueInfo;
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct OutMsgQueueInfo {
     out_queue: OutMsgQueue,
@@ -327,11 +324,7 @@ impl OutMsgQueueInfo {
         proc_info: ProcessedInfo,
         ihr_pending: IhrPendingInfo,
     ) -> Self {
-        OutMsgQueueInfo {
-            out_queue,
-            proc_info,
-            ihr_pending,
-        }
+        OutMsgQueueInfo { out_queue, proc_info, ihr_pending }
     }
 
     pub fn out_queue(&self) -> &OutMsgQueue {
@@ -448,16 +441,11 @@ impl OutMsgQueueInfo {
             let queue_info = state.read_out_msg_queue_info()?;
             let sub_queue_root_hash = queue_info
                 .out_queue()
-                .subtree_root_cell(&SliceData::load_bitstring(
-                    workchain_id.write_to_new_cell()?,
-                )?)?
+                .subtree_root_cell(&SliceData::load_bitstring(workchain_id.write_to_new_cell()?)?)?
                 .map(|c| c.repr_hash())
                 .unwrap_or_default();
-            let proc_info_root_hash = queue_info
-                .proc_info()
-                .root()
-                .map(|c| c.repr_hash())
-                .unwrap_or_default();
+            let proc_info_root_hash =
+                queue_info.proc_info().root().map(|c| c.repr_hash()).unwrap_or_default();
             Ok((sub_queue_root_hash, proc_info_root_hash))
         }
 
@@ -512,10 +500,8 @@ impl Deserializable for OutMsgQueueInfo {
     }
 }
 
-///
 /// OutMsg structure
 /// blockchain spec 3.3.3. Descriptor of an outbound message
-///
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum OutMsg {
     #[default]
@@ -524,19 +510,23 @@ pub enum OutMsg {
     /// msg_export_ext$000 msg:^(Message Any) transaction:^Transaction = OutMsg;
     External(OutMsgExternal),
     /// Ordinary (internal) outbound messages
-    /// msg_export_new$001 out_msg:^MsgEnvelope transaction:^Transaction = OutMsg;
+    /// msg_export_new$001 out_msg:^MsgEnvelope transaction:^Transaction =
+    /// OutMsg;
     New(OutMsgNew),
     /// Immediately processed internal outbound messages
-    /// msg_export_imm$010 out_msg:^MsgEnvelope transaction:^Transaction reimport:^InMsg = OutMsg;
+    /// msg_export_imm$010 out_msg:^MsgEnvelope transaction:^Transaction
+    /// reimport:^InMsg = OutMsg;
     Immediate(OutMsgImmediate),
     /// Transit (internal) outbound messages
     /// msg_export_tr$011 out_msg:^MsgEnvelope imported:^InMsg = OutMsg;
     Transit(OutMsgTransit),
     /// msg_export_deq_imm$100 out_msg:^MsgEnvelope reimport:^InMsg = OutMsg;
     DequeueImmediate(OutMsgDequeueImmediate),
-    /// msg_export_deq$1100 out_msg:^MsgEnvelope import_block_lt:uint63 = OutMsg;
+    /// msg_export_deq$1100 out_msg:^MsgEnvelope import_block_lt:uint63 =
+    /// OutMsg;
     Dequeue(OutMsgDequeue),
-    /// msg_export_deq_short$1101 msg_env_hash:bits256 next_workchain:int32 next_addr_pfx:uint64 import_block_lt:uint64 = OutMsg;
+    /// msg_export_deq_short$1101 msg_env_hash:bits256 next_workchain:int32
+    /// next_addr_pfx:uint64 import_block_lt:uint64 = OutMsg;
     DequeueShort(OutMsgDequeueShort),
     /// msg_export_tr_req$111 out_msg:^MsgEnvelope imported:^InMsg = OutMsg;
     TransitRequeued(OutMsgTransitRequeued),
@@ -547,18 +537,17 @@ impl OutMsg {
     pub fn external(msg_cell: Cell, tr_cell: Cell) -> OutMsg {
         OutMsg::External(OutMsgExternal::with_cells(msg_cell, tr_cell))
     }
+
     /// Create Ordinary internal message
     pub fn new(env_cell: Cell, tr_cell: Cell) -> OutMsg {
         OutMsg::New(OutMsgNew::with_cells(env_cell, tr_cell))
     }
+
     /// Create Immediate internal message
     pub fn immediate(env_cell: Cell, tr_cell: Cell, reimport_msg_cell: Cell) -> OutMsg {
-        OutMsg::Immediate(OutMsgImmediate::with_cells(
-            env_cell,
-            tr_cell,
-            reimport_msg_cell,
-        ))
+        OutMsg::Immediate(OutMsgImmediate::with_cells(env_cell, tr_cell, reimport_msg_cell))
     }
+
     /// Create Transit internal message
     pub fn transit(env_cell: Cell, imported_cell: Cell, requeue: bool) -> OutMsg {
         if requeue {
@@ -567,10 +556,12 @@ impl OutMsg {
             OutMsg::Transit(OutMsgTransit::with_cells(env_cell, imported_cell))
         }
     }
+
     /// Create Dequeue internal message
     pub fn dequeue_long(env_cell: Cell, import_block_lt: u64) -> OutMsg {
         OutMsg::Dequeue(OutMsgDequeue::with_cells(env_cell, import_block_lt))
     }
+
     /// Create Dequeue Short internal message
     pub fn dequeue_short(
         msg_env_hash: UInt256,
@@ -587,10 +578,7 @@ impl OutMsg {
 
     /// Create Dequeue immediate message
     pub fn dequeue_immediate(env_cell: Cell, reimport_msg_cell: Cell) -> OutMsg {
-        OutMsg::DequeueImmediate(OutMsgDequeueImmediate::with_cells(
-            env_cell,
-            reimport_msg_cell,
-        ))
+        OutMsg::DequeueImmediate(OutMsgDequeueImmediate::with_cells(env_cell, reimport_msg_cell))
     }
 
     /// Check if is valid message
@@ -612,9 +600,7 @@ impl OutMsg {
         }
     }
 
-    ///
     /// the function returns the message envelop (if exists)
-    ///
     pub fn read_out_message(&self) -> Result<Option<MsgEnvelope>> {
         Ok(match self {
             OutMsg::External(_) => None,
@@ -629,9 +615,7 @@ impl OutMsg {
         })
     }
 
-    ///
     /// the function returns the message envelop (if exists)
-    ///
     pub fn out_message_cell(&self) -> Option<Cell> {
         match self {
             OutMsg::External(_) => None,
@@ -646,9 +630,7 @@ impl OutMsg {
         }
     }
 
-    ///
     /// the function returns the message (if exists)
-    ///
     pub fn read_message(&self) -> Result<Option<Message>> {
         Ok(match self {
             OutMsg::External(ref x) => Some(x.read_message()?),
@@ -663,9 +645,7 @@ impl OutMsg {
         })
     }
 
-    ///
     /// the function returns the messages hash
-    ///
     pub fn read_message_hash(&self) -> Result<UInt256> {
         Ok(match self {
             OutMsg::External(ref x) => x.message_cell().repr_hash(),
@@ -680,9 +660,7 @@ impl OutMsg {
         })
     }
 
-    ///
     /// the function returns the message cell (if exists)
-    ///
     pub fn message_cell(&self) -> Result<Option<Cell>> {
         Ok(match self {
             OutMsg::External(ref x) => Some(x.message_cell()),
@@ -697,9 +675,7 @@ impl OutMsg {
         })
     }
 
-    ///
     /// the function returns the message envelope hash (if exists)
-    ///
     pub fn envelope_message_hash(&self) -> Option<UInt256> {
         match self {
             OutMsg::External(_) => None,
@@ -800,16 +776,16 @@ impl Augmentation<CurrencyCollection> for OutMsg {
             }
             OutMsg::None => fail!("wrong OutMsg type"),
             // for other types - no value exported
-            _ => (), // OutMsg::External(ref x) =>
-                     // OutMsg::Immediate(ref x) =>
-                     // OutMsg::Dequeue(ref x) =>
-                     // OutMsg::DequeueImmediate(ref x) =>
+            _ => (), /* OutMsg::External(ref x) =>
+                      * OutMsg::Immediate(ref x) =>
+                      * OutMsg::Dequeue(ref x) =>
+                      * OutMsg::DequeueImmediate(ref x) => */
         }
         Ok(exported)
     }
 }
 
-///internal helper macros for reading InMsg variants
+/// internal helper macros for reading InMsg variants
 macro_rules! read_out_msg_descr {
     ($cell:expr, $msg_descr:tt, $variant:ident) => {{
         let mut x = $msg_descr::default();
@@ -818,7 +794,7 @@ macro_rules! read_out_msg_descr {
     }};
 }
 
-///internal helper macros for reading InMsg variants
+/// internal helper macros for reading InMsg variants
 macro_rules! write_out_ctor_tag {
     ($builder:expr, $tag:ident, $tag_len:expr) => {{
         $builder.append_bits($tag as usize, $tag_len).unwrap();
@@ -843,9 +819,9 @@ impl Serializable for OutMsg {
             OutMsg::TransitRequeued(ref x) => {
                 x.write_to(write_out_ctor_tag!(cell, OUT_MSG_TRDEQ, 3))
             }
-            OutMsg::None => fail!(BlockError::InvalidOperation(
-                "OutMsg::None can't be serialized".to_string()
-            )),
+            OutMsg::None => {
+                fail!(BlockError::InvalidOperation("OutMsg::None can't be serialized".to_string()))
+            }
         }
     }
 }
@@ -872,19 +848,14 @@ impl Deserializable for OutMsg {
                 }
             }
             tag => {
-                fail!(BlockError::InvalidConstructorTag {
-                    t: tag as u32,
-                    s: "OutMsg".to_string()
-                });
+                fail!(BlockError::InvalidConstructorTag { t: tag as u32, s: "OutMsg".to_string() });
             }
         };
         Ok(())
     }
 }
 
-///
 /// msg_export_ext$000 msg:^Message transaction:^Transaction = OutMsg;
-///
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct OutMsgExternal {
     msg: ChildCell<Message>,
@@ -932,9 +903,8 @@ impl Deserializable for OutMsgExternal {
     }
 }
 
-///
-/// msg_export_imm$010 out_msg:^MsgEnvelope transaction:^Transaction reimport:^InMsg = OutMsg;
-///
+/// msg_export_imm$010 out_msg:^MsgEnvelope transaction:^Transaction
+/// reimport:^InMsg = OutMsg;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct OutMsgImmediate {
@@ -995,9 +965,7 @@ impl Deserializable for OutMsgImmediate {
     }
 }
 
-///
 /// msg_export_new$001 out_msg:^MsgEnvelope transaction:^Transaction = OutMsg;
-///
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct OutMsgNew {
@@ -1046,9 +1014,7 @@ impl Deserializable for OutMsgNew {
     }
 }
 
-///
 /// msg_export_tr$011 out_msg:^MsgEnvelope imported:^InMsg = OutMsg;
-///
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct OutMsgTransit {
@@ -1097,9 +1063,7 @@ impl Deserializable for OutMsgTransit {
     }
 }
 
-///
 /// msg_export_deq$110 out_msg:^MsgEnvelope import_block_lt:uint64 = OutMsg;
-///
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct OutMsgDequeueImmediate {
@@ -1148,9 +1112,7 @@ impl Deserializable for OutMsgDequeueImmediate {
     }
 }
 
-///
 /// msg_export_deq$1100 out_msg:^MsgEnvelope import_block_lt:uint63 = OutMsg;
-///
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct OutMsgDequeue {
@@ -1160,10 +1122,7 @@ pub struct OutMsgDequeue {
 
 impl OutMsgDequeue {
     pub fn with_cells(env_cell: Cell, lt: u64) -> Self {
-        OutMsgDequeue {
-            out_msg: ChildCell::with_cell(env_cell),
-            import_block_lt: lt,
-        }
+        OutMsgDequeue { out_msg: ChildCell::with_cell(env_cell), import_block_lt: lt }
     }
 
     pub fn read_out_message(&self) -> Result<MsgEnvelope> {
@@ -1205,9 +1164,8 @@ impl Deserializable for OutMsgDequeue {
     }
 }
 
-///
-/// msg_export_deq_short$1101 msg_env_hash:bits256 next_workchain:int32 next_addr_pfx:uint64 import_block_lt:uint64 = OutMsg;
-///
+/// msg_export_deq_short$1101 msg_env_hash:bits256 next_workchain:int32
+/// next_addr_pfx:uint64 import_block_lt:uint64 = OutMsg;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct OutMsgDequeueShort {
@@ -1237,9 +1195,7 @@ impl Deserializable for OutMsgDequeueShort {
     }
 }
 
-///
 /// msg_export_tr_req$111 out_msg:^MsgEnvelope imported:^InMsg = OutMsg;
-///
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct OutMsgTransitRequeued {

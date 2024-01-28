@@ -1,21 +1,23 @@
-/*
-* Copyright (C) 2019-2023 EverX. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2023 EverX. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
 #![allow(clippy::inconsistent_digit_grouping, clippy::unusual_byte_groupings)]
 
-use super::*;
-use crate::{write_read_and_assert, Serializable, ValidatorDescr, VarUInteger32};
 use rand::Rng;
 use tvm_types::read_single_root_boc;
+
+use super::*;
+use crate::write_read_and_assert;
+use crate::Serializable;
+use crate::ValidatorDescr;
+use crate::VarUInteger32;
 
 fn get_config_param0() -> ConfigParam0 {
     let mut c = ConfigParam0::default();
@@ -95,12 +97,10 @@ fn get_config_param18() -> ConfigParam18 {
 fn test_config_param_18() {
     let mut cp18 = ConfigParam18::default();
     assert_eq!(cp18.len().unwrap(), 0);
-    cp18.write_to_new_cell()
-        .expect_err("Empty ConfigParam18 can't be serialized");
+    cp18.write_to_new_cell().expect_err("Empty ConfigParam18 can't be serialized");
 
     for i in 0..10 {
-        cp18.get(i)
-            .expect_err(&format!("param with index {} must not be present yet", i));
+        cp18.get(i).expect_err(&format!("param with index {} must not be present yet", i));
         cp18.insert(&get_storage_prices()).unwrap();
         cp18.get(i).unwrap();
         assert_eq!(cp18.len().unwrap(), i as usize + 1);
@@ -110,8 +110,7 @@ fn test_config_param_18() {
     for n in 0..10 {
         cp18.get(n).unwrap();
     }
-    cp18.get(11)
-        .expect_err("param with index 11 must not be present");
+    cp18.get(11).expect_err("param with index 11 must not be present");
 }
 
 fn get_gas_limit_prices() -> GasLimitsPrices {
@@ -198,9 +197,7 @@ fn test_config_param_31() {
         write_read_and_assert(cp31.clone());
     }
 
-    cp31.fundamental_smc_addr
-        .iterate_keys(|_key: UInt256| Ok(true))
-        .unwrap();
+    cp31.fundamental_smc_addr.iterate_keys(|_key: UInt256| Ok(true)).unwrap();
 }
 
 fn get_validator_set() -> ValidatorSet {
@@ -291,9 +288,7 @@ fn test_config_param_12() {
     let cp12 = get_config_param12();
     write_read_and_assert(cp12.clone());
 
-    cp12.workchains
-        .iterate(|_| -> Result<bool> { Ok(true) })
-        .unwrap();
+    cp12.workchains.iterate(|_| -> Result<bool> { Ok(true) }).unwrap();
 }
 
 #[test]
@@ -314,9 +309,7 @@ fn test_config_params() {
 
     write_read_and_assert(cp.clone());
 
-    let c2 = ConfigParamEnum::ConfigParam2(ConfigParam2 {
-        minter_addr: UInt256::from([123; 32]),
-    });
+    let c2 = ConfigParamEnum::ConfigParam2(ConfigParam2 { minter_addr: UInt256::from([123; 32]) });
     cp.set_config(c2.clone()).unwrap();
     let c = cp.config(2).unwrap().unwrap();
     assert_eq!(c2, c);
@@ -332,9 +325,8 @@ fn test_config_params() {
 
     write_read_and_assert(cp.clone());
 
-    let c4 = ConfigParamEnum::ConfigParam4(ConfigParam4 {
-        dns_root_addr: UInt256::from([144; 32]),
-    });
+    let c4 =
+        ConfigParamEnum::ConfigParam4(ConfigParam4 { dns_root_addr: UInt256::from([144; 32]) });
     cp.set_config(c4.clone()).unwrap();
     let c = cp.config(4).unwrap().unwrap();
     assert_eq!(c4, c);
@@ -359,10 +351,7 @@ fn test_config_params() {
     write_read_and_assert(cp.clone());
 
     let c8 = ConfigParamEnum::ConfigParam8(ConfigParam8 {
-        global_version: GlobalVersion {
-            version: 123,
-            capabilities: 4567890,
-        },
+        global_version: GlobalVersion { version: 123, capabilities: 4567890 },
     });
     cp.set_config(c8.clone()).unwrap();
     let c = cp.config(8).unwrap().unwrap();
@@ -496,11 +485,12 @@ fn test_config_params() {
 
     write_read_and_assert(cp.clone());
 
-    assert!(cp
-        .prev_validator_set()
-        .expect("it should not fail, but gives empty list")
-        .list()
-        .is_empty());
+    assert!(
+        cp.prev_validator_set()
+            .expect("it should not fail, but gives empty list")
+            .list()
+            .is_empty()
+    );
     assert!(!cp.prev_validator_set_present().unwrap());
 
     let mut cp32 = ConfigParam32::default();
@@ -522,11 +512,12 @@ fn test_config_params() {
 
     write_read_and_assert(cp.clone());
 
-    assert!(cp
-        .next_validator_set()
-        .expect("it should not fail, but gives empty list")
-        .list()
-        .is_empty());
+    assert!(
+        cp.next_validator_set()
+            .expect("it should not fail, but gives empty list")
+            .list()
+            .is_empty()
+    );
     assert!(!cp.next_validator_set_present().unwrap());
 
     let mut cp36 = ConfigParam36::default();
@@ -556,14 +547,12 @@ fn test_config_params() {
     write_read_and_assert(cp.clone());
 
     let c42 = get_config_param42();
-    cp.set_config(ConfigParamEnum::ConfigParam42(c42.clone()))
-        .unwrap();
+    cp.set_config(ConfigParamEnum::ConfigParam42(c42.clone())).unwrap();
     let c = cp.copyleft_config().unwrap();
     assert_eq!(c42, c);
 
     let c44 = get_suspended_addresses();
-    cp.set_config(ConfigParamEnum::ConfigParam44(c44.clone()))
-        .unwrap();
+    cp.set_config(ConfigParamEnum::ConfigParam44(c44.clone())).unwrap();
     let c = cp.suspended_addresses().unwrap().unwrap();
     assert_eq!(c44, c);
 
@@ -700,7 +689,9 @@ fn get_config_param7() -> ConfigParam7 {
         ecc.set(
             &rand::random::<u32>(),
             &VarUInteger32::from_two_u128(
-                rand::random::<u128>() & 0x00ffffff_ffffffff_ffffffff_ffffffff, // VarUInteger32 stores 31 bytes NOT 32!!!
+                rand::random::<u128>() & 0x00ffffff_ffffffff_ffffffff_ffffffff, /* VarUInteger32
+                                                                                 * stores 31 bytes
+                                                                                 * NOT 32!!! */
                 rand::random::<u128>(),
             )
             .unwrap(),
@@ -715,9 +706,7 @@ fn get_config_param9() -> ConfigParam9 {
     for _ in 1..100 {
         mp.set(&rand::random::<u32>(), &()).unwrap();
     }
-    ConfigParam9 {
-        mandatory_params: mp,
-    }
+    ConfigParam9 { mandatory_params: mp }
 }
 
 fn get_config_param10() -> ConfigParam10 {
@@ -725,9 +714,7 @@ fn get_config_param10() -> ConfigParam10 {
     for _ in 1..100 {
         cp.set(&rand::random::<u32>(), &()).unwrap();
     }
-    ConfigParam10 {
-        critical_params: cp,
-    }
+    ConfigParam10 { critical_params: cp }
 }
 
 fn get_config_param14() -> ConfigParam14 {
@@ -780,10 +767,8 @@ fn get_config_param40() -> ConfigParam40 {
 }
 
 fn get_config_param42() -> ConfigCopyleft {
-    let mut cfg = ConfigCopyleft {
-        copyleft_reward_threshold: 100.into(),
-        license_rates: Default::default(),
-    };
+    let mut cfg =
+        ConfigCopyleft { copyleft_reward_threshold: 100.into(), license_rates: Default::default() };
     for i in 0..10u8 {
         cfg.license_rates.set(&i, &(i * 10)).unwrap();
     }
@@ -798,8 +783,7 @@ fn test_config_param_42() {
 fn get_suspended_addresses() -> SuspendedAddresses {
     let mut sa = SuspendedAddresses::default();
     for _ in 1..100 {
-        sa.add_suspended_address(rand::random::<i32>() % 2, UInt256::rand())
-            .unwrap();
+        sa.add_suspended_address(rand::random::<i32>() % 2, UInt256::rand()).unwrap();
     }
     sa
 }
@@ -818,12 +802,8 @@ fn test_real_tvm_config_params() {
     assert!(!config1.valid_config_data(false, None).unwrap()); // fake config address
     assert!(config1.valid_config_data(true, None).unwrap()); // but other are ok
     let mut config2 = config1.clone();
-    assert!(!config1
-        .important_config_parameters_changed(&config2, true)
-        .unwrap());
-    assert!(!config1
-        .important_config_parameters_changed(&config2, false)
-        .unwrap());
+    assert!(!config1.important_config_parameters_changed(&config2, true).unwrap());
+    assert!(!config1.important_config_parameters_changed(&config2, false).unwrap());
 
     if let Some(ConfigParamEnum::ConfigParam0(param)) = config1.config(0).unwrap() {
         config2.config_addr = param.config_addr;
@@ -831,24 +811,14 @@ fn test_real_tvm_config_params() {
     assert!(config2.valid_config_data(false, None).unwrap()); // real adress
     assert!(config2.valid_config_data(true, None).unwrap());
 
-    assert!(!config1
-        .important_config_parameters_changed(&config2, true)
-        .unwrap());
-    assert!(!config1
-        .important_config_parameters_changed(&config2, false)
-        .unwrap());
+    assert!(!config1.important_config_parameters_changed(&config2, true).unwrap());
+    assert!(!config1.important_config_parameters_changed(&config2, false).unwrap());
 
     if let Ok(Some(ConfigParamEnum::ConfigParam9(param))) = config1.config(9) {
-        println!(
-            "Mandatory params indeces {:?}",
-            param.mandatory_params.export_keys::<i32>()
-        );
+        println!("Mandatory params indeces {:?}", param.mandatory_params.export_keys::<i32>());
     }
     if let Ok(Some(ConfigParamEnum::ConfigParam10(param))) = config1.config(10) {
-        println!(
-            "Critical params indeces {:?}",
-            param.critical_params.export_keys::<i32>()
-        );
+        println!("Critical params indeces {:?}", param.critical_params.export_keys::<i32>());
     }
     //  remove mandatory parameter - make config not valid
     let key = SliceData::load_builder(14u32.write_to_new_cell().unwrap()).unwrap();

@@ -1,23 +1,26 @@
-/*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
+use std::fs::File;
+use std::io::Read;
+
+use tvm_types::read_boc;
+use tvm_types::Cell;
+use tvm_types::UInt256;
+
 use super::*;
-
-use std::{fs::File, io::Read};
-
-use tvm_types::{read_boc, Cell, UInt256};
-
 use crate::config_params::ConfigParamEnum;
-use crate::{write_read_and_assert, Block, ShardIdent, TopBlockDescr};
+use crate::write_read_and_assert;
+use crate::Block;
+use crate::ShardIdent;
+use crate::TopBlockDescr;
 
 #[test]
 fn test_crypto_signature_new_default() {
@@ -50,10 +53,7 @@ fn test_crypto_signature_pair_with() {
     let cs = CryptoSignature::from_r_s(&[1; 32], &[2; 32]).unwrap();
     let csp = CryptoSignaturePair::with_params(UInt256::from([12; 32]), cs.clone());
 
-    assert_ne!(
-        csp,
-        CryptoSignaturePair::with_params(UInt256::from([33; 32]), cs)
-    );
+    assert_ne!(csp, CryptoSignaturePair::with_params(UInt256::from([33; 32]), cs));
 
     write_read_and_assert(csp);
 }
@@ -139,12 +139,7 @@ fn test_crypto_block_proof() {
     let bs = BlockSignatures::with_params(ValidatorBaseInfo::with_params(12312, 4545), test_bsp());
 
     let bp = BlockProof::with_params(
-        BlockIdExt::with_params(
-            ShardIdent::default(),
-            43434,
-            UInt256::rand(),
-            UInt256::rand(),
-        ),
+        BlockIdExt::with_params(ShardIdent::default(), 43434, UInt256::rand(), UInt256::rand()),
         SliceData::new(vec![0x65, 0x08, 0x71, 0x36, 0x10, 0x00, 0x41, 0x00, 0x80]).into_cell(),
         Some(bs),
     );

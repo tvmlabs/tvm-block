@@ -1,25 +1,31 @@
-/*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
+
+use std::collections::HashMap;
+use std::collections::HashSet;
+
+use rand::Rng;
+use tvm_types::read_single_root_boc;
 
 use super::*;
-use crate::{
-    transactions::tests::generate_test_shard_account_block, write_read_and_assert, Block,
-    BlockExtra, Deserializable, ExtBlkRef, HashmapAugType, MsgAddressInt, ShardStateUnsplit,
-    BASE_WORKCHAIN_ID,
-};
-use rand::Rng;
-use std::collections::{HashMap, HashSet};
-use tvm_types::read_single_root_boc;
+use crate::transactions::tests::generate_test_shard_account_block;
+use crate::write_read_and_assert;
+use crate::Block;
+use crate::BlockExtra;
+use crate::Deserializable;
+use crate::ExtBlkRef;
+use crate::HashmapAugType;
+use crate::MsgAddressInt;
+use crate::ShardStateUnsplit;
+use crate::BASE_WORKCHAIN_ID;
 
 #[test]
 fn test_libraries() {
@@ -44,10 +50,8 @@ fn test_libraries() {
 
     let mut data = HashmapE::with_bit_len(256);
     let key = SliceData::load_builder(acc_id.write_to_new_cell().unwrap()).unwrap();
-    data.set_builder(key.clone(), &lib1.write_to_new_cell().unwrap())
-        .unwrap();
-    data.set_builder(key, &lib2.write_to_new_cell().unwrap())
-        .unwrap();
+    data.set_builder(key.clone(), &lib1.write_to_new_cell().unwrap()).unwrap();
+    data.set_builder(key, &lib2.write_to_new_cell().unwrap()).unwrap();
 
     let cell = data.serialize().unwrap();
     let mut restored_data = HashmapE::with_bit_len(256);
@@ -65,20 +69,14 @@ fn test_shard_descr() {
         17,
         25,
         UInt256::from([70; 32]),
-        FutureSplitMerge::Split {
-            split_utime: 0x12345678,
-            interval: 0x87654321,
-        },
+        FutureSplitMerge::Split { split_utime: 0x12345678, interval: 0x87654321 },
     );
     let descr_merge = ShardDescr::with_params(
         42,
         17,
         25,
         UInt256::from([70; 32]),
-        FutureSplitMerge::Merge {
-            merge_utime: 0x12345678,
-            interval: 0x87654321,
-        },
+        FutureSplitMerge::Merge { merge_utime: 0x12345678, interval: 0x87654321 },
     );
 
     write_read_and_assert(descr_none);
@@ -90,13 +88,9 @@ fn test_shard_descr() {
 fn test_shard_descr_with_copyleft() {
     let mut copyleft_rewards = CopyleftRewards::default();
     let address = MsgAddressInt::with_standart(None, 0, AccountId::from([1; 32])).unwrap();
-    copyleft_rewards
-        .set(&address.address(), &100.into())
-        .unwrap();
+    copyleft_rewards.set(&address.address(), &100.into()).unwrap();
     let address = MsgAddressInt::with_standart(None, 0, AccountId::from([2; 32])).unwrap();
-    copyleft_rewards
-        .set(&address.address(), &200.into())
-        .unwrap();
+    copyleft_rewards.set(&address.address(), &200.into()).unwrap();
 
     let mut descr_none =
         ShardDescr::with_params(42, 17, 25, UInt256::from([70; 32]), FutureSplitMerge::None);
@@ -106,10 +100,7 @@ fn test_shard_descr_with_copyleft() {
         17,
         25,
         UInt256::from([70; 32]),
-        FutureSplitMerge::Split {
-            split_utime: 0x12345678,
-            interval: 0x87654321,
-        },
+        FutureSplitMerge::Split { split_utime: 0x12345678, interval: 0x87654321 },
     );
     descr_split.copyleft_rewards = copyleft_rewards.clone();
     let mut descr_merge = ShardDescr::with_params(
@@ -117,10 +108,7 @@ fn test_shard_descr_with_copyleft() {
         17,
         25,
         UInt256::from([70; 32]),
-        FutureSplitMerge::Merge {
-            merge_utime: 0x12345678,
-            interval: 0x87654321,
-        },
+        FutureSplitMerge::Merge { merge_utime: 0x12345678, interval: 0x87654321 },
     );
     descr_merge.copyleft_rewards = copyleft_rewards.clone();
 
@@ -149,10 +137,7 @@ fn test_shard_descr_fast_finality() {
         17,
         25,
         UInt256::from([70; 32]),
-        FutureSplitMerge::Split {
-            split_utime: 0x12345678,
-            interval: 0x87654321,
-        },
+        FutureSplitMerge::Split { split_utime: 0x12345678, interval: 0x87654321 },
     );
     descr_split.collators = Some(ShardCollators {
         prev: gen_collator(),
@@ -168,10 +153,7 @@ fn test_shard_descr_fast_finality() {
         17,
         25,
         UInt256::from([70; 32]),
-        FutureSplitMerge::Merge {
-            merge_utime: 0x12345678,
-            interval: 0x87654321,
-        },
+        FutureSplitMerge::Merge { merge_utime: 0x12345678, interval: 0x87654321 },
     );
     descr_merge.collators = Some(ShardCollators {
         prev: gen_collator(),
@@ -190,50 +172,28 @@ fn test_shard_descr_fast_finality() {
 #[test]
 fn test_mc_state_extra() {
     let mut extra = McStateExtra::default();
-    let shard1 = ShardDescr::with_params(
-        23,
-        77,
-        234,
-        UInt256::from([131; 32]),
-        FutureSplitMerge::None,
-    );
-    let shard1_1 = ShardDescr::with_params(
-        25,
-        177,
-        230,
-        UInt256::from([131; 32]),
-        FutureSplitMerge::None,
-    );
+    let shard1 =
+        ShardDescr::with_params(23, 77, 234, UInt256::from([131; 32]), FutureSplitMerge::None);
+    let shard1_1 =
+        ShardDescr::with_params(25, 177, 230, UInt256::from([131; 32]), FutureSplitMerge::None);
     let shard2 = ShardDescr::with_params(
         15,
         78,
         235,
         UInt256::from([77; 32]),
-        FutureSplitMerge::Split {
-            split_utime: 0x12345678,
-            interval: 0x87654321,
-        },
+        FutureSplitMerge::Split { split_utime: 0x12345678, interval: 0x87654321 },
     );
     let shard2_2 = ShardDescr::with_params(
         115,
         8,
         35,
         UInt256::from([77; 32]),
-        FutureSplitMerge::Split {
-            split_utime: 0x12345678,
-            interval: 0x87654321,
-        },
+        FutureSplitMerge::Split { split_utime: 0x12345678, interval: 0x87654321 },
     );
     let ident = extra.add_workchain(11, &shard1).unwrap();
-    extra
-        .shards
-        .split_shard(&ident, |_| Ok((shard1, shard1_1)))
-        .unwrap();
+    extra.shards.split_shard(&ident, |_| Ok((shard1, shard1_1))).unwrap();
     let ident = extra.add_workchain(22, &shard2).unwrap();
-    extra
-        .shards
-        .split_shard(&ident, |_| Ok((shard2, shard2_2)))
-        .unwrap();
+    extra.shards.split_shard(&ident, |_| Ok((shard2, shard2_2))).unwrap();
 
     let key = SliceData::load_builder(123u32.write_to_new_cell().unwrap()).unwrap();
     let value = 0x11u8.write_to_new_cell().unwrap();
@@ -252,10 +212,7 @@ fn test_mc_state_extra() {
                     file_hash: UInt256::from([10; 32]),
                 },
             },
-            &KeyMaxLt {
-                key: false,
-                max_end_lt: 1000001,
-            },
+            &KeyMaxLt { key: false, max_end_lt: 1000001 },
         )
         .unwrap();
     extra
@@ -271,10 +228,7 @@ fn test_mc_state_extra() {
                     file_hash: UInt256::from([14; 32]),
                 },
             },
-            &KeyMaxLt {
-                key: false,
-                max_end_lt: 1000002,
-            },
+            &KeyMaxLt { key: false, max_end_lt: 1000002 },
         )
         .unwrap();
 
@@ -286,45 +240,26 @@ fn test_mc_block_extra() {
     std::env::set_var("RUST_BACKTRACE", "full");
 
     let mut extra = McBlockExtra::default();
-    let shard1 = ShardDescr::with_params(
-        23,
-        77,
-        234,
-        UInt256::from([131; 32]),
-        FutureSplitMerge::None,
-    );
-    let shard1_1 = ShardDescr::with_params(
-        25,
-        177,
-        230,
-        UInt256::from([131; 32]),
-        FutureSplitMerge::None,
-    );
+    let shard1 =
+        ShardDescr::with_params(23, 77, 234, UInt256::from([131; 32]), FutureSplitMerge::None);
+    let shard1_1 =
+        ShardDescr::with_params(25, 177, 230, UInt256::from([131; 32]), FutureSplitMerge::None);
     let shard2 = ShardDescr::with_params(
         15,
         78,
         235,
         UInt256::from([77; 32]),
-        FutureSplitMerge::Split {
-            split_utime: 0x12345678,
-            interval: 0x87654321,
-        },
+        FutureSplitMerge::Split { split_utime: 0x12345678, interval: 0x87654321 },
     );
     let shard2_2 = ShardDescr::with_params(
         115,
         8,
         35,
         UInt256::from([77; 32]),
-        FutureSplitMerge::Split {
-            split_utime: 0x12345678,
-            interval: 0x87654321,
-        },
+        FutureSplitMerge::Split { split_utime: 0x12345678, interval: 0x87654321 },
     );
     let ident = ShardIdent::with_workchain_id(11).unwrap();
-    extra
-        .shards
-        .add_workchain(11, 134, UInt256::default(), UInt256::default(), None)
-        .unwrap();
+    extra.shards.add_workchain(11, 134, UInt256::default(), UInt256::default(), None).unwrap();
     extra
         .fees
         .store_shard_fees(
@@ -333,15 +268,9 @@ fn test_mc_block_extra() {
             CurrencyCollection::with_grams(1),
         )
         .unwrap();
-    extra
-        .shards
-        .split_shard(&ident, |_| Ok((shard1, shard1_1)))
-        .unwrap();
+    extra.shards.split_shard(&ident, |_| Ok((shard1, shard1_1))).unwrap();
     let ident = ShardIdent::with_workchain_id(22).unwrap();
-    extra
-        .shards
-        .add_workchain(22, 135, UInt256::default(), UInt256::default(), None)
-        .unwrap();
+    extra.shards.add_workchain(22, 135, UInt256::default(), UInt256::default(), None).unwrap();
     extra
         .fees
         .store_shard_fees(
@@ -350,17 +279,12 @@ fn test_mc_block_extra() {
             CurrencyCollection::with_grams(1),
         )
         .unwrap();
-    extra
-        .shards
-        .split_shard(&ident, |_| Ok((shard2, shard2_2)))
-        .unwrap();
+    extra.shards.split_shard(&ident, |_| Ok((shard2, shard2_2))).unwrap();
 
     let extra = write_read_and_assert(extra);
 
     let mut block_extra = BlockExtra::default();
-    block_extra
-        .write_account_blocks(&generate_test_shard_account_block())
-        .unwrap();
+    block_extra.write_account_blocks(&generate_test_shard_account_block()).unwrap();
     block_extra.write_custom(Some(&extra)).unwrap();
 
     write_read_and_assert(block_extra);
@@ -379,45 +303,26 @@ fn test_mc_block_extra() {
 #[test]
 fn test_mc_block_extra_2() {
     let mut extra = McBlockExtra::default();
-    let shard1 = ShardDescr::with_params(
-        23,
-        77,
-        234,
-        UInt256::from([131; 32]),
-        FutureSplitMerge::None,
-    );
-    let shard1_1 = ShardDescr::with_params(
-        25,
-        177,
-        230,
-        UInt256::from([131; 32]),
-        FutureSplitMerge::None,
-    );
+    let shard1 =
+        ShardDescr::with_params(23, 77, 234, UInt256::from([131; 32]), FutureSplitMerge::None);
+    let shard1_1 =
+        ShardDescr::with_params(25, 177, 230, UInt256::from([131; 32]), FutureSplitMerge::None);
     let shard2 = ShardDescr::with_params(
         15,
         78,
         235,
         UInt256::from([77; 32]),
-        FutureSplitMerge::Split {
-            split_utime: 0x12345678,
-            interval: 0x87654321,
-        },
+        FutureSplitMerge::Split { split_utime: 0x12345678, interval: 0x87654321 },
     );
     let shard2_2 = ShardDescr::with_params(
         115,
         8,
         35,
         UInt256::from([77; 32]),
-        FutureSplitMerge::Split {
-            split_utime: 0x12345678,
-            interval: 0x87654321,
-        },
+        FutureSplitMerge::Split { split_utime: 0x12345678, interval: 0x87654321 },
     );
     let ident = ShardIdent::with_workchain_id(11).unwrap();
-    extra
-        .shards
-        .add_workchain(11, 134, UInt256::default(), UInt256::default(), None)
-        .unwrap();
+    extra.shards.add_workchain(11, 134, UInt256::default(), UInt256::default(), None).unwrap();
     extra
         .fees
         .store_shard_fees(
@@ -426,15 +331,9 @@ fn test_mc_block_extra_2() {
             CurrencyCollection::with_grams(1),
         )
         .unwrap();
-    extra
-        .shards
-        .split_shard(&ident, |_| Ok((shard1, shard1_1)))
-        .unwrap();
+    extra.shards.split_shard(&ident, |_| Ok((shard1, shard1_1))).unwrap();
     let ident = ShardIdent::with_workchain_id(22).unwrap();
-    extra
-        .shards
-        .add_workchain(22, 135, UInt256::default(), UInt256::default(), None)
-        .unwrap();
+    extra.shards.add_workchain(22, 135, UInt256::default(), UInt256::default(), None).unwrap();
     extra
         .fees
         .store_shard_fees(
@@ -443,14 +342,9 @@ fn test_mc_block_extra_2() {
             CurrencyCollection::with_grams(1),
         )
         .unwrap();
-    extra
-        .shards
-        .split_shard(&ident, |_| Ok((shard2, shard2_2)))
-        .unwrap();
+    extra.shards.split_shard(&ident, |_| Ok((shard2, shard2_2))).unwrap();
 
-    extra
-        .write_copyleft_msgs(&[InMsg::default(), InMsg::default()])
-        .unwrap();
+    extra.write_copyleft_msgs(&[InMsg::default(), InMsg::default()]).unwrap();
 
     write_read_and_assert(extra);
 }
@@ -477,12 +371,7 @@ fn test_serialization_shard_hashes() {
 #[test]
 fn test_real_shard_hashes() {
     let block = Block::construct_from_file("src/tests/data/key_block_not_all_shardes.boc").unwrap();
-    let extra = block
-        .read_extra()
-        .unwrap()
-        .read_custom()
-        .unwrap()
-        .expect("need key block");
+    let extra = block.read_extra().unwrap().read_custom().unwrap().expect("need key block");
     let shards = extra.shards();
     let mut count = shards.dump("shards");
     println!("total: {}", count);
@@ -613,16 +502,16 @@ fn test_real_shard_hashes() {
 fn test_serialization_shard_fees() {
     let mut shard_fees = ShardFees::default();
 
-    //let mut summ = 0;
+    // let mut summ = 0;
     for n in 1..12u32 {
-        //summ += 2 * n * 100;
+        // summ += 2 * n * 100;
         let mut cc = CurrencyCollection::with_grams(n as u64 * 100);
         cc.set_other(n, n as u128).unwrap();
         let fee = ShardFeeCreated::with_fee(cc);
         let ident = ShardIdentFull::new(n as i32, 0x8000_0000_0000_0000);
         shard_fees.set_augmentable(&ident, &fee).unwrap();
         assert!(!shard_fees.is_empty());
-        //assert_eq!(shard_fees.root_extra().fees.grams, summ.into());
+        // assert_eq!(shard_fees.root_extra().fees.grams, summ.into());
     }
 
     write_read_and_assert(shard_fees);
@@ -660,10 +549,7 @@ fn test_get_next_prev_key_block() {
     }
 
     let key_id = key_blocks[key_blocks.len() - 1].clone();
-    let id = prev_blocks
-        .get_prev_key_block(key_id.seq_no)
-        .unwrap()
-        .unwrap();
+    let id = prev_blocks.get_prev_key_block(key_id.seq_no).unwrap().unwrap();
     assert_eq!(id.root_hash, key_id.root_hash);
 
     let mut seqno = key_blocks[key_blocks.len() - 1].seq_no + 2;
@@ -716,11 +602,7 @@ fn gen_collator() -> CollatorRange {
     let collator = rng.gen_range(0, 100);
     let start = rng.gen_range(0, 100);
     let finish = rng.gen_range(start, 100);
-    CollatorRange {
-        collator,
-        start,
-        finish,
-    }
+    CollatorRange { collator, start, finish }
 }
 
 #[test]

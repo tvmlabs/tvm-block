@@ -1,52 +1,63 @@
-/*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
 
 use std::convert::TryInto;
-use std::fmt::{self, Display, Formatter};
+use std::fmt::Display;
+use std::fmt::Formatter;
+use std::fmt::{self};
 use std::marker::PhantomData;
 use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
 
-use num::{bigint::Sign, BigInt, One, Zero};
-use tvm_types::{
-    error, fail, BuilderData, Cell, CellType, HashmapE, HashmapType, IBitstring, Result, SliceData,
-    UInt256,
-};
+use num::bigint::Sign;
+use num::BigInt;
+use num::One;
+use num::Zero;
+use tvm_types::error;
+use tvm_types::fail;
+use tvm_types::BuilderData;
+use tvm_types::Cell;
+use tvm_types::CellType;
+use tvm_types::HashmapE;
+use tvm_types::HashmapType;
+use tvm_types::IBitstring;
+use tvm_types::Result;
+use tvm_types::SliceData;
+use tvm_types::UInt256;
 
-use crate::{
-    define_HashmapE, error::BlockError, hashmapaug::Augmentable, Deserializable, Serializable,
-};
+use crate::define_HashmapE;
+use crate::error::BlockError;
+use crate::hashmapaug::Augmentable;
+use crate::Deserializable;
+use crate::Serializable;
 
 #[cfg(test)]
 #[path = "tests/test_types.rs"]
 mod tests;
 
-///
 /// var_uint$_ {n:#} len:(#< n) value:(uint (len * 8)) = VarUInteger n;
-///
 
 /// var_int$_ {n:#} len:(#< n) value:(int (len * 8)) = VarInteger n;
 /// nanograms$_ amount:(VarUInteger 16) = Grams;
 ///
 /// If one wants to represent x nanograms, one selects an integer l < 16 such
-/// that x < 2^8*l, and serializes first l as an unsigned 4-bit integer, then x itself
-/// as an unsigned 8`-bit integer. Notice that four zero bits represent a zero
-/// amount of Grams.
+/// that x < 2^8*l, and serializes first l as an unsigned 4-bit integer, then x
+/// itself as an unsigned 8`-bit integer. Notice that four zero bits represent a
+/// zero amount of Grams.
 
 macro_rules! define_VarIntegerN {
-    ( $varname:ident, $N:expr, BigInt ) => {
+    ($varname:ident, $N:expr,BigInt) => {
         #[derive(Eq, Clone, Debug)]
         pub struct $varname(BigInt);
 
@@ -103,12 +114,7 @@ macro_rules! define_VarIntegerN {
             fn write_to_cell(value: &BigInt) -> Result<BuilderData> {
                 let len = Self::get_len(value);
                 if len >= $N {
-                    fail!(
-                        "serialization of {} error {} >= {}",
-                        stringify!($varname),
-                        len,
-                        $N
-                    )
+                    fail!("serialization of {} error {} >= {}", stringify!($varname), len, $N)
                 }
 
                 let mut cell = BuilderData::default();
@@ -121,17 +127,9 @@ macro_rules! define_VarIntegerN {
             fn read_from_cell(cell: &mut SliceData) -> Result<BigInt> {
                 let len = cell.get_next_int(Self::get_len_len())? as usize;
                 if len >= $N {
-                    fail!(
-                        "deserialization of {} error {} >= {}",
-                        stringify!($varname),
-                        len,
-                        $N
-                    )
+                    fail!("deserialization of {} error {} >= {}", stringify!($varname), len, $N)
                 }
-                Ok(BigInt::from_bytes_be(
-                    Sign::Plus,
-                    &cell.get_next_bytes(len)?,
-                ))
+                Ok(BigInt::from_bytes_be(Sign::Plus, &cell.get_next_bytes(len)?))
             }
         }
 
@@ -176,6 +174,7 @@ macro_rules! define_VarIntegerN {
                     Ok(false)
                 }
             }
+
             fn sub(&mut self, other: &Self) -> Result<bool> {
                 if let Some(result) = self.0.checked_sub(&other.0) {
                     self.0 = result;
@@ -231,7 +230,7 @@ macro_rules! define_VarIntegerN {
             }
         }
     };
-    ( $varname:ident, $N:expr, $tt:ty ) => {
+    ($varname:ident, $N:expr, $tt:ty) => {
         #[derive(Eq, Copy, Clone, Debug, Default, Ord, PartialEq, PartialOrd)]
         pub struct $varname($tt);
 
@@ -239,22 +238,28 @@ macro_rules! define_VarIntegerN {
             pub const fn default() -> Self {
                 $varname(0)
             }
+
             pub fn new(value: $tt) -> Result<Self> {
                 Self::check_overflow(&value)?;
                 Ok(Self(value))
             }
+
             pub const fn zero() -> Self {
                 Self(0)
             }
+
             pub const fn one() -> Self {
                 Self(1)
             }
+
             pub const fn sgn(&self) -> bool {
                 false
             }
+
             pub const fn is_zero(&self) -> bool {
                 self.0 == 0
             }
+
             pub fn add_checked(&mut self, other: $tt) -> bool {
                 if let Some(result) = self.0.checked_add(other) {
                     if let Err(err) = Self::check_overflow(&result) {
@@ -268,6 +273,7 @@ macro_rules! define_VarIntegerN {
                     false
                 }
             }
+
             pub fn sub_checked(&mut self, other: $tt) -> bool {
                 if let Some(result) = self.0.checked_sub(other) {
                     self.0 = result;
@@ -276,6 +282,7 @@ macro_rules! define_VarIntegerN {
                     false
                 }
             }
+
             fn check_overflow(value: &$tt) -> Result<()> {
                 let bytes = ((0 as $tt).leading_zeros() / 8 - value.leading_zeros() / 8) as usize;
                 match bytes > $N {
@@ -283,11 +290,13 @@ macro_rules! define_VarIntegerN {
                     false => Ok(()),
                 }
             }
+
             pub fn get_len(&self) -> usize {
                 let bits = 8 - ($N as u8).leading_zeros();
                 let bytes = ((0 as $tt).leading_zeros() / 8 - self.0.leading_zeros() / 8) as usize;
                 bits as usize + bytes * 8
             }
+
             pub const fn inner(&self) -> $tt {
                 self.0
             }
@@ -329,6 +338,7 @@ macro_rules! define_VarIntegerN {
             fn add(&mut self, other: &Self) -> Result<bool> {
                 Ok(self.add_checked(other.0))
             }
+
             fn sub(&mut self, other: &Self) -> Result<bool> {
                 Ok(self.sub_checked(other.0))
             }
@@ -337,6 +347,7 @@ macro_rules! define_VarIntegerN {
         #[cfg(not(test))]
         impl std::convert::TryFrom<$tt> for $varname {
             type Error = failure::Error;
+
             fn try_from(value: $tt) -> Result<Self> {
                 Self::check_overflow(&value)?;
                 Ok(Self(value))
@@ -351,6 +362,7 @@ macro_rules! define_VarIntegerN {
 
         impl std::ops::Mul<$tt> for $varname {
             type Output = Self;
+
             fn mul(mut self, rhs: $tt) -> Self::Output {
                 self.0 *= rhs;
                 self
@@ -365,6 +377,7 @@ macro_rules! define_VarIntegerN {
 
         impl std::ops::Mul for $varname {
             type Output = Self;
+
             fn mul(mut self, rhs: Self) -> Self::Output {
                 self.0 *= rhs.0;
                 self
@@ -379,6 +392,7 @@ macro_rules! define_VarIntegerN {
 
         impl std::ops::Div<$tt> for $varname {
             type Output = Self;
+
             fn div(mut self, rhs: $tt) -> Self::Output {
                 self.0 /= rhs;
                 self
@@ -393,6 +407,7 @@ macro_rules! define_VarIntegerN {
 
         impl std::ops::Div for $varname {
             type Output = Self;
+
             fn div(mut self, rhs: Self) -> Self::Output {
                 self.0 /= rhs.0;
                 self
@@ -407,6 +422,7 @@ macro_rules! define_VarIntegerN {
 
         impl std::ops::Shr<u8> for $varname {
             type Output = Self;
+
             fn shr(mut self, rhs: u8) -> Self::Output {
                 self.0 >>= rhs;
                 self
@@ -421,6 +437,7 @@ macro_rules! define_VarIntegerN {
 
         impl std::ops::Shl<u8> for $varname {
             type Output = Self;
+
             fn shl(mut self, rhs: u8) -> Self {
                 self.0 <<= rhs;
                 self
@@ -446,6 +463,7 @@ macro_rules! define_VarIntegerN {
 
         impl std::ops::Add<$tt> for $varname {
             type Output = Self;
+
             fn add(mut self, rhs: $tt) -> Self {
                 self.0 += rhs;
                 self
@@ -460,6 +478,7 @@ macro_rules! define_VarIntegerN {
 
         impl std::ops::Add for $varname {
             type Output = Self;
+
             fn add(mut self, rhs: Self) -> Self {
                 self.0 += rhs.0;
                 self
@@ -480,6 +499,7 @@ macro_rules! define_VarIntegerN {
 
         impl std::ops::Sub<$tt> for $varname {
             type Output = Self;
+
             fn sub(mut self, rhs: $tt) -> Self {
                 self.0 -= rhs;
                 self
@@ -494,6 +514,7 @@ macro_rules! define_VarIntegerN {
 
         impl std::ops::Sub for $varname {
             type Output = Self;
+
             fn sub(mut self, rhs: Self) -> Self {
                 self.0 -= rhs.0;
                 self
@@ -567,12 +588,9 @@ impl Grams {
     pub const fn as_u128(&self) -> u128 {
         self.0
     }
+
     pub const fn as_u64(&self) -> Option<u64> {
-        if self.0 <= u64::MAX as u128 {
-            Some(self.0 as u64)
-        } else {
-            None
-        }
+        if self.0 <= u64::MAX as u128 { Some(self.0 as u64) } else { None }
     }
 }
 
@@ -589,12 +607,10 @@ impl FromStr for Grams {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-///
 /// number ## N
 /// n<=X
-///
 macro_rules! define_NumberN_up32bit {
-    ( $varname:ident, $N:expr ) => {
+    ($varname:ident, $N:expr) => {
         #[derive(PartialEq, Eq, Hash, Clone, Debug, Default, PartialOrd, Ord)]
         pub struct $varname(u32);
 
@@ -603,6 +619,7 @@ macro_rules! define_NumberN_up32bit {
             pub const fn default() -> Self {
                 Self(0)
             }
+
             pub fn new_checked(value: u32, max_value: u32) -> Result<Self> {
                 if value > max_value {
                     fail!(BlockError::InvalidArg(format!(
@@ -730,6 +747,7 @@ impl From<u32> for Number32 {
 
 impl std::convert::TryFrom<u32> for Number5 {
     type Error = failure::Error;
+
     fn try_from(value: u32) -> tvm_types::Result<Self> {
         Self::new(value)
     }
@@ -737,6 +755,7 @@ impl std::convert::TryFrom<u32> for Number5 {
 
 impl std::convert::TryFrom<u32> for Number8 {
     type Error = failure::Error;
+
     fn try_from(value: u32) -> tvm_types::Result<Self> {
         Self::new(value)
     }
@@ -744,6 +763,7 @@ impl std::convert::TryFrom<u32> for Number8 {
 
 impl std::convert::TryFrom<u32> for Number9 {
     type Error = failure::Error;
+
     fn try_from(value: u32) -> tvm_types::Result<Self> {
         Self::new(value)
     }
@@ -751,6 +771,7 @@ impl std::convert::TryFrom<u32> for Number9 {
 
 impl std::convert::TryFrom<u32> for Number12 {
     type Error = failure::Error;
+
     fn try_from(value: u32) -> tvm_types::Result<Self> {
         Self::new(value)
     }
@@ -758,6 +779,7 @@ impl std::convert::TryFrom<u32> for Number12 {
 
 impl std::convert::TryFrom<u32> for Number13 {
     type Error = failure::Error;
+
     fn try_from(value: u32) -> tvm_types::Result<Self> {
         Self::new(value)
     }
@@ -765,21 +787,20 @@ impl std::convert::TryFrom<u32> for Number13 {
 
 impl std::convert::TryFrom<u32> for Number16 {
     type Error = failure::Error;
+
     fn try_from(value: u32) -> tvm_types::Result<Self> {
         Self::new(value)
     }
 }
 
-/*
-extra_currencies$_
-    dict:(HashMapE 32 (VarUInteger 32))
-= ExtraCurrencyCollection;
-
-currencies$_
-    grams: Grams
-    other:ExtraCurrencyCollection
-= CurrencyCollection;
-*/
+// extra_currencies$_
+// dict:(HashMapE 32 (VarUInteger 32))
+// = ExtraCurrencyCollection;
+//
+// currencies$_
+// grams: Grams
+// other:ExtraCurrencyCollection
+// = CurrencyCollection;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct CurrencyCollection {
     pub grams: Grams,
@@ -796,6 +817,7 @@ impl CurrencyCollection {
     pub const fn default() -> Self {
         Self::new()
     }
+
     pub const fn new() -> Self {
         Self::from_grams(Grams::zero())
     }
@@ -823,10 +845,7 @@ impl CurrencyCollection {
     }
 
     pub const fn from_grams(grams: Grams) -> Self {
-        CurrencyCollection {
-            grams,
-            other: ExtraCurrencyCollection::default(),
-        }
+        CurrencyCollection { grams, other: ExtraCurrencyCollection::default() }
     }
 
     pub fn is_zero(&self) -> Result<bool> {
@@ -863,36 +882,33 @@ impl AddSub for CurrencyCollection {
         if !self.grams.sub(&other.grams)? {
             return Ok(false);
         }
-        other
-            .other
-            .iterate_with_keys(|key: u32, b| -> Result<bool> {
-                if let Some(mut a) = self.other.get(&key)? {
-                    if a >= b {
-                        a.sub(&b)?;
-                        self.other.set(&key, &a)?;
-                        return Ok(true);
-                    }
+        other.other.iterate_with_keys(|key: u32, b| -> Result<bool> {
+            if let Some(mut a) = self.other.get(&key)? {
+                if a >= b {
+                    a.sub(&b)?;
+                    self.other.set(&key, &a)?;
+                    return Ok(true);
                 }
-                Ok(false) // coin not found in mine or amount is smaller - cannot subtract
-            })
+            }
+            Ok(false) // coin not found in mine or amount is smaller - cannot subtract
+        })
     }
+
     fn add(&mut self, other: &Self) -> Result<bool> {
         self.grams.add(&other.grams)?;
         let mut result = self.other.clone();
-        other
-            .other
-            .iterate_with_keys(|key: u32, b| -> Result<bool> {
-                match self.other.get(&key)? {
-                    Some(mut a) => {
-                        a.add(&b)?;
-                        result.set(&key, &a)?;
-                    }
-                    None => {
-                        result.set(&key, &b)?;
-                    }
+        other.other.iterate_with_keys(|key: u32, b| -> Result<bool> {
+            match self.other.get(&key)? {
+                Some(mut a) => {
+                    a.add(&b)?;
+                    result.set(&key, &a)?;
                 }
-                Ok(true)
-            })?;
+                None => {
+                    result.set(&key, &b)?;
+                }
+            }
+            Ok(true)
+        })?;
         self.other = result;
         Ok(true)
     }
@@ -1047,6 +1063,7 @@ impl<X: Deserializable + Serializable> InRefValue<X> {
     pub fn new(inner: X) -> InRefValue<X> {
         InRefValue(inner)
     }
+
     pub fn inner(self) -> X {
         self.0
     }
@@ -1060,6 +1077,7 @@ impl<X: Deserializable + Serializable> AsRef<X> for InRefValue<X> {
 
 impl<X: Deserializable + Serializable> Deref for InRefValue<X> {
     type Target = X;
+
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -1092,7 +1110,7 @@ impl<X: Serializable> Serializable for Arc<X> {
 
 #[macro_export]
 macro_rules! define_HashmapE {
-    ( $varname:ident, $bit_len:expr, $x_type:ty ) => {
+    ($varname:ident, $bit_len:expr, $x_type:ty) => {
         #[derive(PartialEq, Clone, Debug, Eq)]
         pub struct $varname(HashmapE);
 
@@ -1102,50 +1120,61 @@ macro_rules! define_HashmapE {
             pub const fn default() -> Self {
                 Self::new()
             }
+
             /// default const constructor
             pub const fn new() -> Self {
                 Self(HashmapE::with_hashmap($bit_len, None))
             }
+
             /// constructor with HashmapE root
             pub const fn with_hashmap(data: Option<Cell>) -> Self {
                 Self(HashmapE::with_hashmap($bit_len, data))
             }
+
             pub fn root(&self) -> Option<&Cell> {
                 self.0.data()
             }
+
             pub fn inner(self) -> HashmapE {
                 self.0
             }
+
             /// Used for not empty Hashmaps
             pub fn read_hashmap_root(&mut self, slice: &mut SliceData) -> Result<()> {
                 self.0.read_hashmap_root(slice)
             }
+
             /// Used for not empty Hashmaps
             pub fn write_hashmap_root(&self, cell: &mut BuilderData) -> Result<()> {
                 self.0.write_hashmap_root(cell)
             }
+
             /// Return true if no items
             pub fn is_empty(&self) -> bool {
                 self.0.is_empty()
             }
+
             /// Calculates length
             pub fn len(&self) -> Result<usize> {
                 self.0.len()
             }
+
             pub fn count(&self, max: usize) -> Result<usize> {
                 self.0.count(max)
             }
+
             pub fn count_cells(&self, max: usize) -> Result<usize> {
                 self.0.count_cells(max)
             }
+
             /// iterates items
             pub fn iterate<F>(&self, mut p: F) -> Result<bool>
             where
                 F: FnMut($x_type) -> Result<bool>,
             {
-                self.0
-                    .iterate_slices(|_, ref mut slice| p(<$x_type>::construct_from(slice)?))
+                self.0.iterate_slices(|_, ref mut slice| p(<$x_type>::construct_from(slice)?))
             }
+
             /// iterates items as raw slices
             pub fn iterate_slices<F>(&self, mut p: F) -> Result<bool>
             where
@@ -1153,15 +1182,16 @@ macro_rules! define_HashmapE {
             {
                 self.0.iterate_slices(|_, slice| p(slice))
             }
+
             /// iterates keys
             pub fn iterate_keys<K, F>(&self, mut p: F) -> Result<bool>
             where
                 K: Default + Deserializable,
                 F: FnMut(K) -> Result<bool>,
             {
-                self.0
-                    .iterate_slices(|mut key, _| p(K::construct_from(&mut key)?))
+                self.0.iterate_slices(|mut key, _| p(K::construct_from(&mut key)?))
             }
+
             /// iterates items with keys
             pub fn iterate_with_keys<K, F>(&self, mut p: F) -> Result<bool>
             where
@@ -1172,6 +1202,7 @@ macro_rules! define_HashmapE {
                     p(K::construct_from(key)?, <$x_type>::construct_from(slice)?)
                 })
             }
+
             /// iterates items as slices with keys
             pub fn iterate_slices_with_keys<F>(&self, mut p: F) -> Result<bool>
             where
@@ -1179,44 +1210,53 @@ macro_rules! define_HashmapE {
             {
                 self.0.iterate_slices(|key, slice| p(key, slice))
             }
+
             pub fn set<K: Serializable>(&mut self, key: &K, value: &$x_type) -> Result<()> {
                 let key = SliceData::load_bitstring(key.write_to_new_cell()?)?;
                 let value = value.write_to_new_cell()?;
                 self.0.set_builder(key, &value)?;
                 Ok(())
             }
+
             pub fn setref<K: Serializable>(&mut self, key: &K, value: &Cell) -> Result<()> {
                 let key = SliceData::load_bitstring(key.write_to_new_cell()?)?;
                 self.0.setref(key, value)?;
                 Ok(())
             }
+
             pub fn add_key<K: Serializable>(&mut self, key: &K) -> Result<()> {
                 let key = SliceData::load_bitstring(key.write_to_new_cell()?)?;
                 let value = BuilderData::default();
                 self.0.set_builder(key, &value)?;
                 Ok(())
             }
+
             pub fn get<K: Serializable>(&self, key: &K) -> Result<Option<$x_type>> {
                 self.get_as_slice(key)?
                     .map(|ref mut slice| <$x_type>::construct_from(slice))
                     .transpose()
             }
+
             pub fn get_as_slice<K: Serializable>(&self, key: &K) -> Result<Option<SliceData>> {
                 let key = SliceData::load_bitstring(key.write_to_new_cell()?)?;
                 self.get_raw(key)
             }
+
             pub fn get_raw(&self, key: SliceData) -> Result<Option<SliceData>> {
                 self.0.get(key)
             }
+
             pub fn remove<K: Serializable>(&mut self, key: &K) -> Result<bool> {
                 let key = SliceData::load_bitstring(key.write_to_new_cell()?)?;
                 let leaf = self.0.remove(key)?;
                 Ok(leaf.is_some())
             }
+
             pub fn check_key<K: Serializable>(&self, key: &K) -> Result<bool> {
                 let key = SliceData::load_bitstring(key.write_to_new_cell()?)?;
                 self.0.get(key).map(|value| value.is_some())
             }
+
             pub fn export_vector(&self) -> Result<Vec<$x_type>> {
                 let mut vec = Vec::new();
                 self.0.iterate_slices(|_, ref mut slice| {
@@ -1225,17 +1265,19 @@ macro_rules! define_HashmapE {
                 })?;
                 Ok(vec)
             }
+
             pub fn merge(&mut self, other: &Self, split_key: &SliceData) -> Result<()> {
                 self.0.merge(&other.0, split_key)
             }
+
             pub fn split(&self, split_key: &SliceData) -> Result<(Self, Self)> {
-                self.0
-                    .split(split_key)
-                    .map(|(left, right)| (Self(left), Self(right)))
+                self.0.split(split_key).map(|(left, right)| (Self(left), Self(right)))
             }
+
             pub fn combine_with(&mut self, other: &Self) -> Result<bool> {
                 self.0.combine_with(&other.0)
             }
+
             pub fn scan_diff<K, F>(&self, other: &Self, mut op: F) -> Result<bool>
             where
                 K: Deserializable,
@@ -1243,12 +1285,10 @@ macro_rules! define_HashmapE {
             {
                 self.0.scan_diff(&other.0, |mut key, value1, value2| {
                     let key = K::construct_from(&mut key)?;
-                    let value1 = value1
-                        .map(|ref mut slice| <$x_type>::construct_from(slice))
-                        .transpose()?;
-                    let value2 = value2
-                        .map(|ref mut slice| <$x_type>::construct_from(slice))
-                        .transpose()?;
+                    let value1 =
+                        value1.map(|ref mut slice| <$x_type>::construct_from(slice)).transpose()?;
+                    let value2 =
+                        value2.map(|ref mut slice| <$x_type>::construct_from(slice)).transpose()?;
                     op(key, value1, value2)
                 })
             }
@@ -1325,19 +1365,17 @@ impl UnixTime32 {
     pub const fn default() -> Self {
         Self(0)
     }
+
     pub const fn new(value: u32) -> Self {
         Self(value)
     }
+
     pub const fn as_u32(&self) -> u32 {
         self.0
     }
+
     pub fn now() -> Self {
-        UnixTime32(
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as u32,
-        )
+        UnixTime32(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as u32)
     }
 }
 
@@ -1379,16 +1417,11 @@ pub struct ChildCell<T: Default + Serializable + Deserializable> {
 
 impl<T: Default + Serializable + Deserializable + Clone> ChildCell<T> {
     pub fn with_cell(cell: Cell) -> Self {
-        Self {
-            cell: Some(cell),
-            phantom: PhantomData,
-        }
+        Self { cell: Some(cell), phantom: PhantomData }
     }
+
     pub fn with_struct(s: &T) -> Result<Self> {
-        Ok(ChildCell {
-            cell: Some(s.serialize()?),
-            phantom: PhantomData,
-        })
+        Ok(ChildCell { cell: Some(s.serialize()?), phantom: PhantomData })
     }
 
     pub fn write_struct(&mut self, s: &T) -> Result<()> {
@@ -1413,9 +1446,7 @@ impl<T: Default + Serializable + Deserializable + Clone> ChildCell<T> {
         match self.cell.clone() {
             Some(cell) => {
                 if cell.cell_type() == CellType::PrunedBranch {
-                    fail!(BlockError::PrunedCellAccess(
-                        std::any::type_name::<T>().into()
-                    ))
+                    fail!(BlockError::PrunedCellAccess(std::any::type_name::<T>().into()))
                 }
                 T::construct_from_cell(cell)
             }
@@ -1427,9 +1458,7 @@ impl<T: Default + Serializable + Deserializable + Clone> ChildCell<T> {
         if let Some(s) = opt {
             if let Some(cell) = s.cell.as_ref() {
                 if cell.cell_type() == CellType::PrunedBranch {
-                    fail!(BlockError::PrunedCellAccess(
-                        std::any::type_name::<T>().into()
-                    ))
+                    fail!(BlockError::PrunedCellAccess(std::any::type_name::<T>().into()))
                 }
                 return Ok(Some(T::construct_from_cell(cell.clone())?));
             }

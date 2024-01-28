@@ -1,43 +1,63 @@
-/*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
 
-use crate::{
-    accounts::{Account, AccountStatus, StorageUsedShort},
-    blocks::Block,
-    define_HashmapAugE, define_HashmapE,
-    error::BlockError,
-    hashmapaug::{Augmentable, Augmentation, HashmapAugType},
-    merkle_proof::MerkleProof,
-    messages::{generate_big_msg, Message},
-    shard::ShardStateUnsplit,
-    types::{ChildCell, CurrencyCollection, Grams, InRefValue, VarUInteger3, VarUInteger7},
-    Deserializable, MaybeDeserialize, MaybeSerialize, Serializable,
-};
-use std::{fmt, sync::Arc};
-use tvm_types::{
-    error, fail, hm_label, AccountId, BuilderData, Cell, HashmapE, HashmapType, IBitstring, Result,
-    SliceData, UInt256, UsageTree,
-};
+use std::fmt;
+use std::sync::Arc;
+
+use tvm_types::error;
+use tvm_types::fail;
+use tvm_types::hm_label;
+use tvm_types::AccountId;
+use tvm_types::BuilderData;
+use tvm_types::Cell;
+use tvm_types::HashmapE;
+use tvm_types::HashmapType;
+use tvm_types::IBitstring;
+use tvm_types::Result;
+use tvm_types::SliceData;
+use tvm_types::UInt256;
+use tvm_types::UsageTree;
+
+use crate::accounts::Account;
+use crate::accounts::AccountStatus;
+use crate::accounts::StorageUsedShort;
+use crate::blocks::Block;
+use crate::define_HashmapAugE;
+use crate::define_HashmapE;
+use crate::error::BlockError;
+use crate::hashmapaug::Augmentable;
+use crate::hashmapaug::Augmentation;
+use crate::hashmapaug::HashmapAugType;
+use crate::merkle_proof::MerkleProof;
+use crate::messages::generate_big_msg;
+use crate::messages::Message;
+use crate::shard::ShardStateUnsplit;
+use crate::types::ChildCell;
+use crate::types::CurrencyCollection;
+use crate::types::Grams;
+use crate::types::InRefValue;
+use crate::types::VarUInteger3;
+use crate::types::VarUInteger7;
+use crate::Deserializable;
+use crate::MaybeDeserialize;
+use crate::MaybeSerialize;
+use crate::Serializable;
 
 #[cfg(test)]
 #[path = "tests/test_transactions.rs"]
 pub mod tests;
 
-/*
-acst_unchanged$0 = AccStatusChange;  // x -> x
-acst_frozen$10 = AccStatusChange;    // init -> frozen
-acst_deleted$11 = AccStatusChange;   // frozen -> deleted
-*/
+// acst_unchanged$0 = AccStatusChange;  // x -> x
+// acst_frozen$10 = AccStatusChange;    // init -> frozen
+// acst_deleted$11 = AccStatusChange;   // frozen -> deleted
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum AccStatusChange {
     #[default]
@@ -71,12 +91,10 @@ impl Deserializable for AccStatusChange {
     }
 }
 
-/*
-cskip_no_state$00 = ComputeSkipReason;
-cskip_bad_state$01 = ComputeSkipReason;
-cskip_no_gas$10 = ComputeSkipReason;
-cskip_suspended$110 = ComputeSkipReason;
-*/
+// cskip_no_state$00 = ComputeSkipReason;
+// cskip_bad_state$01 = ComputeSkipReason;
+// cskip_no_gas$10 = ComputeSkipReason;
+// cskip_suspended$110 = ComputeSkipReason;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum ComputeSkipReason {
     #[default]
@@ -120,29 +138,27 @@ impl Deserializable for ComputeSkipReason {
     }
 }
 
-/*
-tr_phase_compute_skipped$0
-    reason:ComputeSkipReason
-= TrComputePhase;
-
-tr_phase_compute_vm$1
-    success:Bool
-    msg_state_used:Bool
-    account_activated:Bool
-    gas_fees:Grams
-    _:^[
-        gas_used:(VarUInteger 7)
-        gas_limit:(VarUInteger 7)
-        gas_credit:(Maybe (VarUInteger 3))
-        mode:int8
-        exit_code:int32
-        exit_arg:(Maybe int32)
-        vm_steps:uint32
-        vm_init_state_hash:uint256
-        vm_final_state_hash:uint256
-    ]
-  = TrComputePhase;
-*/
+// tr_phase_compute_skipped$0
+// reason:ComputeSkipReason
+// = TrComputePhase;
+//
+// tr_phase_compute_vm$1
+// success:Bool
+// msg_state_used:Bool
+// account_activated:Bool
+// gas_fees:Grams
+// _:^[
+// gas_used:(VarUInteger 7)
+// gas_limit:(VarUInteger 7)
+// gas_credit:(Maybe (VarUInteger 3))
+// mode:int8
+// exit_code:int32
+// exit_arg:(Maybe int32)
+// vm_steps:uint32
+// vm_init_state_hash:uint256
+// vm_final_state_hash:uint256
+// ]
+// = TrComputePhase;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct TrComputePhaseSkipped {
     pub reason: ComputeSkipReason,
@@ -214,9 +230,7 @@ impl TrComputePhase {
 
 impl Default for TrComputePhase {
     fn default() -> Self {
-        TrComputePhase::Skipped(TrComputePhaseSkipped {
-            reason: ComputeSkipReason::NoState,
-        })
+        TrComputePhase::Skipped(TrComputePhaseSkipped { reason: ComputeSkipReason::NoState })
     }
 }
 
@@ -296,13 +310,11 @@ impl Deserializable for TrComputePhase {
     }
 }
 
-/*
-tr_phase_storage$_
-  storage_fees_collected:Grams
-  storage_fees_due:(Maybe Grams)
-  status_change:AccStatusChange
-= TrStoragePhase;
-*/
+// tr_phase_storage$_
+// storage_fees_collected:Grams
+// storage_fees_due:(Maybe Grams)
+// status_change:AccStatusChange
+// = TrStoragePhase;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct TrStoragePhase {
     pub storage_fees_collected: Grams,
@@ -344,20 +356,18 @@ impl Deserializable for TrStoragePhase {
     }
 }
 
-/*
-tr_phase_bounce_negfunds$00 = TrBouncePhase;
-
-tr_phase_bounce_nofunds$01
-  msg_size:StorageUsed
-  req_fwd_fees:Grams
-= TrBouncePhase;
-
-tr_phase_bounce_ok$1
-  msg_size:StorageUsed
-  msg_fees:Grams
-  fwd_fees:Grams
-= TrBouncePhase;
-*/
+// tr_phase_bounce_negfunds$00 = TrBouncePhase;
+//
+// tr_phase_bounce_nofunds$01
+// msg_size:StorageUsed
+// req_fwd_fees:Grams
+// = TrBouncePhase;
+//
+// tr_phase_bounce_ok$1
+// msg_size:StorageUsed
+// msg_fees:Grams
+// fwd_fees:Grams
+// = TrBouncePhase;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct TrBouncePhaseNofunds {
     pub msg_size: StorageUsedShort,
@@ -383,9 +393,11 @@ impl TrBouncePhase {
     pub const fn default() -> Self {
         TrBouncePhase::Negfunds
     }
+
     pub const fn ok(msg_size: StorageUsedShort, msg_fees: Grams, fwd_fees: Grams) -> Self {
         TrBouncePhase::Ok(TrBouncePhaseOk::with_params(msg_size, msg_fees, fwd_fees))
     }
+
     pub const fn no_funds(msg_size: StorageUsedShort, req_fwd_fees: Grams) -> Self {
         TrBouncePhase::Nofunds(TrBouncePhaseNofunds::with_params(msg_size, req_fwd_fees))
     }
@@ -395,7 +407,7 @@ impl Serializable for TrBouncePhase {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
         match self {
             TrBouncePhase::Negfunds => {
-                //tr_phase_bounce_negfunds$00
+                // tr_phase_bounce_negfunds$00
                 cell.append_bits(0b00, 2)?;
             }
             TrBouncePhase::Nofunds(bp) => {
@@ -432,7 +444,7 @@ impl Deserializable for TrBouncePhase {
             bp.req_fwd_fees.read_from(cell)?; // req_fwd_fees:Grams
             *self = TrBouncePhase::Nofunds(bp);
         } else {
-            //tr_phase_bounce_negfunds$00
+            // tr_phase_bounce_negfunds$00
             *self = TrBouncePhase::Negfunds;
         }
         Ok(())
@@ -441,29 +453,20 @@ impl Deserializable for TrBouncePhase {
 
 impl TrBouncePhaseOk {
     pub const fn with_params(msg_size: StorageUsedShort, msg_fees: Grams, fwd_fees: Grams) -> Self {
-        TrBouncePhaseOk {
-            msg_size,
-            msg_fees,
-            fwd_fees,
-        }
+        TrBouncePhaseOk { msg_size, msg_fees, fwd_fees }
     }
 }
 
 impl TrBouncePhaseNofunds {
     pub const fn with_params(msg_size: StorageUsedShort, req_fwd_fees: Grams) -> Self {
-        TrBouncePhaseNofunds {
-            msg_size,
-            req_fwd_fees,
-        }
+        TrBouncePhaseNofunds { msg_size, req_fwd_fees }
     }
 }
 
-/*
-tr_phase_credit$_
-    due_fees_collected:(Maybe Grams)
-    credit:CurrencyCollection
-= TrCreditPhase;
-*/
+// tr_phase_credit$_
+// due_fees_collected:(Maybe Grams)
+// credit:CurrencyCollection
+// = TrCreditPhase;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TrCreditPhase {
     pub due_fees_collected: Option<Grams>,
@@ -474,23 +477,18 @@ impl TrCreditPhase {
     pub const fn default() -> Self {
         TrCreditPhase::with_params(None, CurrencyCollection::default())
     }
+
     pub const fn with_params(
         due_fees_collected: Option<Grams>,
         credit: CurrencyCollection,
     ) -> Self {
-        TrCreditPhase {
-            due_fees_collected,
-            credit,
-        }
+        TrCreditPhase { due_fees_collected, credit }
     }
 }
 
 impl Default for TrCreditPhase {
     fn default() -> Self {
-        TrCreditPhase {
-            due_fees_collected: None,
-            credit: CurrencyCollection::default(),
-        }
+        TrCreditPhase { due_fees_collected: None, credit: CurrencyCollection::default() }
     }
 }
 
@@ -510,11 +508,9 @@ impl Deserializable for TrCreditPhase {
     }
 }
 
-/*
-tick$0 = TickTock;
-tock$1 = TickTock;
-There are two kinds of TickTock: in transaction and in messages.
-*/
+// tick$0 = TickTock;
+// tock$1 = TickTock;
+// There are two kinds of TickTock: in transaction and in messages.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum TransactionTickTock {
     #[default]
@@ -526,6 +522,7 @@ impl TransactionTickTock {
     pub fn is_tick(&self) -> bool {
         self == &TransactionTickTock::Tick
     }
+
     pub fn is_tock(&self) -> bool {
         self == &TransactionTickTock::Tock
     }
@@ -574,21 +571,20 @@ pub struct TrActionPhase {
 impl TrActionPhase {
     pub fn add_fwd_fees(&mut self, fees: Grams) {
         if !fees.is_zero() {
-            self.total_fwd_fees
-                .get_or_insert(Grams::zero())
-                .add_checked(fees.as_u128());
+            self.total_fwd_fees.get_or_insert(Grams::zero()).add_checked(fees.as_u128());
         }
     }
+
     pub fn total_fwd_fees(&self) -> Grams {
         self.total_fwd_fees.unwrap_or_default()
     }
+
     pub fn add_action_fees(&mut self, fees: Grams) {
         if !fees.is_zero() {
-            self.total_action_fees
-                .get_or_insert(Grams::zero())
-                .add_checked(fees.as_u128());
+            self.total_action_fees.get_or_insert(Grams::zero()).add_checked(fees.as_u128());
         }
     }
+
     pub fn total_action_fees(&self) -> Grams {
         self.total_action_fees.unwrap_or_default()
     }
@@ -634,14 +630,12 @@ impl Deserializable for TrActionPhase {
     }
 }
 
-/*
-split_merge_info$_
-  cur_shard_pfx_len:(## 6)
-  acc_split_depth:(##6)
-  this_addr:uint256
-  sibling_addr:uint256
-= SplitMergeInfo;
-*/
+// split_merge_info$_
+// cur_shard_pfx_len:(## 6)
+// acc_split_depth:(##6)
+// this_addr:uint256
+// sibling_addr:uint256
+// = SplitMergeInfo;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct SplitMergeInfo {
@@ -654,16 +648,12 @@ pub struct SplitMergeInfo {
 impl Serializable for SplitMergeInfo {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
         if 0 != self.cur_shard_pfx_len & 0b11000000 {
-            fail!(BlockError::InvalidData(
-                "self.cur_shard_pfx_len is too long".to_string()
-            ))
+            fail!(BlockError::InvalidData("self.cur_shard_pfx_len is too long".to_string()))
         } else {
             cell.append_bits(self.cur_shard_pfx_len as usize, 6)?;
         }
         if 0 != self.acc_split_depth & 0b11000000 {
-            fail!(BlockError::InvalidData(
-                "self.acc_split_depth is too long".to_string()
-            ))
+            fail!(BlockError::InvalidData("self.acc_split_depth is too long".to_string()))
         } else {
             cell.append_bits(self.acc_split_depth as usize, 6)?;
         }
@@ -683,16 +673,14 @@ impl Deserializable for SplitMergeInfo {
     }
 }
 
-/*
-trans_ord$0000
-    storage_ph:(Maybe TrStoragePhase)
-    credit_ph:(Maybe TrCreditPhase)
-    compute_ph:TrComputePhase
-    action:(Maybe ^TrActionPhase)
-    aborted:Boolean
-    bounce:(Maybe TrBouncePhase)
-    destroyed:Boolean
-*/
+// trans_ord$0000
+// storage_ph:(Maybe TrStoragePhase)
+// credit_ph:(Maybe TrCreditPhase)
+// compute_ph:TrComputePhase
+// action:(Maybe ^TrActionPhase)
+// aborted:Boolean
+// bounce:(Maybe TrBouncePhase)
+// destroyed:Boolean
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct TransactionDescrOrdinary {
     pub credit_first: bool,
@@ -746,22 +734,18 @@ impl Deserializable for TransactionDescrOrdinary {
     }
 }
 
-/*
-trans_storage$0001
-    storage_ph:TrStoragePhase
-constructor tag is written and read in TransactionDescr::write_to
-*/
+// trans_storage$0001
+// storage_ph:TrStoragePhase
+// constructor tag is written and read in TransactionDescr::write_to
 type TransactionDescrStorage = TrStoragePhase;
 
-/*
-trans_tick_tock$001
-    tt:TickTock
-    storage:TrStoragePhase
-    compute_ph:TrComputePhase
-    action:(Maybe ^TrActionPhase)
-    aborted:Boolean
-    destroyed:Boolean
-*/
+// trans_tick_tock$001
+// tt:TickTock
+// storage:TrStoragePhase
+// compute_ph:TrComputePhase
+// action:(Maybe ^TrActionPhase)
+// aborted:Boolean
+// destroyed:Boolean
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct TransactionDescrTickTock {
     pub tt: TransactionTickTock,
@@ -774,16 +758,11 @@ pub struct TransactionDescrTickTock {
 
 impl TransactionDescrTickTock {
     pub fn tick() -> Self {
-        Self {
-            tt: TransactionTickTock::Tick,
-            ..Self::default()
-        }
+        Self { tt: TransactionTickTock::Tick, ..Self::default() }
     }
+
     pub fn tock() -> Self {
-        Self {
-            tt: TransactionTickTock::Tock,
-            ..Self::default()
-        }
+        Self { tt: TransactionTickTock::Tock, ..Self::default() }
     }
 }
 
@@ -822,14 +801,12 @@ impl Deserializable for TransactionDescrTickTock {
     }
 }
 
-/*
-trans_split_prepare$0100
-    split_info:SplitMergeInfo
-    compute_ph:TrComputePhase
-    action:(Maybe ^TrActionPhase)
-    aborted:Boolean
-    destroyed:Boolean
-*/
+// trans_split_prepare$0100
+// split_info:SplitMergeInfo
+// compute_ph:TrComputePhase
+// action:(Maybe ^TrActionPhase)
+// aborted:Boolean
+// destroyed:Boolean
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct TransactionDescrSplitPrepare {
     pub split_info: SplitMergeInfo,
@@ -872,12 +849,10 @@ impl Deserializable for TransactionDescrSplitPrepare {
     }
 }
 
-/*
-trans_split_install$0101
-    split_info:SplitMergeInfo
-    prepare_transaction:^Transaction
-    installed:Boolean
-*/
+// trans_split_install$0101
+// split_info:SplitMergeInfo
+// prepare_transaction:^Transaction
+// installed:Boolean
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct TransactionDescrSplitInstall {
     pub split_info: SplitMergeInfo,
@@ -906,12 +881,10 @@ impl Deserializable for TransactionDescrSplitInstall {
     }
 }
 
-/*
-trans_merge_prepare$0110
-    split_info:SplitMergeInfo
-    storage_ph:TrStoragePhase
-    aborted:Boolean
-*/
+// trans_merge_prepare$0110
+// split_info:SplitMergeInfo
+// storage_ph:TrStoragePhase
+// aborted:Boolean
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct TransactionDescrMergePrepare {
     pub split_info: SplitMergeInfo,
@@ -937,16 +910,14 @@ impl Deserializable for TransactionDescrMergePrepare {
     }
 }
 
-/*
-trans_merge_install$0111
-    split_info:SplitMergeInfo
-    prepare_transaction:^Transaction
-    credit_ph:(Maybe TrCreditPhase)
-    compute_ph:TrComputePhase
-    action:(Maybe ^TrActionPhase)
-    aborted:Boolean
-    destroyed:Boolean
-*/
+// trans_merge_install$0111
+// split_info:SplitMergeInfo
+// prepare_transaction:^Transaction
+// credit_ph:(Maybe TrCreditPhase)
+// compute_ph:TrComputePhase
+// action:(Maybe ^TrActionPhase)
+// aborted:Boolean
+// destroyed:Boolean
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct TransactionDescrMergeInstall {
     pub split_info: SplitMergeInfo,
@@ -1061,17 +1032,11 @@ impl TransactionDescr {
     }
 
     pub fn is_split(&self) -> bool {
-        matches!(
-            self,
-            TransactionDescr::SplitPrepare(_) | TransactionDescr::SplitInstall(_)
-        )
+        matches!(self, TransactionDescr::SplitPrepare(_) | TransactionDescr::SplitInstall(_))
     }
 
     pub fn is_merge(&self) -> bool {
-        matches!(
-            self,
-            TransactionDescr::MergePrepare(_) | TransactionDescr::MergeInstall(_)
-        )
+        matches!(self, TransactionDescr::MergePrepare(_) | TransactionDescr::MergeInstall(_))
     }
 
     fn append_to_storage_used(&mut self, cell: &Cell) {
@@ -1111,9 +1076,7 @@ impl TransactionDescr {
         }
     }
 
-    ///
     /// mark the transaction as aborted
-    ///
     pub fn mark_as_aborted(&mut self) {
         match self {
             TransactionDescr::Ordinary(ref mut desc) => {
@@ -1224,10 +1187,8 @@ impl Deserializable for TransactionDescr {
     }
 }
 
-/*
-update_hashes#72 {X:Type} old_hash:bits256 new_hash:bits256
-  = HASH_UPDATE X;
-*/
+// update_hashes#72 {X:Type} old_hash:bits256 new_hash:bits256
+// = HASH_UPDATE X;
 const HASH_UPDATE_TAG: u8 = 0x72;
 #[derive(Clone, Default, Debug, Eq, PartialEq)]
 pub struct HashUpdate {
@@ -1255,10 +1216,7 @@ impl Deserializable for HashUpdate {
     fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
         let tag = cell.get_next_byte()?;
         if tag != HASH_UPDATE_TAG {
-            fail!(BlockError::InvalidConstructorTag {
-                t: tag as u32,
-                s: "HashUpdate".to_string()
-            })
+            fail!(BlockError::InvalidConstructorTag { t: tag as u32, s: "HashUpdate".to_string() })
         }
         self.old_hash.read_from(cell)?;
         self.new_hash.read_from(cell)?;
@@ -1293,23 +1251,21 @@ define_HashmapE! {OutMessages, 15, InRefValue<Message>}
 
 pub type TransactionId = UInt256;
 
-/*
-transaction$0111
-    account_addr:bits256
-    lt:uint64
-    prev_trans_hash:bits256
-    prev_trans_lt:uint64
-    now:uint32
-    outmsg_cnt:uint15
-    orig_status:AccountStatus
-    end_status:AccountStatus
-    ^[  in_msg:(Maybe ^(Message Any))
-        out_msgs:(HashmapE 15 ^(Message Any)) ]
-    total_fees:CurrencyCollection
-    state_update:^(HASH_UPDATE Account)
-    description:^TransactionDescr
-= Transaction;
-*/
+// transaction$0111
+// account_addr:bits256
+// lt:uint64
+// prev_trans_hash:bits256
+// prev_trans_lt:uint64
+// now:uint32
+// outmsg_cnt:uint15
+// orig_status:AccountStatus
+// end_status:AccountStatus
+// ^[  in_msg:(Maybe ^(Message Any))
+// out_msgs:(HashmapE 15 ^(Message Any)) ]
+// total_fees:CurrencyCollection
+// state_update:^(HASH_UPDATE Account)
+// description:^TransactionDescr
+// = Transaction;
 #[derive(Debug, Clone)]
 pub struct Transaction {
     account_addr: AccountId,
@@ -1432,19 +1388,17 @@ impl Transaction {
         &mut self.total_fees
     }
 
-    ///
     /// Calculate total transaction fees
     /// transaction fees is the amount fee for all out-messages
-    ///
     //    pub fn calc_total_fees(&mut self) -> &CurrencyCollection {
     //        self.total_fees = CurrencyCollection::default();
     // TODO uncomment after merge with feature-block-builder
-    /*for msg in self.out_msgs.iter() {
-        if let Some(fee) = msg.get_fee()
-        {
-            total += fee;
-        }
-    }*/
+    // for msg in self.out_msgs.iter() {
+    // if let Some(fee) = msg.get_fee()
+    // {
+    // total += fee;
+    // }
+    // }
     //        &self.total_fees
     //    }
 
@@ -1571,9 +1525,8 @@ impl Transaction {
     pub fn contains_out_msg(&self, msg: &Message, hash: &UInt256) -> bool {
         if let Some(created_lt) = msg.lt() {
             if (created_lt > self.lt) && (created_lt <= self.lt + self.outmsg_cnt as u64) {
-                if let Ok(Some(msg_slice)) = self
-                    .out_msgs
-                    .get_as_slice(&U15::from_lt(created_lt - self.lt - 1))
+                if let Ok(Some(msg_slice)) =
+                    self.out_msgs.get_as_slice(&U15::from_lt(created_lt - self.lt - 1))
                 {
                     if let Some(cell) = msg_slice.reference_opt(0) {
                         return &cell.repr_hash() == hash;
@@ -1647,7 +1600,7 @@ impl Serializable for Transaction {
         builder.append_bits(self.outmsg_cnt as usize, 15)?; // outmsg_cnt: u15
         self.orig_status.write_to(builder)?; // orig_status: AccountStatus,
         self.end_status.write_to(builder)?; // end_status: AccountStatus
-                                            // self.in_msg.write_maybe_to(builder)?;
+        // self.in_msg.write_maybe_to(builder)?;
         let mut builder1 = BuilderData::new();
         match &self.in_msg {
             Some(in_msg) => {
@@ -1672,10 +1625,7 @@ impl Deserializable for Transaction {
     fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
         let tag = cell.get_next_int(4)? as usize;
         if tag != TRANSACTION_TAG {
-            fail!(BlockError::InvalidConstructorTag {
-                t: tag as u32,
-                s: "Transaction".to_string()
-            })
+            fail!(BlockError::InvalidConstructorTag { t: tag as u32, s: "Transaction".to_string() })
         }
         self.account_addr.read_from(cell)?; // account_addr
         self.lt = cell.get_next_u64()?; // lt
@@ -1700,13 +1650,7 @@ impl Deserializable for Transaction {
     }
 }
 
-define_HashmapAugE!(
-    Transactions,
-    64,
-    u64,
-    InRefValue<Transaction>,
-    CurrencyCollection
-);
+define_HashmapAugE!(Transactions, 64, u64, InRefValue<Transaction>, CurrencyCollection);
 
 impl Transactions {
     pub fn insert(&mut self, tr: &Transaction) -> Result<()> {
@@ -1715,6 +1659,7 @@ impl Transactions {
         let total_fees = tr.total_fees();
         self.setref(&lt, &cell, total_fees)
     }
+
     pub fn total_fees(&self) -> &CurrencyCollection {
         self.root_extra()
     }
@@ -1834,6 +1779,7 @@ impl AccountBlock {
     pub fn total_fee(&self) -> &CurrencyCollection {
         self.transactions.root_extra()
     }
+
     /// count of transactions
     pub fn transaction_count(&self) -> Result<usize> {
         match self.transactions.is_empty() {
@@ -1841,6 +1787,7 @@ impl AccountBlock {
             false => self.transactions.len(),
         }
     }
+
     /// update
     pub fn calculate_and_write_state(
         &mut self,
@@ -1848,11 +1795,10 @@ impl AccountBlock {
         new_state: &ShardStateUnsplit,
     ) -> Result<()> {
         if self.transactions.is_empty() {
-            fail!(BlockError::InvalidData(
-                "No transactions in account block".to_string()
-            ))
+            fail!(BlockError::InvalidData("No transactions in account block".to_string()))
         } else if let Some(transaction) = self.transactions.single_value()? {
-            // if block has only one transaction for account just copy state update from transaction
+            // if block has only one transaction for account just copy state update from
+            // transaction
             self.write_state_update(&transaction.0.read_state_update()?)?;
         } else {
             // otherwice it is need to calculate Hash update
@@ -1887,18 +1833,16 @@ impl AccountBlock {
     where
         F: FnMut(Transaction) -> Result<bool>,
     {
-        self.transactions
-            .iterate_objects(|InRefValue(transaction)| p(transaction))
+        self.transactions.iterate_objects(|InRefValue(transaction)| p(transaction))
     }
 
     pub fn transaction_iterate_full<F>(&self, mut p: F) -> Result<bool>
     where
         F: FnMut(u64, Cell, CurrencyCollection) -> Result<bool>,
     {
-        self.transactions
-            .iterate_slices_with_keys_and_aug(|key, transaction, aug| {
-                p(key, transaction.reference(0)?, aug)
-            })
+        self.transactions.iterate_slices_with_keys_and_aug(|key, transaction, aug| {
+            p(key, transaction.reference(0)?, aug)
+        })
     }
 
     pub fn transactions(&self) -> &Transactions {
@@ -1945,13 +1889,7 @@ impl Deserializable for AccountBlock {
 /////////////////////////////////////////////////////////////////////////////////////////
 // 4.2.17. Collection of all transactions in a block.
 // _ (HashmapAugE 256 AccountBlock CurrencyCollection) = ShardAccountBlocks;
-define_HashmapAugE!(
-    ShardAccountBlocks,
-    256,
-    UInt256,
-    AccountBlock,
-    CurrencyCollection
-);
+define_HashmapAugE!(ShardAccountBlocks, 256, UInt256, AccountBlock, CurrencyCollection);
 
 impl Augmentation<CurrencyCollection> for AccountBlock {
     fn aug(&self) -> Result<CurrencyCollection> {

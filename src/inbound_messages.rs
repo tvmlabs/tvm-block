@@ -1,41 +1,52 @@
-/*
-* Copyright (C) 2019-2022 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2022 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
 
 //! # message descriptors
 //!
 //! Implementation of blockchain spec (3.2) structs: InMsg and InMsgDescr.
 //! Serialization and deserialization of this structs.
 
-use crate::{
-    define_HashmapAugE,
-    envelope_message::MsgEnvelope,
-    error::BlockError,
-    hashmapaug::{Augmentable, Augmentation, HashmapAugType},
-    messages::Message,
-    transactions::Transaction,
-    types::{AddSub, ChildCell, CurrencyCollection, Grams},
-    Deserializable, Serializable,
-};
 use std::fmt;
-use tvm_types::{
-    error, fail, hm_label, BuilderData, Cell, HashmapType, IBitstring, Result, SliceData, UInt256,
-};
+
+use tvm_types::error;
+use tvm_types::fail;
+use tvm_types::hm_label;
+use tvm_types::BuilderData;
+use tvm_types::Cell;
+use tvm_types::HashmapType;
+use tvm_types::IBitstring;
+use tvm_types::Result;
+use tvm_types::SliceData;
+use tvm_types::UInt256;
+
+use crate::define_HashmapAugE;
+use crate::envelope_message::MsgEnvelope;
+use crate::error::BlockError;
+use crate::hashmapaug::Augmentable;
+use crate::hashmapaug::Augmentation;
+use crate::hashmapaug::HashmapAugType;
+use crate::messages::Message;
+use crate::transactions::Transaction;
+use crate::types::AddSub;
+use crate::types::ChildCell;
+use crate::types::CurrencyCollection;
+use crate::types::Grams;
+use crate::Deserializable;
+use crate::Serializable;
 
 #[cfg(test)]
 #[path = "tests/test_in_msgs.rs"]
 mod tests;
 
-///internal helper macros for reading InMsg variants
+/// internal helper macros for reading InMsg variants
 macro_rules! read_msg_descr {
     ($cell:expr, $msg_descr:tt, $variant:ident) => {{
         let mut x = $msg_descr::default();
@@ -44,7 +55,7 @@ macro_rules! read_msg_descr {
     }};
 }
 
-///internal helper macros for writing constructor tags in InMsg variants
+/// internal helper macros for writing constructor tags in InMsg variants
 macro_rules! write_ctor_tag {
     ($builder:expr, $tag:ident) => {{
         $builder.append_bits($tag as usize, 3).unwrap();
@@ -52,7 +63,7 @@ macro_rules! write_ctor_tag {
     }};
 }
 
-//3.2.7. Augmentation of InMsgDescr
+// 3.2.7. Augmentation of InMsgDescr
 #[derive(Default, PartialEq, Eq, Clone, Debug)]
 pub struct ImportFees {
     pub fees_collected: Grams,
@@ -69,16 +80,11 @@ impl Augmentable for ImportFees {
 
 impl ImportFees {
     pub const fn new() -> ImportFees {
-        ImportFees {
-            fees_collected: Grams::zero(),
-            value_imported: CurrencyCollection::new(),
-        }
+        ImportFees { fees_collected: Grams::zero(), value_imported: CurrencyCollection::new() }
     }
+
     pub fn with_grams(grams: u64) -> Self {
-        Self {
-            fees_collected: Grams::from(grams),
-            value_imported: CurrencyCollection::new(),
-        }
+        Self { fees_collected: Grams::from(grams), value_imported: CurrencyCollection::new() }
     }
 }
 
@@ -98,7 +104,7 @@ impl Deserializable for ImportFees {
     }
 }
 
-//constructor tags of InMsg variants (only 3 bits are used)
+// constructor tags of InMsg variants (only 3 bits are used)
 const MSG_IMPORT_EXT: u8 = 0b00000000;
 const MSG_IMPORT_IHR: u8 = 0b00000010;
 const MSG_IMPORT_IMM: u8 = 0b00000011;
@@ -107,10 +113,8 @@ const MSG_IMPORT_TR: u8 = 0b00000101;
 const MSG_DISCARD_FIN: u8 = 0b00000110;
 const MSG_DISCARD_TR: u8 = 0b00000111;
 
-///
 /// Inbound message
 /// blockchain spec 3.2.2. Descriptor of an inbound message.
-///
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum InMsg {
     #[default]
@@ -119,22 +123,28 @@ pub enum InMsg {
     /// msg_import_ext$000 msg:^(Message Any) transaction:^Transaction = InMsg;
     External(InMsgExternal),
     /// Internal IHR messages with destination addresses in this block
-    /// msg_import_ihr$010 msg:^(Message Any) transaction:^Transaction ihr_fee:Grams proof_created:^Cell = InMsg;
+    /// msg_import_ihr$010 msg:^(Message Any) transaction:^Transaction
+    /// ihr_fee:Grams proof_created:^Cell = InMsg;
     IHR(InMsgIHR),
     /// Internal messages with destinations in this block
-    /// msg_import_imm$011 in_msg:^MsgEnvelope transaction:^Transaction fwd_fee:Grams = InMsg;
+    /// msg_import_imm$011 in_msg:^MsgEnvelope transaction:^Transaction
+    /// fwd_fee:Grams = InMsg;
     Immediate(InMsgFinal),
     /// Immediately routed internal messages
-    /// msg_import_fin$100 in_msg:^MsgEnvelope transaction:^Transaction fwd_fee:Grams = InMsg;
+    /// msg_import_fin$100 in_msg:^MsgEnvelope transaction:^Transaction
+    /// fwd_fee:Grams = InMsg;
     Final(InMsgFinal),
     /// Transit internal messages
-    /// msg_import_tr$101  in_msg:^MsgEnvelope out_msg:^MsgEnvelope transit_fee:Grams = InMsg;
+    /// msg_import_tr$101  in_msg:^MsgEnvelope out_msg:^MsgEnvelope
+    /// transit_fee:Grams = InMsg;
     Transit(InMsgTransit),
     /// Discarded internal messages with destinations in this block
-    /// msg_discard_fin$110 in_msg:^MsgEnvelope transaction_id:uint64 fwd_fee:Grams = InMsg;
+    /// msg_discard_fin$110 in_msg:^MsgEnvelope transaction_id:uint64
+    /// fwd_fee:Grams = InMsg;
     DiscardedFinal(InMsgDiscardedFinal),
     /// Discarded transit internal messages
-    /// msg_discard_tr$111 in_msg:^MsgEnvelope transaction_id:uint64 fwd_fee:Grams proof_delivered:^Cell = InMsg;
+    /// msg_discard_tr$111 in_msg:^MsgEnvelope transaction_id:uint64
+    /// fwd_fee:Grams proof_delivered:^Cell = InMsg;
     DiscardedTransit(InMsgDiscardedTransit),
 }
 
@@ -143,16 +153,12 @@ impl fmt::Display for InMsg {
         let msg_hash = self.message_cell().unwrap_or_default().repr_hash();
         let tr_hash = self.transaction_cell().unwrap_or_default().repr_hash();
         match self {
-            InMsg::External(_x) => write!(
-                f,
-                "InMsg msg_import_ext$000 msg: {:x} tr: {:x}",
-                msg_hash, tr_hash
-            ),
-            InMsg::IHR(_x) => write!(
-                f,
-                "InMsg msg_import_ihr$010 msg: {:x} tr: {:x}",
-                msg_hash, tr_hash
-            ),
+            InMsg::External(_x) => {
+                write!(f, "InMsg msg_import_ext$000 msg: {:x} tr: {:x}", msg_hash, tr_hash)
+            }
+            InMsg::IHR(_x) => {
+                write!(f, "InMsg msg_import_ihr$010 msg: {:x} tr: {:x}", msg_hash, tr_hash)
+            }
             InMsg::Immediate(x) => write!(
                 f,
                 "InMsg msg_import_imm$011 msg: {:x} tr: {:x} fee: {}",
@@ -193,31 +199,35 @@ impl InMsg {
     pub fn external(msg_cell: Cell, tr_cell: Cell) -> InMsg {
         InMsg::External(InMsgExternal::with_cells(msg_cell, tr_cell))
     }
+
     /// Create IHR
     pub fn ihr(msg_cell: Cell, tr_cell: Cell, ihr_fee: Grams, proof: Cell) -> InMsg {
         InMsg::IHR(InMsgIHR::with_cells(msg_cell, tr_cell, ihr_fee, proof))
     }
+
     /// Create Immediate
     pub fn immediate(env_cell: Cell, tr_cell: Cell, fwd_fee: Grams) -> InMsg {
         InMsg::Immediate(InMsgFinal::with_cells(env_cell, tr_cell, fwd_fee))
     }
+
     /// Create Final
     pub fn final_msg(env_cell: Cell, tr_cell: Cell, fwd_fee: Grams) -> InMsg {
         InMsg::Final(InMsgFinal::with_cells(env_cell, tr_cell, fwd_fee))
     }
+
     /// Create Transit
     pub fn transit(in_msg_cell: Cell, out_msg_cell: Cell, fwd_fee: Grams) -> InMsg {
         InMsg::Transit(InMsgTransit::with_cells(in_msg_cell, out_msg_cell, fwd_fee))
     }
+
     /// Create DiscardedFinal
     pub fn discarded_final(env_cell: Cell, tr_id: u64, fwd_fee: Grams) -> InMsg {
         InMsg::DiscardedFinal(InMsgDiscardedFinal::with_cells(env_cell, tr_id, fwd_fee))
     }
+
     /// Create DiscardedTransit
     pub fn discarded_transit(env_cell: Cell, tr_id: u64, fwd_fee: Grams, proof: Cell) -> InMsg {
-        InMsg::DiscardedTransit(InMsgDiscardedTransit::with_cells(
-            env_cell, tr_id, fwd_fee, proof,
-        ))
+        InMsg::DiscardedTransit(InMsgDiscardedTransit::with_cells(env_cell, tr_id, fwd_fee, proof))
     }
 
     /// Check if is valid message
@@ -238,11 +248,9 @@ impl InMsg {
         }
     }
 
-    ///
     /// Get transaction from inbound message
-    /// Transaction exist only in External, IHR, Immediate and Final inbound messages.
-    /// For other messages function returned None
-    ///
+    /// Transaction exist only in External, IHR, Immediate and Final inbound
+    /// messages. For other messages function returned None
     pub fn read_transaction(&self) -> Result<Option<Transaction>> {
         Ok(match self {
             InMsg::External(ref x) => Some(x.read_transaction()?),
@@ -256,11 +264,9 @@ impl InMsg {
         })
     }
 
-    ///
     /// Get transaction cell from inbound message
-    /// Transaction exist only in External, IHR, Immediate and Final inbound messages.
-    /// For other messages function returned None
-    ///
+    /// Transaction exist only in External, IHR, Immediate and Final inbound
+    /// messages. For other messages function returned None
     pub fn transaction_cell(&self) -> Option<Cell> {
         match self {
             InMsg::External(ref x) => Some(x.transaction_cell()),
@@ -274,9 +280,7 @@ impl InMsg {
         }
     }
 
-    ///
     /// Get message
-    ///
     pub fn read_message(&self) -> Result<Message> {
         match self {
             InMsg::External(ref x) => x.read_message(),
@@ -290,9 +294,7 @@ impl InMsg {
         }
     }
 
-    ///
     /// Get message cell
-    ///
     pub fn message_cell(&self) -> Result<Cell> {
         Ok(match self {
             InMsg::External(ref x) => x.message_cell(),
@@ -306,9 +308,7 @@ impl InMsg {
         })
     }
 
-    ///
     /// Get in envelope message cell
-    ///
     pub fn in_msg_envelope_cell(&self) -> Option<Cell> {
         match self {
             InMsg::External(_) => None,
@@ -322,9 +322,7 @@ impl InMsg {
         }
     }
 
-    ///
     /// Get in envelope message
-    ///
     pub fn read_in_msg_envelope(&self) -> Result<Option<MsgEnvelope>> {
         Ok(match self {
             InMsg::External(_) => None,
@@ -338,9 +336,7 @@ impl InMsg {
         })
     }
 
-    ///
     /// Get out envelope message cell
-    ///
     pub fn out_msg_envelope_cell(&self) -> Option<Cell> {
         match self {
             InMsg::External(_) => None,
@@ -354,9 +350,7 @@ impl InMsg {
         }
     }
 
-    ///
     /// Get out envelope message
-    ///
     pub fn read_out_msg_envelope(&self) -> Result<Option<MsgEnvelope>> {
         match self {
             InMsg::External(_) => Ok(None),
@@ -385,21 +379,21 @@ impl Augmentation<ImportFees> for InMsg {
         let mut fees = ImportFees::default();
         match self {
             InMsg::External(_) => {
-                //println!("InMsg::External");
+                // println!("InMsg::External");
             }
             InMsg::IHR(_) => {
-                //println!("InMsg::IHR");
+                // println!("InMsg::IHR");
                 fees.fees_collected = header.ihr_fee;
 
                 fees.value_imported = header.value.clone();
                 fees.value_imported.grams.add(&header.ihr_fee)?;
             }
             InMsg::Immediate(_) => {
-                //println!("InMsg::Immediate");
+                // println!("InMsg::Immediate");
                 fees.fees_collected = header.fwd_fee;
             }
             InMsg::Final(ref x) => {
-                //println!("InMsg::Final");
+                // println!("InMsg::Final");
                 let env = x.read_envelope_message()?;
                 if env.fwd_fee_remaining() != x.fwd_fee() {
                     fail!("fwd_fee_remaining not equal to fwd_fee")
@@ -411,7 +405,7 @@ impl Augmentation<ImportFees> for InMsg {
                 fees.value_imported.grams.add(&header.ihr_fee)?;
             }
             InMsg::Transit(ref x) => {
-                //println!("InMsg::Transit");
+                // println!("InMsg::Transit");
                 let env = x.read_in_message()?;
                 if env.fwd_fee_remaining() < x.transit_fee() {
                     fail!("fwd_fee_remaining less than transit_fee")
@@ -424,13 +418,13 @@ impl Augmentation<ImportFees> for InMsg {
                 fees.value_imported.grams.add(env.fwd_fee_remaining())?;
             }
             InMsg::DiscardedFinal(_) => {
-                //println!("InMsg::DiscardedFinal");
+                // println!("InMsg::DiscardedFinal");
                 fees.fees_collected = header.fwd_fee;
 
                 fees.value_imported.grams = header.fwd_fee;
             }
             InMsg::DiscardedTransit(_) => {
-                //println!("InMsg::DiscardedTransit");
+                // println!("InMsg::DiscardedTransit");
                 fees.fees_collected = header.fwd_fee;
 
                 fees.value_imported.grams = header.fwd_fee;
@@ -451,7 +445,8 @@ impl Serializable for InMsg {
             InMsg::Transit(ref x) => x.write_to(write_ctor_tag!(cell, MSG_IMPORT_TR)),
             InMsg::DiscardedFinal(ref x) => x.write_to(write_ctor_tag!(cell, MSG_DISCARD_FIN)),
             InMsg::DiscardedTransit(ref x) => x.write_to(write_ctor_tag!(cell, MSG_DISCARD_TR)),
-            InMsg::None => Ok(()), // Due to ChildCell it is need sometimes to serialize default InMsg
+            InMsg::None => Ok(()), /* Due to ChildCell it is need sometimes to serialize default
+                                    * InMsg */
         }
     }
 }
@@ -467,10 +462,9 @@ impl Deserializable for InMsg {
             MSG_IMPORT_TR => read_msg_descr!(cell, InMsgTransit, Transit),
             MSG_DISCARD_FIN => read_msg_descr!(cell, InMsgDiscardedFinal, DiscardedFinal),
             MSG_DISCARD_TR => read_msg_descr!(cell, InMsgDiscardedTransit, DiscardedTransit),
-            tag => fail!(BlockError::InvalidConstructorTag {
-                t: tag as u32,
-                s: "InMsg".to_string()
-            }),
+            tag => {
+                fail!(BlockError::InvalidConstructorTag { t: tag as u32, s: "InMsg".to_string() })
+            }
         };
         Ok(())
     }
@@ -830,7 +824,7 @@ impl Deserializable for InMsgDiscardedTransit {
     }
 }
 
-//3.2.8. Structure of InMsgDescr
+// 3.2.8. Structure of InMsgDescr
 //_ (HashmapAugE 256 InMsg ImportFees) = InMsgDescr
 define_HashmapAugE!(InMsgDescr, 256, UInt256, InMsg, ImportFees);
 
@@ -854,15 +848,10 @@ impl InMsgDescr {
         msg_slice: &SliceData,
         fees: &ImportFees,
     ) -> Result<()> {
-        if self
-            .set_builder_serialized(key.clone(), &msg_slice.as_builder(), fees)
-            .is_ok()
-        {
+        if self.set_builder_serialized(key.clone(), &msg_slice.as_builder(), fees).is_ok() {
             Ok(())
         } else {
-            fail!(BlockError::Other(
-                "Error insert serialized message".to_string()
-            ))
+            fail!(BlockError::Other("Error insert serialized message".to_string()))
         }
     }
 

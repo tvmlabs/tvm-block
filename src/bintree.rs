@@ -1,18 +1,27 @@
-/*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
 
-use crate::{error::BlockError, hashmapaug::Augmentable, Deserializable, Serializable};
 use std::marker::PhantomData;
-use tvm_types::{error, fail, BuilderData, Cell, IBitstring, Result, SliceData};
+
+use tvm_types::error;
+use tvm_types::fail;
+use tvm_types::BuilderData;
+use tvm_types::Cell;
+use tvm_types::IBitstring;
+use tvm_types::Result;
+use tvm_types::SliceData;
+
+use crate::error::BlockError;
+use crate::hashmapaug::Augmentable;
+use crate::Deserializable;
+use crate::Serializable;
 
 #[cfg(test)]
 #[path = "tests/test_bintree.rs"]
@@ -26,20 +35,14 @@ pub trait BinTreeType<X: Default + Serializable + Deserializable> {
         while cursor.get_next_bit()? {
             if cursor.remaining_references() < 2 {
                 // fork doesn't have two refs - bad data
-                fail!(BlockError::InvalidData(
-                    "Fork doesn't have two refs".to_string()
-                ))
+                fail!(BlockError::InvalidData("Fork doesn't have two refs".to_string()))
             }
             match key.get_next_bit_opt() {
                 Some(x) => cursor = SliceData::load_cell(cursor.reference(x)?)?,
                 _ => return Ok(None),
             }
         }
-        if key.is_empty() {
-            Ok(Some(X::construct_from(&mut cursor)?))
-        } else {
-            Ok(None)
-        }
+        if key.is_empty() { Ok(Some(X::construct_from(&mut cursor)?)) } else { Ok(None) }
     }
 
     fn find(&self, mut key: SliceData) -> Result<Option<(SliceData, X)>> {
@@ -48,9 +51,7 @@ pub trait BinTreeType<X: Default + Serializable + Deserializable> {
         while cursor.get_next_bit()? {
             if cursor.remaining_references() < 2 {
                 // fork doesn't have two refs - bad data
-                fail!(BlockError::InvalidData(
-                    "Fork doesn't have two refs".to_string()
-                ))
+                fail!(BlockError::InvalidData("Fork doesn't have two refs".to_string()))
             }
             match key.get_next_bit_opt() {
                 Some(x) => cursor = SliceData::load_cell(cursor.reference(x)?)?,
@@ -266,13 +267,11 @@ where
     Ok(result)
 }
 
-///
 /// Implements a binary tree
 ///
 /// TL-B scheme:
 /// bt_leaf$0 {X:Type} leaf:X = BinTree X;
 /// bt_fork$1 {X:Type} left:^(BinTree X) right:^(BinTree X) = BinTree X;
-///
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct BinTree<X: Default + Serializable + Deserializable> {
     data: SliceData,
@@ -290,13 +289,11 @@ impl<X: Default + Serializable + Deserializable> BinTree<X> {
     pub fn with_item(value: &X) -> Result<Self> {
         let mut leaf = false.write_to_new_cell()?;
         value.write_to(&mut leaf)?;
-        Ok(Self {
-            data: SliceData::load_builder(leaf)?,
-            phantom: PhantomData::<X>,
-        })
+        Ok(Self { data: SliceData::load_builder(leaf)?, phantom: PhantomData::<X> })
     }
 
-    /// Splits item by calling splitter function, returns false if item was not found
+    /// Splits item by calling splitter function, returns false if item was not
+    /// found
     pub fn split(
         &mut self,
         key: SliceData,
@@ -310,7 +307,8 @@ impl<X: Default + Serializable + Deserializable> BinTree<X> {
         }
     }
 
-    /// Merge 2 items in fork by calling merger function, returns false if fork was not found
+    /// Merge 2 items in fork by calling merger function, returns false if fork
+    /// was not found
     pub fn merge(
         &mut self,
         key: SliceData,
@@ -324,7 +322,8 @@ impl<X: Default + Serializable + Deserializable> BinTree<X> {
         }
     }
 
-    /// Change item with given key calling mutator function, returns false if item was not found
+    /// Change item with given key calling mutator function, returns false if
+    /// item was not found
     pub fn update(&mut self, key: SliceData, mutator: impl FnOnce(X) -> Result<X>) -> Result<bool> {
         if let Some(builder) = internal_update(&self.data, key, mutator)? {
             self.data = SliceData::load_builder(builder)?;
@@ -355,13 +354,12 @@ impl<X: Default + Serializable + Deserializable> Deserializable for BinTree<X> {
     }
 }
 
-///
 /// Implementation of Augmented Binary Tree
 ///
 /// TL-B scheme:
 /// bta_leaf$0 {X:Type} {Y:Type} leaf:X extra:Y = BinTreeAug X Y;
-/// bta_fork$1 {X:Type} left:^(BinTreeAug X Y) right:^(BinTreeAug X Y) extra:Y = BinTreeAug X Y;
-///
+/// bta_fork$1 {X:Type} left:^(BinTreeAug X Y) right:^(BinTreeAug X Y) extra:Y =
+/// BinTreeAug X Y;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct BinTreeAug<X: Default + Serializable + Deserializable, Y: Augmentable> {
     extra: Y,
@@ -389,9 +387,11 @@ impl<X: Default + Serializable + Deserializable, Y: Augmentable> BinTreeAug<X, Y
             phantom: PhantomData::<X>,
         })
     }
+
     pub fn set_extra(&mut self, _key: SliceData, _aug: &Y) -> bool {
         unimplemented!()
     }
+
     /// Returns item augment
     pub fn extra(&self, mut key: SliceData) -> Result<Option<Y>> {
         let mut cursor = self.data.clone();
@@ -412,10 +412,12 @@ impl<X: Default + Serializable + Deserializable, Y: Augmentable> BinTreeAug<X, Y
             Ok(None)
         }
     }
+
     /// Returns root augment
     pub fn root_extra(&self) -> &Y {
         &self.extra
     }
+
     /// Splits item by key old item will be left
     pub fn split(&mut self, key: SliceData, value: &X, aug: &Y) -> Result<bool> {
         let mut cursor = self.data.clone();
@@ -427,6 +429,7 @@ impl<X: Default + Serializable + Deserializable, Y: Augmentable> BinTreeAug<X, Y
             Ok(false)
         }
     }
+
     // /// Merges items in fork and put left instead
     // pub fn merge(&mut self, key: SliceData) -> bool {
     //     let mut builder = BuilderData::from_slice(&self.data);

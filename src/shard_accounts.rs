@@ -1,28 +1,39 @@
-/*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
 
-use crate::{
-    accounts::{Account, ShardAccount},
-    define_HashmapAugE,
-    hashmapaug::{Augmentable, HashmapAugType},
-    types::{CurrencyCollection, Number5},
-    Augmentation, Deserializable, Serializable,
-};
 use std::fmt;
-use tvm_types::{
-    error, fail, hm_label, AccountId, BuilderData, Cell, HashmapSubtree, HashmapType, IBitstring,
-    Result, SliceData, UInt256,
-};
+
+use tvm_types::error;
+use tvm_types::fail;
+use tvm_types::hm_label;
+use tvm_types::AccountId;
+use tvm_types::BuilderData;
+use tvm_types::Cell;
+use tvm_types::HashmapSubtree;
+use tvm_types::HashmapType;
+use tvm_types::IBitstring;
+use tvm_types::Result;
+use tvm_types::SliceData;
+use tvm_types::UInt256;
+
+use crate::accounts::Account;
+use crate::accounts::ShardAccount;
+use crate::define_HashmapAugE;
+use crate::hashmapaug::Augmentable;
+use crate::hashmapaug::HashmapAugType;
+use crate::types::CurrencyCollection;
+use crate::types::Number5;
+use crate::Augmentation;
+use crate::Deserializable;
+use crate::Serializable;
 
 #[cfg(test)]
 #[path = "tests/test_shard_accounts.rs"]
@@ -30,8 +41,9 @@ mod tests;
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // 4.1.9. The combined state of all accounts in a shard. The split part
-// of the shardchain state (cf. 1.2.1 and 1.2.2) is given by (upd from Lite Client v11):
-// _ (HashmapAugE 256 ShardAccount DepthBalanceInfo) = ShardAccounts;
+// of the shardchain state (cf. 1.2.1 and 1.2.2) is given by (upd from Lite
+// Client v11): _ (HashmapAugE 256 ShardAccount DepthBalanceInfo) =
+// ShardAccounts;
 define_HashmapAugE!(ShardAccounts, 256, UInt256, ShardAccount, DepthBalanceInfo);
 impl HashmapSubtree for ShardAccounts {}
 
@@ -87,14 +99,12 @@ impl Augmentation<DepthBalanceInfo> for ShardAccount {
         let account = self.read_account()?;
         let balance = account.balance().cloned().unwrap_or_default();
         let split_depth = account.split_depth().unwrap_or_default();
-        Ok(DepthBalanceInfo {
-            split_depth,
-            balance,
-        })
+        Ok(DepthBalanceInfo { split_depth, balance })
     }
 }
 
-/// depth_balance$_ split_depth:(#<= 30) balance:CurrencyCollection = DepthBalanceInfo;
+/// depth_balance$_ split_depth:(#<= 30) balance:CurrencyCollection =
+/// DepthBalanceInfo;
 #[derive(Default, Clone, Debug, Eq, PartialEq)]
 pub struct DepthBalanceInfo {
     split_depth: Number5,

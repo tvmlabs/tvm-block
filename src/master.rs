@@ -1,55 +1,76 @@
-/*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
 
-use crate::{
-    bintree::{BinTree, BinTreeType},
-    blocks::{Block, BlockIdExt, ExtBlkRef, ProofChain},
-    config_params::ConfigParams,
-    define_HashmapAugE, define_HashmapE,
-    error::BlockError,
-    hashmapaug::{Augmentable, HashmapAugType, TraverseNextStep},
-    inbound_messages::InMsg,
-    shard::{AccountIdPrefixFull, ShardIdent, SHARD_FULL},
-    signature::CryptoSignaturePair,
-    types::{ChildCell, CurrencyCollection, InRefValue},
-    validators::ValidatorInfo,
-    Augmentation, CopyleftRewards, Deserializable, MaybeDeserialize, MaybeSerialize, Serializable,
-    U15,
-};
-use std::{collections::HashMap, fmt};
-use tvm_types::{
-    error, fail, hm_label, AccountId, BuilderData, Cell, HashmapE, HashmapType, IBitstring, Result,
-    SliceData, UInt256,
-};
+use std::collections::HashMap;
+use std::fmt;
+
+use tvm_types::error;
+use tvm_types::fail;
+use tvm_types::hm_label;
+use tvm_types::AccountId;
+use tvm_types::BuilderData;
+use tvm_types::Cell;
+use tvm_types::HashmapE;
+use tvm_types::HashmapType;
+use tvm_types::IBitstring;
+use tvm_types::Result;
+use tvm_types::SliceData;
+use tvm_types::UInt256;
+
+use crate::bintree::BinTree;
+use crate::bintree::BinTreeType;
+use crate::blocks::Block;
+use crate::blocks::BlockIdExt;
+use crate::blocks::ExtBlkRef;
+use crate::blocks::ProofChain;
+use crate::config_params::ConfigParams;
+use crate::define_HashmapAugE;
+use crate::define_HashmapE;
+use crate::error::BlockError;
+use crate::hashmapaug::Augmentable;
+use crate::hashmapaug::HashmapAugType;
+use crate::hashmapaug::TraverseNextStep;
+use crate::inbound_messages::InMsg;
+use crate::shard::AccountIdPrefixFull;
+use crate::shard::ShardIdent;
+use crate::shard::SHARD_FULL;
+use crate::signature::CryptoSignaturePair;
+use crate::types::ChildCell;
+use crate::types::CurrencyCollection;
+use crate::types::InRefValue;
+use crate::validators::ValidatorInfo;
+use crate::Augmentation;
+use crate::CopyleftRewards;
+use crate::Deserializable;
+use crate::MaybeDeserialize;
+use crate::MaybeSerialize;
+use crate::Serializable;
+use crate::U15;
 
 #[cfg(test)]
 #[path = "tests/test_master.rs"]
 mod tests;
 
-/*
-_ (HashmapE 32 ^(BinTree ShardDescr)) = ShardHashes;
-_ (HashmapAugE 96 ShardFeeCreated ShardFeeCreated) = ShardFees;
-
-masterchain_block_extra#cca5
-  key_block:(## 1)
-  shard_hashes:ShardHashes
-  shard_fees:ShardFees
-  ^[ prev_blk_signatures:(HashmapE 16 CryptoSignaturePair)
-     recover_create_msg:(Maybe ^InMsg)
-     mint_msg:(Maybe ^InMsg) ]
-  config:key_block?ConfigParams
-= McBlockExtra;
-*/
+// _ (HashmapE 32 ^(BinTree ShardDescr)) = ShardHashes;
+// _ (HashmapAugE 96 ShardFeeCreated ShardFeeCreated) = ShardFees;
+//
+// masterchain_block_extra#cca5
+// key_block:(## 1)
+// shard_hashes:ShardHashes
+// shard_fees:ShardFees
+// ^[ prev_blk_signatures:(HashmapE 16 CryptoSignaturePair)
+// recover_create_msg:(Maybe ^InMsg)
+// mint_msg:(Maybe ^InMsg) ]
+// config:key_block?ConfigParams
+// = McBlockExtra;
 define_HashmapE! {ShardHashes, 32, InRefValue<BinTree<ShardDescr>>}
 define_HashmapE! {CryptoSignatures, 16, CryptoSignaturePair}
 define_HashmapAugE! {ShardFees, 96, ShardIdentFull, ShardFeeCreated, ShardFeeCreated}
@@ -68,10 +89,7 @@ pub struct ShardIdentFull {
 
 impl ShardIdentFull {
     pub fn new(workchain_id: i32, prefix: u64) -> ShardIdentFull {
-        ShardIdentFull {
-            workchain_id,
-            prefix,
-        }
+        ShardIdentFull { workchain_id, prefix }
     }
 }
 
@@ -116,6 +134,7 @@ impl ShardHashes {
         }
         Ok(())
     }
+
     pub fn iterate_shards<F>(&self, mut func: F) -> Result<bool>
     where
         F: FnMut(ShardIdent, ShardDescr) -> Result<bool>,
@@ -127,6 +146,7 @@ impl ShardHashes {
             })
         })
     }
+
     pub fn iterate_shards_with_siblings<F>(&self, mut func: F) -> Result<bool>
     where
         F: FnMut(ShardIdent, ShardDescr, Option<ShardDescr>) -> Result<bool>,
@@ -139,16 +159,18 @@ impl ShardHashes {
             })
         })
     }
+
     pub fn iterate_shards_with_siblings_mut<F>(&self, mut _func: F) -> Result<()>
     where
         F: FnMut(ShardIdent, ShardDescr, Option<ShardDescr>) -> Result<Option<ShardDescr>>,
     {
         unimplemented!()
     }
+
     pub fn has_workchain(&self, workchain_id: i32) -> Result<bool> {
-        self.get_as_slice(&workchain_id)
-            .map(|result| result.is_some())
+        self.get_as_slice(&workchain_id).map(|result| result.is_some())
     }
+
     pub fn find_shard(&self, shard: &ShardIdent) -> Result<Option<McShardRecord>> {
         if let Some(InRefValue(bintree)) = self.get(&shard.workchain_id())? {
             let shard_id = shard.shard_key(false);
@@ -159,6 +181,7 @@ impl ShardHashes {
         }
         Ok(None)
     }
+
     pub fn find_shard_by_prefix(
         &self,
         prefix: &AccountIdPrefixFull,
@@ -172,6 +195,7 @@ impl ShardHashes {
         }
         Ok(None)
     }
+
     pub fn get_shard(&self, shard: &ShardIdent) -> Result<Option<McShardRecord>> {
         if let Some(InRefValue(bintree)) = self.get(&shard.workchain_id())? {
             let shard_id = shard.shard_key(false);
@@ -181,6 +205,7 @@ impl ShardHashes {
         }
         Ok(None)
     }
+
     pub fn get_neighbours(&self, shard: &ShardIdent) -> Result<Vec<McShardRecord>> {
         let mut vec = Vec::new();
         self.iterate_with_keys(|workchain_id: i32, InRefValue(bintree)| {
@@ -195,6 +220,7 @@ impl ShardHashes {
         })?;
         Ok(vec)
     }
+
     pub fn get_new_shards(&self) -> Result<HashMap<ShardIdent, Vec<BlockIdExt>>> {
         let mut new_shards = HashMap::new();
         self.iterate_shards(|shard, descr| {
@@ -218,6 +244,7 @@ impl ShardHashes {
         })?;
         Ok(new_shards)
     }
+
     pub fn calc_shard_cc_seqno(&self, shard: &ShardIdent) -> Result<u32> {
         if shard.is_masterchain() {
             fail!("Given `shard` can't be masterchain")
@@ -231,11 +258,7 @@ impl ShardHashes {
         if shard1.shard().is_ancestor_for(shard) {
             return Ok(shard1.descr.next_catchain_seqno);
         } else if !shard.is_parent_for(shard1.shard()) {
-            fail!(
-                "get_shard_cc_seqno: invalid shard1 {} for {}",
-                shard1.shard(),
-                shard
-            )
+            fail!("get_shard_cc_seqno: invalid shard1 {} for {}", shard1.shard(), shard)
         }
 
         let shard2 = self
@@ -243,18 +266,12 @@ impl ShardHashes {
             .ok_or_else(|| error!("get_shard_cc_seqno: can't find shard2"))?;
 
         if !shard.is_parent_for(shard2.shard()) {
-            fail!(
-                "get_shard_cc_seqno: invalid shard2 {} for {}",
-                shard2.shard(),
-                shard
-            )
+            fail!("get_shard_cc_seqno: invalid shard2 {} for {}", shard2.shard(), shard)
         }
 
-        Ok(std::cmp::max(
-            shard1.descr.next_catchain_seqno,
-            shard2.descr.next_catchain_seqno,
-        ) + 1)
+        Ok(std::cmp::max(shard1.descr.next_catchain_seqno, shard2.descr.next_catchain_seqno) + 1)
     }
+
     pub fn split_shard(
         &mut self,
         splitted_shard: &ShardIdent,
@@ -269,6 +286,7 @@ impl ShardHashes {
             self.set(&splitted_shard.workchain_id(), &tree)
         }
     }
+
     pub fn merge_shards(
         &mut self,
         new_shard: &ShardIdent,
@@ -283,6 +301,7 @@ impl ShardHashes {
             self.set(&new_shard.workchain_id(), &tree)
         }
     }
+
     pub fn update_shard(
         &mut self,
         shard: &ShardIdent,
@@ -297,6 +316,7 @@ impl ShardHashes {
             self.set(&shard.workchain_id(), &tree)
         }
     }
+
     pub fn add_workchain(
         &mut self,
         workchain_id: i32,
@@ -455,27 +475,22 @@ impl ShardFees {
             workchain_id: shard.workchain_id(),
             prefix: shard.shard_prefix_with_tag(),
         };
-        let fee = ShardFeeCreated {
-            fees,
-            create: created,
-        };
+        let fee = ShardFeeCreated { fees, create: created };
         self.set(&id, &fee, &fee)
     }
 }
 
 define_HashmapE! {CopyleftMessages, 15, InRefValue<InMsg>}
 
-/*
-masterchain_block_extra#cca5
-  key_block:(## 1)
-  shard_hashes:ShardHashes
-  shard_fees:ShardFees
-  ^[ prev_blk_signatures:(HashmapE 16 CryptoSignaturePair)
-     recover_create_msg:(Maybe ^InMsg)
-     mint_msg:(Maybe ^InMsg) ]
-  config:key_block?ConfigParams
-= McBlockExtra;
-*/
+// masterchain_block_extra#cca5
+// key_block:(## 1)
+// shard_hashes:ShardHashes
+// shard_fees:ShardFees
+// ^[ prev_blk_signatures:(HashmapE 16 CryptoSignaturePair)
+// recover_create_msg:(Maybe ^InMsg)
+// mint_msg:(Maybe ^InMsg) ]
+// config:key_block?ConfigParams
+// = McBlockExtra;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct McBlockExtra {
     key_block: bool,
@@ -489,16 +504,12 @@ pub struct McBlockExtra {
 }
 
 impl McBlockExtra {
-    ///
     /// Get all fees for blockchain
-    ///
     pub fn total_fee(&self) -> &CurrencyCollection {
         &self.fees.root_extra().fees
     }
 
-    ///
     /// Get total fees for shard
-    ///
     pub fn fee(&self, ident: &ShardIdent) -> Result<Option<CurrencyCollection>> {
         Ok(match self.fees.get_serialized(ident.full_key()?)? {
             Some(shards) => Some(shards.fees),
@@ -513,6 +524,7 @@ impl McBlockExtra {
     pub fn hashes(&self) -> &ShardHashes {
         &self.shards
     }
+
     pub fn hashes_mut(&mut self) -> &mut ShardHashes {
         &mut self.shards
     }
@@ -520,6 +532,7 @@ impl McBlockExtra {
     pub fn shards(&self) -> &ShardHashes {
         &self.shards
     }
+
     pub fn shards_mut(&mut self) -> &mut ShardHashes {
         &mut self.shards
     }
@@ -527,6 +540,7 @@ impl McBlockExtra {
     pub fn fees(&self) -> &ShardFees {
         &self.fees
     }
+
     pub fn fees_mut(&mut self) -> &mut ShardFees {
         &mut self.fees
     }
@@ -534,6 +548,7 @@ impl McBlockExtra {
     pub fn prev_blk_signatures(&self) -> &CryptoSignatures {
         &self.prev_blk_signatures
     }
+
     pub fn prev_blk_signatures_mut(&mut self) -> &mut CryptoSignatures {
         &mut self.prev_blk_signatures
     }
@@ -541,37 +556,37 @@ impl McBlockExtra {
     pub fn config(&self) -> Option<&ConfigParams> {
         self.config.as_ref()
     }
+
     pub fn config_mut(&mut self) -> &mut Option<ConfigParams> {
         &mut self.config
     }
+
     pub fn set_config(&mut self, config: ConfigParams) {
         self.config = Some(config)
     }
 
     pub fn read_recover_create_msg(&self) -> Result<Option<InMsg>> {
-        self.recover_create_msg
-            .as_ref()
-            .map(|mr| mr.read_struct())
-            .transpose()
+        self.recover_create_msg.as_ref().map(|mr| mr.read_struct()).transpose()
     }
+
     pub fn write_recover_create_msg(&mut self, value: Option<&InMsg>) -> Result<()> {
         self.recover_create_msg = value.map(ChildCell::with_struct).transpose()?;
         Ok(())
     }
+
     pub fn recover_create_msg_cell(&self) -> Option<Cell> {
         self.recover_create_msg.as_ref().map(|mr| mr.cell())
     }
 
     pub fn read_mint_msg(&self) -> Result<Option<InMsg>> {
-        self.mint_msg
-            .as_ref()
-            .map(ChildCell::read_struct)
-            .transpose()
+        self.mint_msg.as_ref().map(ChildCell::read_struct).transpose()
     }
+
     pub fn write_mint_msg(&mut self, value: Option<&InMsg>) -> Result<()> {
         self.mint_msg = value.map(ChildCell::with_struct).transpose()?;
         Ok(())
     }
+
     pub fn mint_msg_cell(&self) -> Option<Cell> {
         self.mint_msg.as_ref().map(|mr| mr.cell())
     }
@@ -588,10 +603,10 @@ impl McBlockExtra {
         }
         Ok(result)
     }
+
     pub fn write_copyleft_msgs(&mut self, value: &[InMsg]) -> Result<()> {
         for (i, rec) in value.iter().enumerate() {
-            self.copyleft_msgs
-                .setref(&U15(i as i16), &rec.serialize()?)?;
+            self.copyleft_msgs.setref(&U15(i as i16), &rec.serialize()?)?;
         }
         Ok(())
     }
@@ -622,11 +637,7 @@ impl Deserializable for McBlockExtra {
             self.copyleft_msgs.read_from(cell1)?;
         }
 
-        self.config = if key_block {
-            Some(ConfigParams::construct_from(cell)?)
-        } else {
-            None
-        };
+        self.config = if key_block { Some(ConfigParams::construct_from(cell)?) } else { None };
 
         Ok(())
     }
@@ -634,11 +645,8 @@ impl Deserializable for McBlockExtra {
 
 impl Serializable for McBlockExtra {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
-        let tag = if self.copyleft_msgs.is_empty() {
-            MC_BLOCK_EXTRA_TAG
-        } else {
-            MC_BLOCK_EXTRA_TAG_2
-        };
+        let tag =
+            if self.copyleft_msgs.is_empty() { MC_BLOCK_EXTRA_TAG } else { MC_BLOCK_EXTRA_TAG_2 };
         cell.append_u16(tag)?;
         self.config.is_some().write_to(cell)?;
         self.shards.write_to(cell)?;
@@ -671,10 +679,7 @@ pub struct KeyMaxLt {
 
 impl KeyMaxLt {
     pub const fn new() -> KeyMaxLt {
-        KeyMaxLt {
-            key: false,
-            max_end_lt: 0,
-        }
+        KeyMaxLt { key: false, max_end_lt: 0 }
     }
 }
 
@@ -717,15 +722,13 @@ impl KeyExtBlkRef {
     pub fn key(&self) -> bool {
         self.key
     }
+
     pub fn blk_ref(&self) -> &ExtBlkRef {
         &self.blk_ref
     }
+
     pub fn master_block_id(self) -> (u64, BlockIdExt, bool) {
-        (
-            self.blk_ref.end_lt,
-            BlockIdExt::from_ext_blk(self.blk_ref),
-            self.key,
-        )
+        (self.blk_ref.end_lt, BlockIdExt::from_ext_blk(self.blk_ref), self.key)
     }
 }
 
@@ -747,10 +750,7 @@ impl Serializable for KeyExtBlkRef {
 
 impl Augmentation<KeyMaxLt> for KeyExtBlkRef {
     fn aug(&self) -> Result<KeyMaxLt> {
-        Ok(KeyMaxLt {
-            key: self.key,
-            max_end_lt: self.blk_ref.end_lt,
-        })
+        Ok(KeyMaxLt { key: self.key, max_end_lt: self.blk_ref.end_lt })
     }
 }
 
@@ -832,7 +832,8 @@ impl OldMcBlocksInfo {
             let y = req_seqno >> (d - 1);
             match y.cmp(&(2 * x + 1)) {
                 std::cmp::Ordering::Greater => {
-                    // ((x + 1) << d) <= req_seqno <=> (x+1) <= (req_seqno >> d) = (y >> 1) <=> 2*x+2 <= y <=> y > 2*x+1
+                    // ((x + 1) << d) <= req_seqno <=> (x+1) <= (req_seqno >> d) = (y >> 1) <=>
+                    // 2*x+2 <= y <=> y > 2*x+1
                     Ok(TraverseNextStep::Stop) // all nodes in subtree have block.seqno < req_seqno => skip
                 }
                 std::cmp::Ordering::Equal => {
@@ -859,9 +860,7 @@ impl OldMcBlocksInfo {
 
     pub fn check_key_block(&self, id: &BlockIdExt, is_key_opt: Option<bool>) -> Result<()> {
         if !id.shard().is_masterchain() {
-            fail!(BlockError::InvalidData(
-                "Given id does not belong masterchain".to_string()
-            ));
+            fail!(BlockError::InvalidData("Given id does not belong masterchain".to_string()));
         }
         let found_id = self
             .get(&id.seq_no())?
@@ -883,11 +882,7 @@ impl OldMcBlocksInfo {
         }
         if let Some(is_key) = is_key_opt {
             if is_key != found_id.key {
-                fail!(
-                    "Given block has key flag set to: {}, expected {}",
-                    found_id.key,
-                    is_key
-                )
+                fail!("Given block has key flag set to: {}, expected {}", found_id.key, is_key)
             }
         }
         Ok(())
@@ -912,16 +907,11 @@ pub struct ShardFeeCreated {
 
 impl ShardFeeCreated {
     pub const fn new() -> ShardFeeCreated {
-        ShardFeeCreated {
-            fees: CurrencyCollection::new(),
-            create: CurrencyCollection::new(),
-        }
+        ShardFeeCreated { fees: CurrencyCollection::new(), create: CurrencyCollection::new() }
     }
+
     pub fn with_fee(fees: CurrencyCollection) -> Self {
-        Self {
-            fees,
-            create: CurrencyCollection::default(),
-        }
+        Self { fees, create: CurrencyCollection::default() }
     }
 }
 
@@ -957,7 +947,8 @@ pub fn umulnexps32(x: u64, k: u32, _trunc: bool) -> u64 {
     ) as u64
 }
 
-/// counters#_ last_updated:uint32 total:uint64 cnt2048:uint64 cnt65536:uint64 = Counters;
+/// counters#_ last_updated:uint32 total:uint64 cnt2048:uint64 cnt65536:uint64 =
+/// Counters;
 #[derive(Clone, Debug, Default, Eq)]
 pub struct Counters {
     last_updated: u32,
@@ -986,12 +977,15 @@ impl Counters {
         }
         true
     }
+
     pub fn is_zero(&self) -> bool {
         self.total == 0
     }
+
     pub fn almost_zero(&self) -> bool {
         (self.cnt2048 | self.cnt65536) <= 1
     }
+
     pub fn almost_equals(&self, other: &Self) -> bool {
         self.last_updated == other.last_updated
             && self.total == other.total
@@ -1000,9 +994,11 @@ impl Counters {
             && self.cnt65536 <= other.cnt65536 + 1
             && other.cnt65536 <= self.cnt65536 + 1
     }
+
     pub fn modified_since(&self, utime: u32) -> bool {
         self.last_updated >= utime
     }
+
     pub fn increase_by(&mut self, count: u64, now: u32) -> bool {
         if !self.is_valid() {
             return false;
@@ -1022,11 +1018,8 @@ impl Counters {
         if dt != 0 {
             // more precise version of cnt2048 = llround(cnt2048 * exp(-dt / 2048.));
             // (rounding error has absolute value < 1)
-            self.cnt2048 = if dt >= 48 * 2048 {
-                0
-            } else {
-                umulnexps32(self.cnt2048, dt << 5, false)
-            };
+            self.cnt2048 =
+                if dt >= 48 * 2048 { 0 } else { umulnexps32(self.cnt2048, dt << 5, false) };
             // more precise version of cnt65536 = llround(cnt65536 * exp(-dt / 65536.));
             // (rounding error has absolute value < 1)
             self.cnt65536 = umulnexps32(self.cnt65536, dt, false);
@@ -1037,15 +1030,19 @@ impl Counters {
         self.last_updated = now;
         true
     }
+
     pub fn total(&self) -> u64 {
         self.total
     }
+
     pub fn last_updated(&self) -> u32 {
         self.last_updated
     }
+
     pub fn cnt2048(&self) -> u64 {
         self.cnt2048
     }
+
     pub fn cnt65536(&self) -> u64 {
         self.cnt65536
     }
@@ -1124,7 +1121,8 @@ impl Serializable for CreatorStats {
 
 define_HashmapE! {BlockCounters, 256, CreatorStats}
 
-/// block_create_stats#17 counters:(HashmapE 256 CreatorStats) = BlockCreateStats;
+/// block_create_stats#17 counters:(HashmapE 256 CreatorStats) =
+/// BlockCreateStats;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct BlockCreateStats {
     pub counters: BlockCounters,
@@ -1164,19 +1162,17 @@ impl Serializable for BlockCreateStats {
     }
 }
 
-/*
-masterchain_state_extra#cc26
-  shard_hashes:ShardHashes
-  config:ConfigParams
-  ^[ flags:(## 16) { flags <= 1 }
-     validator_info:ValidatorInfo
-     prev_blocks:OldMcBlocksInfo
-     after_key_block:Bool
-     last_key_block:(Maybe ExtBlkRef)
-     block_create_stats:(flags . 0)?BlockCreateStats ]
-  global_balance:CurrencyCollection
-= McStateExtra;
-*/
+// masterchain_state_extra#cc26
+// shard_hashes:ShardHashes
+// config:ConfigParams
+// ^[ flags:(## 16) { flags <= 1 }
+// validator_info:ValidatorInfo
+// prev_blocks:OldMcBlocksInfo
+// after_key_block:Bool
+// last_key_block:(Maybe ExtBlkRef)
+// block_create_stats:(flags . 0)?BlockCreateStats ]
+// global_balance:CurrencyCollection
+// = McStateExtra;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct McStateExtra {
     pub shards: ShardHashes,
@@ -1216,9 +1212,7 @@ impl McStateExtra {
         ShardIdent::with_workchain_id(workchain_id)
     }
 
-    ///
     /// Get Shard last seq_no
-    ///
     pub fn shard_seq_no(&self, ident: &ShardIdent) -> Result<Option<u32>> {
         Ok(match self.shards.get(&ident.workchain_id())? {
             Some(InRefValue(shards)) => shards.get(ident.shard_key(false))?.map(|s| s.seq_no),
@@ -1226,9 +1220,7 @@ impl McStateExtra {
         })
     }
 
-    ///
     /// Get shard last Logical Time
-    ///
     pub fn shard_lt(&self, ident: &ShardIdent) -> Result<Option<u64>> {
         Ok(match self.shards.get(&ident.workchain_id())? {
             Some(InRefValue(shards)) => shards.get(ident.shard_key(false))?.map(|s| s.start_lt),
@@ -1236,9 +1228,7 @@ impl McStateExtra {
         })
     }
 
-    ///
     /// Get shard last block hash
-    ///
     pub fn shard_hash(&self, ident: &ShardIdent) -> Result<Option<UInt256>> {
         Ok(match self.shards.get(&ident.workchain_id())? {
             Some(InRefValue(shards)) => shards.get(ident.shard_key(false))?.map(|s| s.root_hash),
@@ -1249,6 +1239,7 @@ impl McStateExtra {
     pub fn shards(&self) -> &ShardHashes {
         &self.shards
     }
+
     pub fn config(&self) -> &ConfigParams {
         &self.config
     }
@@ -1323,19 +1314,17 @@ impl Serializable for McStateExtra {
     }
 }
 
-/*
-fsm_none$0
-
-fsm_split$10
-    split_utime: uint32
-    interval: uint32
-= FutureSplitMerge;
-
-fsm_merge$11
-    merge_utime: uint32
-    interval: uint32
-= FutureSplitMerge;
-*/
+// fsm_none$0
+//
+// fsm_split$10
+// split_utime: uint32
+// interval: uint32
+// = FutureSplitMerge;
+//
+// fsm_merge$11
+// merge_utime: uint32
+// interval: uint32
+// = FutureSplitMerge;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum FutureSplitMerge {
     #[default]
@@ -1375,19 +1364,13 @@ impl Serializable for FutureSplitMerge {
             FutureSplitMerge::None => {
                 cell.append_bit_zero()?;
             }
-            FutureSplitMerge::Split {
-                split_utime,
-                interval,
-            } => {
+            FutureSplitMerge::Split { split_utime, interval } => {
                 cell.append_bit_one()?;
                 cell.append_bit_zero()?;
                 split_utime.write_to(cell)?;
                 interval.write_to(cell)?;
             }
-            FutureSplitMerge::Merge {
-                merge_utime,
-                interval,
-            } => {
+            FutureSplitMerge::Merge { merge_utime, interval } => {
                 cell.append_bit_one()?;
                 cell.append_bit_one()?;
                 merge_utime.write_to(cell)?;
@@ -1550,7 +1533,7 @@ define_HashmapE! {RefShardBlocks, 32, BinTree<ShardBlockRef>}
 impl RefShardBlocks {
     pub fn with_ids<'a>(ids: impl IntoIterator<Item = &'a (BlockIdExt, u64)>) -> Result<Self> {
         // Naive implementation.
-        //TODO optimise me!
+        // TODO optimise me!
 
         let mut ref_shard_blocks = HashMap::new(); // wc -> shard -> id
         for (id, end_lt) in ids {
@@ -1685,66 +1668,43 @@ impl ShardDescr {
             collators: None,
         }
     }
+
     pub fn fsm_equal(&self, other: &Self) -> bool {
         self.split_merge_at == other.split_merge_at
     }
+
     pub fn is_fsm_merge(&self) -> bool {
-        matches!(
-            self.split_merge_at,
-            FutureSplitMerge::Merge {
-                merge_utime: _,
-                interval: _
-            }
-        )
+        matches!(self.split_merge_at, FutureSplitMerge::Merge { merge_utime: _, interval: _ })
     }
+
     pub fn is_fsm_split(&self) -> bool {
-        matches!(
-            self.split_merge_at,
-            FutureSplitMerge::Split {
-                split_utime: _,
-                interval: _
-            }
-        )
+        matches!(self.split_merge_at, FutureSplitMerge::Split { split_utime: _, interval: _ })
     }
+
     pub fn is_fsm_none(&self) -> bool {
         matches!(self.split_merge_at, FutureSplitMerge::None)
     }
+
     pub fn fsm_utime(&self) -> u32 {
         match self.split_merge_at {
-            FutureSplitMerge::Split {
-                split_utime,
-                interval: _,
-            } => split_utime,
-            FutureSplitMerge::Merge {
-                merge_utime,
-                interval: _,
-            } => merge_utime,
+            FutureSplitMerge::Split { split_utime, interval: _ } => split_utime,
+            FutureSplitMerge::Merge { merge_utime, interval: _ } => merge_utime,
             _ => 0,
         }
     }
+
     pub fn fsm_utime_end(&self) -> u32 {
         match self.split_merge_at {
-            FutureSplitMerge::Split {
-                split_utime,
-                interval,
-            } => split_utime + interval,
-            FutureSplitMerge::Merge {
-                merge_utime,
-                interval,
-            } => merge_utime + interval,
+            FutureSplitMerge::Split { split_utime, interval } => split_utime + interval,
+            FutureSplitMerge::Merge { merge_utime, interval } => merge_utime + interval,
             _ => 0,
         }
     }
+
     pub fn fsm_interval(&self) -> u32 {
         match self.split_merge_at {
-            FutureSplitMerge::Split {
-                split_utime: _,
-                interval,
-            } => interval,
-            FutureSplitMerge::Merge {
-                merge_utime: _,
-                interval,
-            } => interval,
+            FutureSplitMerge::Split { split_utime: _, interval } => interval,
+            FutureSplitMerge::Merge { merge_utime: _, interval } => interval,
             _ => 0,
         }
     }
@@ -1918,9 +1878,7 @@ impl Serializable for ShardDescr {
     }
 }
 
-/*
-master_info$_ master:ExtBlkRef = BlkMasterInfo;
-*/
+// master_info$_ master:ExtBlkRef = BlkMasterInfo;
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub struct BlkMasterInfo {
     pub master: ExtBlkRef,
@@ -1939,9 +1897,7 @@ impl Serializable for BlkMasterInfo {
 }
 
 define_HashmapE!(Publishers, 256, ());
-/*
-shared_lib_descr$00 lib:^Cell publishers:(Hashmap 256 True) = LibDescr;
-*/
+// shared_lib_descr$00 lib:^Cell publishers:(Hashmap 256 True) = LibDescr;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct LibDescr {
     lib: Cell,
@@ -1950,22 +1906,23 @@ pub struct LibDescr {
 
 impl LibDescr {
     pub fn new(lib: Cell) -> Self {
-        Self {
-            lib,
-            publishers: Publishers::default(),
-        }
+        Self { lib, publishers: Publishers::default() }
     }
+
     pub fn from_lib_data_by_publisher(lib: Cell, publisher: AccountId) -> Self {
         let mut publishers = Publishers::default();
         publishers.set(&publisher, &()).unwrap();
         Self { lib, publishers }
     }
+
     pub fn publishers(&self) -> &Publishers {
         &self.publishers
     }
+
     pub fn publishers_mut(&mut self) -> &mut Publishers {
         &mut self.publishers
     }
+
     pub fn lib(&self) -> &Cell {
         &self.lib
     }
@@ -1989,9 +1946,7 @@ impl Deserializable for LibDescr {
 impl Serializable for LibDescr {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
         if self.publishers.is_empty() {
-            fail!(BlockError::InvalidData(
-                "self.publishers is empty".to_string()
-            ))
+            fail!(BlockError::InvalidData("self.publishers is empty".to_string()))
         }
         cell.append_bits(0, 2)?;
         self.lib.write_to(cell)?;

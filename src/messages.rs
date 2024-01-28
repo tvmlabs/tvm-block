@@ -1,65 +1,74 @@
-/*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
 
-use crate::GetRepresentationHash;
-use crate::{
-    blocks::Block,
-    define_HashmapE,
-    error::BlockError,
-    hashmapaug::HashmapAugType,
-    merkle_proof::MerkleProof,
-    shard::MASTERCHAIN_ID,
-    types::{AddSub, CurrencyCollection, Grams, Number5, Number9, UnixTime32},
-    Deserializable, MaybeDeserialize, MaybeSerialize, Serializable,
-};
 use std::fmt;
 use std::str::FromStr;
-use tvm_types::{
-    error, fail, AccountId, BuilderData, Cell, HashmapE, HashmapType, IBitstring, Result,
-    SliceData, UInt256, UsageTree, MAX_DATA_BITS, MAX_REFERENCES_COUNT,
-};
+
+use tvm_types::error;
+use tvm_types::fail;
+use tvm_types::AccountId;
+use tvm_types::BuilderData;
+use tvm_types::Cell;
+use tvm_types::HashmapE;
+use tvm_types::HashmapType;
+use tvm_types::IBitstring;
+use tvm_types::Result;
+use tvm_types::SliceData;
+use tvm_types::UInt256;
+use tvm_types::UsageTree;
+use tvm_types::MAX_DATA_BITS;
+use tvm_types::MAX_REFERENCES_COUNT;
+
+use crate::blocks::Block;
+use crate::define_HashmapE;
+use crate::error::BlockError;
+use crate::hashmapaug::HashmapAugType;
+use crate::merkle_proof::MerkleProof;
+use crate::shard::MASTERCHAIN_ID;
+use crate::types::AddSub;
+use crate::types::CurrencyCollection;
+use crate::types::Grams;
+use crate::types::Number5;
+use crate::types::Number9;
+use crate::types::UnixTime32;
+use crate::Deserializable;
+use crate::GetRepresentationHash;
+use crate::MaybeDeserialize;
+use crate::MaybeSerialize;
+use crate::Serializable;
 
 #[cfg(test)]
 #[path = "tests/test_messages.rs"]
 mod tests;
 
 ///////////////////////////////////////////////////////////////////////////////
-///
 /// MessageAddress
-///
-///
 
-/*
-3.1.2. TL-B scheme for addresses. The serialization of source and destination addresses is defined by the following TL-B scheme:
-addr_none$00 = MsgAddressExt;
-addr_extern$01 len:(## 9) external_address:(len * Bit)
-= MsgAddressExt;
-anycast_info depth:(## 5) rewrite_pfx:(depth * Bit) = Anycast;
-addr_std$10 anycast:(Maybe Anycast)
-workchain_id:int8 address:uint256 = MsgAddressInt;
-addr_var$11 anycast:(Maybe Anycast) addr_len:(## 9)
-workchain_id:int32 address:(addr_len * Bit) = MsgAddressInt;
-_ MsgAddressInt = MsgAddress;
-_ MsgAddressExt = MsgAddress;
- */
+// 3.1.2. TL-B scheme for addresses. The serialization of source and destination
+// addresses is defined by the following TL-B scheme: addr_none$00 =
+// MsgAddressExt; addr_extern$01 len:(## 9) external_address:(len * Bit)
+// = MsgAddressExt;
+// anycast_info depth:(## 5) rewrite_pfx:(depth * Bit) = Anycast;
+// addr_std$10 anycast:(Maybe Anycast)
+// workchain_id:int8 address:uint256 = MsgAddressInt;
+// addr_var$11 anycast:(Maybe Anycast) addr_len:(## 9)
+// workchain_id:int32 address:(addr_len * Bit) = MsgAddressInt;
+// _ MsgAddressInt = MsgAddress;
+// _ MsgAddressExt = MsgAddress;
 
 impl AnycastInfo {
     pub fn with_rewrite_pfx(pfx: SliceData) -> Result<Self> {
-        Ok(Self {
-            depth: Number5::new(pfx.remaining_bits() as u32)?,
-            rewrite_pfx: pfx,
-        })
+        Ok(Self { depth: Number5::new(pfx.remaining_bits() as u32)?, rewrite_pfx: pfx })
     }
+
     pub fn set_rewrite_pfx(&mut self, pfx: SliceData) -> Result<()> {
         self.depth = Number5::new(pfx.remaining_bits() as u32)?;
         self.rewrite_pfx = pfx;
@@ -81,14 +90,12 @@ impl fmt::Display for AnycastInfo {
     }
 }
 
-/*
-addr_std$10 anycast:(Maybe Anycast)
-workchain_id:int8 address:uint256 = MsgAddressInt;
-addr_var$11 anycast:(Maybe Anycast) addr_len:(## 9)
-workchain_id:int32 address:(addr_len * Bit) = MsgAddressInt;
-_ MsgAddressInt = MsgAddress;
-_ MsgAddressExt = MsgAddress;
- */
+// addr_std$10 anycast:(Maybe Anycast)
+// workchain_id:int8 address:uint256 = MsgAddressInt;
+// addr_var$11 anycast:(Maybe Anycast) addr_len:(## 9)
+// workchain_id:int32 address:(addr_len * Bit) = MsgAddressInt;
+// _ MsgAddressInt = MsgAddress;
+// _ MsgAddressExt = MsgAddress;
 
 impl MsgAddrVar {
     pub fn with_address(
@@ -97,12 +104,7 @@ impl MsgAddrVar {
         address: SliceData,
     ) -> Result<MsgAddrVar> {
         let addr_len = Number9::new(address.remaining_bits() as u32)?;
-        Ok(MsgAddrVar {
-            anycast,
-            addr_len,
-            workchain_id,
-            address,
-        })
+        Ok(MsgAddrVar { anycast, addr_len, workchain_id, address })
     }
 }
 
@@ -136,21 +138,13 @@ impl MsgAddrStd {
         workchain_id: i8,
         address: AccountId,
     ) -> Self {
-        MsgAddrStd {
-            anycast,
-            workchain_id,
-            address,
-        }
+        MsgAddrStd { anycast, workchain_id, address }
     }
 }
 
 impl Default for MsgAddrStd {
     fn default() -> Self {
-        MsgAddrStd {
-            anycast: None,
-            workchain_id: 0,
-            address: AccountId::from([0; 32]),
-        }
+        MsgAddrStd { anycast: None, workchain_id: 0, address: AccountId::from([0; 32]) }
     }
 }
 
@@ -175,9 +169,7 @@ impl fmt::Display for MsgAddrStd {
 impl MsgAddrExt {
     pub fn with_address(address: SliceData) -> Result<Self> {
         if address.remaining_bits() > Number9::get_max_len() {
-            fail!(BlockError::InvalidArg(
-                "address can't be longer than 2^9-1 bits".to_string()
-            ))
+            fail!(BlockError::InvalidArg("address can't be longer than 2^9-1 bits".to_string()))
         }
         Ok(MsgAddrExt {
             len: Number9::new(address.remaining_bits() as u32)?,
@@ -203,14 +195,13 @@ impl fmt::Display for MsgAddrExt {
 
 impl MsgAddressExt {
     pub fn with_extern(address: SliceData) -> Result<Self> {
-        Ok(MsgAddressExt::AddrExtern(MsgAddrExt::with_address(
-            address,
-        )?))
+        Ok(MsgAddressExt::AddrExtern(MsgAddrExt::with_address(address)?))
     }
 }
 
 impl FromStr for MsgAddressExt {
     type Err = failure::Error;
+
     fn from_str(string: &str) -> Result<Self> {
         match MsgAddress::from_str(string)? {
             MsgAddress::AddrNone => Ok(MsgAddressExt::AddrNone),
@@ -255,11 +246,7 @@ impl MsgAddress {
         workchain_id: i32,
         address: SliceData,
     ) -> Result<Self> {
-        Ok(MsgAddress::AddrVar(MsgAddrVar::with_address(
-            anycast,
-            workchain_id,
-            address,
-        )?))
+        Ok(MsgAddress::AddrVar(MsgAddrVar::with_address(anycast, workchain_id, address)?))
     }
 
     pub fn with_standart(
@@ -267,11 +254,7 @@ impl MsgAddress {
         workchain_id: i8,
         address: AccountId,
     ) -> Result<Self> {
-        Ok(MsgAddress::AddrStd(MsgAddrStd::with_address(
-            anycast,
-            workchain_id,
-            address,
-        )))
+        Ok(MsgAddress::AddrStd(MsgAddrStd::with_address(anycast, workchain_id, address)))
     }
 
     pub fn get_address(&self) -> SliceData {
@@ -295,13 +278,12 @@ impl MsgAddress {
 
 impl FromStr for MsgAddress {
     type Err = failure::Error;
+
     fn from_str(string: &str) -> Result<Self> {
         let parts: Vec<&str> = string.split(':').take(4).collect();
         let len = parts.len();
         if len > 3 {
-            fail!(BlockError::InvalidArg(
-                "too many components in address".to_string()
-            ))
+            fail!(BlockError::InvalidArg("too many components in address".to_string()))
         }
         if len == 0 {
             fail!(BlockError::InvalidArg("bad split".to_string()))
@@ -349,11 +331,7 @@ impl FromStr for MsgAddress {
                 )))
             }
             if parts[len - 1].len() == 64 {
-                Ok(MsgAddress::with_standart(
-                    anycast,
-                    workchain_id as i8,
-                    address,
-                )?)
+                Ok(MsgAddress::with_standart(anycast, workchain_id as i8, address)?)
             } else {
                 Ok(MsgAddress::with_variant(anycast, workchain_id, address)?)
             }
@@ -395,6 +373,7 @@ impl Default for MsgAddressInt {
 
 impl FromStr for MsgAddressInt {
     type Err = failure::Error;
+
     fn from_str(string: &str) -> Result<Self> {
         match MsgAddress::from_str(string)? {
             MsgAddress::AddrStd(addr) => Ok(MsgAddressInt::AddrStd(addr)),
@@ -410,62 +389,58 @@ impl MsgAddressInt {
         workchain_id: i32,
         address: SliceData,
     ) -> Result<Self> {
-        Ok(MsgAddressInt::AddrVar(MsgAddrVar::with_address(
-            anycast,
-            workchain_id,
-            address,
-        )?))
+        Ok(MsgAddressInt::AddrVar(MsgAddrVar::with_address(anycast, workchain_id, address)?))
     }
+
     pub fn with_standart(
         anycast: Option<AnycastInfo>,
         workchain_id: i8,
         address: AccountId,
     ) -> Result<Self> {
-        Ok(MsgAddressInt::AddrStd(MsgAddrStd::with_address(
-            anycast,
-            workchain_id,
-            address,
-        )))
+        Ok(MsgAddressInt::AddrStd(MsgAddrStd::with_address(anycast, workchain_id, address)))
     }
+
     pub fn get_address(&self) -> SliceData {
         self.address()
     }
+
     pub fn get_workchain_id(&self) -> i32 {
         self.workchain_id()
     }
+
     pub fn get_rewrite_pfx(&self) -> Option<AnycastInfo> {
         self.rewrite_pfx()
     }
+
     pub fn address(&self) -> AccountId {
         match self {
             MsgAddressInt::AddrStd(addr_std) => addr_std.address.clone(),
             MsgAddressInt::AddrVar(addr_var) => addr_var.address.clone(),
         }
     }
+
     pub fn workchain_id(&self) -> i32 {
         match self {
             MsgAddressInt::AddrStd(addr_std) => addr_std.workchain_id as i32,
             MsgAddressInt::AddrVar(addr_var) => addr_var.workchain_id,
         }
     }
+
     pub fn rewrite_pfx(&self) -> Option<AnycastInfo> {
         match self {
             MsgAddressInt::AddrStd(addr_std) => addr_std.anycast.clone(),
             MsgAddressInt::AddrVar(addr_var) => addr_var.anycast.clone(),
         }
     }
+
     pub fn extract_std_address(&self, do_rewrite: bool) -> Result<(i32, AccountId)> {
         let (workchain_id, mut account_id, anycast_opt) = match self {
-            MsgAddressInt::AddrStd(addr_std) => (
-                addr_std.workchain_id as i32,
-                addr_std.address.clone(),
-                &addr_std.anycast,
-            ),
-            MsgAddressInt::AddrVar(addr_var) => (
-                addr_var.workchain_id,
-                addr_var.address.clone(),
-                &addr_var.anycast,
-            ),
+            MsgAddressInt::AddrStd(addr_std) => {
+                (addr_std.workchain_id as i32, addr_std.address.clone(), &addr_std.anycast)
+            }
+            MsgAddressInt::AddrVar(addr_var) => {
+                (addr_var.workchain_id, addr_var.address.clone(), &addr_var.anycast)
+            }
         };
 
         if let Some(ref anycast) = anycast_opt {
@@ -508,31 +483,31 @@ impl fmt::Display for MsgAddressInt {
     }
 }
 
-/*
-This file contains definitions for internal and external message headers
-as defined in Blockchain: 3.1.
-
-In test_messages.rs and contracts/messages/contract.code there are parsers
-for these formats.
-
-Known limitations:
-1. For account addreses:
-    * we don't serialize the workchain id;
-    * anycast is not supported (is supposed to be `nothing`);
-    * only standard 256-bit addresses are supported.
-
-2. Instead of CurrencyCollection, Grams type is used.
-
-3. In Message X format, only the info field is parsed.
-
-4. External address is supposed to consist of a whole number of bytes.
-*/
+// This file contains definitions for internal and external message headers
+// as defined in Blockchain: 3.1.
+//
+// In test_messages.rs and contracts/messages/contract.code there are parsers
+// for these formats.
+//
+// Known limitations:
+// 1. For account addreses:
+// we don't serialize the workchain id;
+// anycast is not supported (is supposed to be `nothing`);
+// only standard 256-bit addresses are supported.
+//
+// 2. Instead of CurrencyCollection, Grams type is used.
+//
+// 3. In Message X format, only the info field is parsed.
+//
+// 4. External address is supposed to consist of a whole number of bytes.
 
 impl fmt::Display for InternalMessageHeader {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Internal {{src: {}, dst: {}", self.src, self.dst)?;
         if f.alternate() {
-            write!(f, ", ihr_disabled: {}, bounce: {}, bounced: {}, value: {}, ihr_fee: {}, fwd_fee: {}, lt: {}, at: {}",
+            write!(
+                f,
+                ", ihr_disabled: {}, bounce: {}, bounced: {}, value: {}, ihr_fee: {}, fwd_fee: {}, lt: {}, at: {}",
                 self.ihr_disabled,
                 self.bounce,
                 self.bounced,
@@ -565,6 +540,7 @@ impl MsgAddressIntOrNone {
             },
         }
     }
+
     pub fn get_rewrite_pfx(&self) -> Option<AnycastInfo> {
         match self {
             MsgAddressIntOrNone::None => None,
@@ -632,10 +608,8 @@ pub struct InternalMessageHeader {
 }
 
 impl InternalMessageHeader {
-    ///
     /// Create new instance of InternalMessageHeader
     /// with source and destination address and value
-    ///
     pub fn with_addresses(
         src: MsgAddressInt,
         dst: MsgAddressInt,
@@ -666,40 +640,36 @@ impl InternalMessageHeader {
         hdr
     }
 
-    ///
     /// Get value tansfered message
-    ///
     pub fn value(&self) -> &CurrencyCollection {
         &self.value
     }
 
-    ///
     /// Get IHR fee for message
-    ///
     pub fn ihr_fee(&self) -> &Grams {
         &self.ihr_fee
     }
 
-    ///
     /// Get forwarding fee for message transfer
-    ///
     pub fn fwd_fee(&self) -> &Grams {
         &self.fwd_fee
     }
 
     pub fn src(&self) -> Result<&MsgAddressInt> {
-        self.src_ref()
-            .ok_or_else(|| error!("incorrect source address"))
+        self.src_ref().ok_or_else(|| error!("incorrect source address"))
     }
+
     pub fn src_ref(&self) -> Option<&MsgAddressInt> {
         match self.src {
             MsgAddressIntOrNone::Some(ref addr) => Some(addr),
             MsgAddressIntOrNone::None => None,
         }
     }
+
     pub fn set_src(&mut self, src: MsgAddressInt) {
         self.src = MsgAddressIntOrNone::Some(src)
     }
+
     pub fn set_dst(&mut self, dst: MsgAddressInt) {
         self.dst = dst
     }
@@ -768,11 +738,7 @@ pub struct ExternalInboundMessageHeader {
 impl ExternalInboundMessageHeader {
     pub const fn new(src: MsgAddressExt, dst: MsgAddressInt) -> Self {
         let import_fee = Grams::zero();
-        Self {
-            src,
-            dst,
-            import_fee,
-        }
+        Self { src, dst, import_fee }
     }
 }
 
@@ -825,12 +791,14 @@ impl ExtOutMessageHeader {
             created_at: UnixTime32::default(), // UNIX time too
         }
     }
+
     pub fn src(&self) -> Option<&MsgAddressInt> {
         match self.src {
             MsgAddressIntOrNone::Some(ref src) => Some(src),
             MsgAddressIntOrNone::None => None,
         }
     }
+
     pub fn set_src(&mut self, src: MsgAddressInt) {
         self.src = MsgAddressIntOrNone::Some(src);
     }
@@ -861,7 +829,6 @@ impl Deserializable for ExtOutMessageHeader {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-///
 /// int_msg_info$0 ihr_disabled:Bool bounce:Bool
 /// src:MsgAddressInt dest:MsgAddressInt
 /// value:CurrencyCollection ihr_fee:Grams fwd_fee:Grams
@@ -870,7 +837,6 @@ impl Deserializable for ExtOutMessageHeader {
 /// import_fee:Grams = CommonMsgInfo;
 /// ext_out_msg_info$11 src:MsgAddressInt dest:MsgAddressExt
 /// created_lt:uint64 created_at:uint32 = CommonMsgInfo;
-///
 
 impl fmt::Display for CommonMsgInfo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -891,9 +857,7 @@ pub enum CommonMsgInfo {
 }
 
 impl CommonMsgInfo {
-    ///
     /// Get destination account address
-    ///
     pub fn dest_account_address(&self) -> Option<AccountId> {
         match self {
             CommonMsgInfo::IntMsgInfo(header) => {
@@ -912,11 +876,9 @@ impl CommonMsgInfo {
         }
     }
 
-    ///
     /// Get value transmitted by the value
     /// Value can be transmitted only internal messages
     /// For other types of messages, function returned None
-    ///
     pub fn get_value(&self) -> Option<&CurrencyCollection> {
         match self {
             CommonMsgInfo::IntMsgInfo(header) => Some(&header.value),
@@ -931,11 +893,9 @@ impl CommonMsgInfo {
         }
     }
 
-    ///
     /// Get message header fees
     /// Fee collected only for transfer internal and external outbound messages.
     /// for other types of messages, function returned None
-    ///
     pub fn fee(&self) -> Result<Option<Grams>> {
         match self {
             CommonMsgInfo::IntMsgInfo(header) => {
@@ -948,9 +908,7 @@ impl CommonMsgInfo {
         }
     }
 
-    ///
     /// Get dest address for Intrenal and Inbound external messages
-    ///
     pub fn get_dst_address(&self) -> Option<MsgAddressInt> {
         match self {
             CommonMsgInfo::IntMsgInfo(header) => Some(header.dst.clone()),
@@ -1001,12 +959,9 @@ impl Deserializable for CommonMsgInfo {
 pub type MessageId = UInt256;
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-///
 /// message$_ {X:Type} info:CommonMsgInfo
 /// init:(Maybe (Either StateInit ^StateInit))
 /// body:(Either X ^X) = Message X;
-///
-///
 
 #[derive(Debug, Default, Clone, Eq)]
 pub struct Message {
@@ -1074,9 +1029,7 @@ impl Message {
         }
     }
 
-    ///
     /// Create new instance internal Message with internal header
-    ///
     pub fn with_int_header(h: InternalMessageHeader) -> Message {
         Message {
             header: CommonMsgInfo::IntMsgInfo(h),
@@ -1087,9 +1040,7 @@ impl Message {
         }
     }
 
-    ///
     /// Create new instance internal Message with internal header and body
-    ///
     pub fn with_int_header_and_body(h: InternalMessageHeader, body: SliceData) -> Message {
         Message {
             header: CommonMsgInfo::IntMsgInfo(h),
@@ -1100,9 +1051,7 @@ impl Message {
         }
     }
 
-    ///
     /// Create new instance of external Message with inbound header
-    ///
     pub fn with_ext_in_header(h: ExternalInboundMessageHeader) -> Message {
         Message {
             header: CommonMsgInfo::ExtInMsgInfo(h),
@@ -1113,9 +1062,7 @@ impl Message {
         }
     }
 
-    ///
     /// Create new instance of external Message with inbound header and body
-    ///
     pub fn with_ext_in_header_and_body(
         h: ExternalInboundMessageHeader,
         body: SliceData,
@@ -1129,9 +1076,7 @@ impl Message {
         }
     }
 
-    ///
     /// Create new instance of external Message with outbound header
-    ///
     pub fn with_ext_out_header(h: ExtOutMessageHeader) -> Message {
         Message {
             header: CommonMsgInfo::ExtOutMsgInfo(h),
@@ -1189,10 +1134,8 @@ impl Message {
         self.body = Some(body);
     }
 
-    ///
     /// Get source account ID for internal message
     /// For other types of messages, function returned None
-    ///
     pub fn get_int_src_account_id(&self) -> Option<AccountId> {
         let addr = match self.header {
             CommonMsgInfo::IntMsgInfo(ref header) => &header.src,
@@ -1206,10 +1149,8 @@ impl Message {
         None
     }
 
-    ///
     /// Get destination account ID for internal or inbound external message.
     /// For outbound external messages, function returns None
-    ///
     pub fn int_dst_account_id(&self) -> Option<AccountId> {
         match self.dst_ref() {
             Some(MsgAddressInt::AddrStd(std)) => Some(std.address.clone()),
@@ -1217,23 +1158,17 @@ impl Message {
         }
     }
 
-    ///
     /// Get source internal address.
-    ///
     pub fn src(&self) -> Option<MsgAddressInt> {
         self.src_ref().cloned()
     }
 
-    ///
     /// Get destination internal address.
-    ///
     pub fn dst(&self) -> Option<MsgAddressInt> {
         self.dst_ref().cloned()
     }
 
-    ///
     /// Get reference to source internal address.
-    ///
     pub fn src_ref(&self) -> Option<&MsgAddressInt> {
         let addr1 = match self.header() {
             CommonMsgInfo::IntMsgInfo(ref imi) => &imi.src,
@@ -1246,9 +1181,7 @@ impl Message {
         }
     }
 
-    ///
     /// Get reference destination internal address.
-    ///
     pub fn dst_ref(&self) -> Option<&MsgAddressInt> {
         match self.header {
             CommonMsgInfo::IntMsgInfo(ref header) => Some(&header.dst),
@@ -1257,11 +1190,9 @@ impl Message {
         }
     }
 
-    ///
     /// Get value transmitted by the message
     /// Set Logical Time and UNIX time for
     /// Internal and External outbound messages
-    ///
     pub fn set_at_and_lt(&mut self, at: u32, lt: u64) {
         match self.header {
             CommonMsgInfo::IntMsgInfo(ref mut header) => {
@@ -1275,6 +1206,7 @@ impl Message {
             _ => (),
         };
     }
+
     pub fn set_src(&mut self, address: MsgAddressIntOrNone) {
         match self.header {
             CommonMsgInfo::IntMsgInfo(ref mut header) => {
@@ -1286,6 +1218,7 @@ impl Message {
             _ => (),
         };
     }
+
     pub fn set_src_address(&mut self, src: MsgAddressInt) {
         match &mut self.header {
             CommonMsgInfo::IntMsgInfo(header) => {
@@ -1298,10 +1231,8 @@ impl Message {
         };
     }
 
-    ///
     /// Get message's Unix time and logical time
     /// None only for internal and external outbound message
-    ///
     pub fn at_and_lt(&self) -> Option<(u32, u64)> {
         match &self.header {
             CommonMsgInfo::IntMsgInfo(header) => {
@@ -1322,76 +1253,57 @@ impl Message {
         }
     }
 
-    ///
     /// Get value transmitted by the message
-    ///
     pub fn get_value(&self) -> Option<&CurrencyCollection> {
         self.value()
     }
 
-    ///
     /// Get value transmitted by the message
-    ///
     pub fn value(&self) -> Option<&CurrencyCollection> {
         self.header.get_value()
     }
 
-    ///
     /// Get value transmitted by the message
-    ///
     pub fn get_value_mut(&mut self) -> Option<&mut CurrencyCollection> {
         self.value_mut()
     }
 
-    ///
     /// Get value transmitted by the message
-    ///
     pub fn value_mut(&mut self) -> Option<&mut CurrencyCollection> {
         self.body_to_ref = None;
         self.init_to_ref = None;
         self.header.get_value_mut()
     }
 
-    ///
     /// Get message fees
     /// Only Internal and External outbound messages has a fee
-    /// If the transmittal of a message it is necessary to collect a fee. Otherwise None
-    ///
+    /// If the transmittal of a message it is necessary to collect a fee.
+    /// Otherwise None
     pub fn get_fee(&self) -> Result<Option<Grams>> {
         self.header.fee()
     }
 
-    ///
     /// Is message an internal?
-    ///
     pub fn is_internal(&self) -> bool {
         matches!(self.header, CommonMsgInfo::IntMsgInfo(_))
     }
 
-    ///
     /// Is message an external inbound?
-    ///
     pub fn is_inbound_external(&self) -> bool {
         matches!(self.header, CommonMsgInfo::ExtInMsgInfo(_))
     }
 
-    ///
     /// Is message an external outbound?
-    ///
     pub fn is_outbound_external(&self) -> bool {
         matches!(self.header, CommonMsgInfo::ExtOutMsgInfo(_))
     }
 
-    ///
     /// is message have state init.
-    ///
     pub fn have_state_init(&self) -> bool {
         self.init.is_some()
     }
 
-    ///
     /// Get destination workchain of message
-    ///
     pub fn dst_workchain_id(&self) -> Option<i32> {
         match &self.header {
             CommonMsgInfo::IntMsgInfo(ref imi) => Some(imi.dst.get_workchain_id()),
@@ -1400,16 +1312,12 @@ impl Message {
         }
     }
 
-    ///
     /// Get destination workchain of message
-    ///
     pub fn workchain_id(&self) -> Option<i32> {
         self.dst_workchain_id()
     }
 
-    ///
     /// Get source workchain of message
-    ///
     pub fn src_workchain_id(&self) -> Option<i32> {
         let addr1 = match self.header() {
             CommonMsgInfo::IntMsgInfo(ref imi) => &imi.src,
@@ -1467,6 +1375,7 @@ impl Message {
     pub fn serialization_params(&self) -> (Option<bool>, Option<bool>) {
         (self.body_to_ref, self.init_to_ref)
     }
+
     #[cfg(test)]
     pub fn set_serialization_params(
         &mut self,
@@ -1578,10 +1487,7 @@ impl Serializable for Message {
         // first try to serialize as it was
         if self.body_to_ref.is_some() || self.init_to_ref.is_some() {
             let b = builder.clone();
-            if self
-                .serialize_with_params(builder, &self.body_to_ref, &self.init_to_ref)
-                .is_ok()
-            {
+            if self.serialize_with_params(builder, &self.body_to_ref, &self.init_to_ref).is_ok() {
                 return Ok(());
             }
             *builder = b;
@@ -1660,10 +1566,8 @@ impl InternalMessageHeader {
 }
 
 ////////////////////////////////////////////////////////////////
-///
 /// 3.1.7. Message layout.
 /// tick_tock$_ tick:Boolean tock:Boolean = TickTock;
-///
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct TickTock {
     pub tick: bool,
@@ -1682,6 +1586,7 @@ impl TickTock {
     pub fn set_tock(&mut self, tock: bool) {
         self.tock = tock;
     }
+
     pub fn as_usize(&self) -> usize {
         let mut result = 0;
         if self.tick {
@@ -1727,6 +1632,7 @@ impl SimpleLib {
     pub fn new(root: Cell, public: bool) -> Self {
         Self { public, root }
     }
+
     pub fn is_public_library(&self) -> bool {
         self.public
     }
@@ -1752,12 +1658,10 @@ impl Deserializable for SimpleLib {
 define_HashmapE! {StateInitLib, 256, SimpleLib}
 
 ///////////////////////////////////////////////////////////////////////////////
-///
 /// 3.1.7. Message layout.
 /// split_depth:(Maybe (## 5)) special:(Maybe TickTock)
 /// code:(Maybe ^Cell) data:(Maybe ^Cell)
 /// library:(HashmapE 256 SimpleLib) = StateInit;
-///
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct StateInit {
     pub split_depth: Option<Number5>,
@@ -1809,8 +1713,7 @@ impl StateInit {
     }
 
     pub fn set_library_code(&mut self, code: Cell, public: bool) -> Result<()> {
-        self.library
-            .set(&code.repr_hash(), &SimpleLib::new(code, public))?;
+        self.library.set(&code.repr_hash(), &SimpleLib::new(code, public))?;
         Ok(())
     }
 }
@@ -1930,11 +1833,8 @@ pub fn generate_big_msg() -> Message {
     ])
     .into_builder();
 
-    body1
-        .checked_append_reference(body2.into_cell().unwrap())
-        .unwrap();
-    body.checked_append_reference(body1.into_cell().unwrap())
-        .unwrap();
+    body1.checked_append_reference(body2.into_cell().unwrap()).unwrap();
+    body.checked_append_reference(body1.into_cell().unwrap()).unwrap();
 
     msg.set_state_init(stinit);
     msg.set_body(SliceData::load_builder(body).unwrap());
@@ -1942,10 +1842,7 @@ pub fn generate_big_msg() -> Message {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-///
 /// Auto-generated code
-///
-///
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct AnycastInfo {
@@ -1999,7 +1896,7 @@ impl Deserializable for MsgAddressExt {
 }
 
 // TODO: default Default is not working for MsgAddrStd
-#[derive(Clone, Debug, /*Default,*/ PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, /* Default, */ PartialEq, Eq, Hash)]
 pub struct MsgAddrStd {
     pub anycast: Option<AnycastInfo>,
     pub workchain_id: i8,
@@ -2047,19 +1944,17 @@ impl Deserializable for MsgAddressInt {
             _ => fail!(BlockError::Other("Wrong type of address".to_string())),
         };
         // TODO: fix autogen for error checking!
-        /*
-        let bits = cell.get_next_bits(2)?[0] >> 6;
-        if bits == 2 {
-            let mut data = MsgAddrStd::default();
-            data.read_from(cell)?;
-            *self = MsgAddressInt::AddrStd(data);
-        }
-        if bits == 3 {
-            let mut data = MsgAddrVar::default();
-            data.read_from(cell)?;
-            *self = MsgAddressInt::AddrVar(data);
-        }
-        */
+        // let bits = cell.get_next_bits(2)?[0] >> 6;
+        // if bits == 2 {
+        // let mut data = MsgAddrStd::default();
+        // data.read_from(cell)?;
+        // self = MsgAddressInt::AddrStd(data);
+        // }
+        // if bits == 3 {
+        // let mut data = MsgAddrVar::default();
+        // data.read_from(cell)?;
+        // self = MsgAddressInt::AddrVar(data);
+        // }
         Ok(())
     }
 }

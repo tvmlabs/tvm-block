@@ -1,35 +1,41 @@
-/*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
-
-use crate::write_read_and_assert;
+// Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
 
 use super::*;
+use crate::write_read_and_assert;
 
 #[test]
-fn test_serialize_many_times(){
+fn test_serialize_many_times() {
     let mut msg = Message::with_int_header(InternalMessageHeader::default());
 
     let mut stinit = StateInit::default();
     stinit.set_split_depth(Number5::new(23).unwrap());
     stinit.set_special(TickTock::with_values(false, true));
-    let code = SliceData::new(vec![0b00111111, 0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11110100]);
+    let code = SliceData::new(vec![
+        0b00111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111,
+        0b11110100,
+    ]);
     stinit.set_code(code.into_cell());
-    let data = SliceData::new(vec![0b00111111, 0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11110100]);
+    let data = SliceData::new(vec![
+        0b00111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111,
+        0b11110100,
+    ]);
     stinit.set_data(data.into_cell());
-    let library = SliceData::new(vec![0b00111111, 0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11110100]);
+    let library = SliceData::new(vec![
+        0b00111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111,
+        0b11110100,
+    ]);
     stinit.set_library_code(library.into_cell(), true).unwrap();
-    
-    let body = SliceData::new(vec![0x3F, 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xF4]);
+
+    let body = SliceData::new(vec![0x3F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xF4]);
 
     msg.init = Some(stinit);
     msg.set_body(body);
@@ -43,7 +49,7 @@ fn test_serialize_many_times(){
 }
 
 #[test]
-fn test_serialize_simple_messages(){
+fn test_serialize_simple_messages() {
     let msg = Message::with_int_header(InternalMessageHeader::default());
     write_read_and_assert(msg);
 
@@ -56,26 +62,33 @@ fn test_serialize_simple_messages(){
 
 #[test]
 fn test_serialize_msg_with_state_init() {
-
     let mut msg = Message::with_int_header(InternalMessageHeader::default());
 
     let mut stinit = StateInit::default();
     stinit.set_split_depth(Number5::new(23).unwrap());
     stinit.set_special(TickTock::with_values(false, true));
-    let code = SliceData::new(vec![0b00111111, 0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11110100]);
+    let code = SliceData::new(vec![
+        0b00111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111,
+        0b11110100,
+    ]);
     stinit.set_code(code.into_cell());
-    let data = SliceData::new(vec![0b00111111, 0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11110100]);
+    let data = SliceData::new(vec![
+        0b00111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111,
+        0b11110100,
+    ]);
     stinit.set_data(data.into_cell());
-    let library = SliceData::new(vec![0b00111111, 0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11110100]);
+    let library = SliceData::new(vec![
+        0b00111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111,
+        0b11110100,
+    ]);
     stinit.set_library_code(library.into_cell(), false).unwrap();
-    
+
     msg.init = Some(stinit);
     write_read_and_assert(msg);
 }
 
 #[test]
 fn test_save_external_serialization_order() {
-
     let mut msg = Message::with_int_header(InternalMessageHeader::default());
 
     let body = SliceData::new(vec![0x55; 64]);
@@ -94,11 +107,10 @@ fn test_save_external_serialization_order() {
 
 #[test]
 fn test_serialize_msg_with_state_init_code_and_small_body() {
-
     let mut msg = Message::with_int_header(InternalMessageHeader::default());
 
     let mut stinit = StateInit::default();
-    let code = SliceData::new(vec![0x3F, 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xF4]);
+    let code = SliceData::new(vec![0x3F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xF4]);
     stinit.set_code(code.into_cell());
     let body = SliceData::new(vec![0x55; 64]);
 
@@ -108,23 +120,30 @@ fn test_serialize_msg_with_state_init_code_and_small_body() {
     write_read_and_assert(msg);
 }
 
-
 #[test]
 fn test_serialize_msg_with_state_init_and_body() {
-
     let mut msg = Message::with_int_header(InternalMessageHeader::default());
 
     let mut stinit = StateInit::default();
     stinit.set_split_depth(Number5::new(23).unwrap());
     stinit.set_special(TickTock::with_values(false, true));
-    let code = SliceData::new(vec![0b00111111, 0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11110100]);
+    let code = SliceData::new(vec![
+        0b00111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111,
+        0b11110100,
+    ]);
     stinit.set_code(code.into_cell());
-    let data = SliceData::new(vec![0b00111111, 0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11110100]);
+    let data = SliceData::new(vec![
+        0b00111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111,
+        0b11110100,
+    ]);
     stinit.set_data(data.into_cell());
-    let library = SliceData::new(vec![0b00111111, 0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11110100]);
+    let library = SliceData::new(vec![
+        0b00111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111,
+        0b11110100,
+    ]);
     stinit.set_library_code(library.into_cell(), true).unwrap();
-    
-    let body = SliceData::new(vec![0x3F, 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xF4]);
+
+    let body = SliceData::new(vec![0x3F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xF4]);
 
     msg.init = Some(stinit);
     msg.set_body(body);
@@ -134,31 +153,35 @@ fn test_serialize_msg_with_state_init_and_body() {
 
 #[test]
 fn test_serialize_msg_with_state_init_and_big_body() {
-
     let mut msg = Message::with_int_header(InternalMessageHeader::default());
 
     let mut stinit = StateInit::default();
     stinit.set_split_depth(Number5::new(23).unwrap());
     stinit.set_special(TickTock::with_values(false, true));
-    let code = SliceData::new(vec![0b00111111, 0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11110100]);
+    let code = SliceData::new(vec![
+        0b00111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111,
+        0b11110100,
+    ]);
     stinit.set_code(code.into_cell());
-    let data = SliceData::new(vec![0b00111111, 0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11110100]);
+    let data = SliceData::new(vec![
+        0b00111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111,
+        0b11110100,
+    ]);
     stinit.set_data(data.into_cell());
-    let library = SliceData::new(vec![0b00111111, 0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11110100]);
+    let library = SliceData::new(vec![
+        0b00111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111,
+        0b11110100,
+    ]);
     stinit.set_library_code(library.into_cell(), true).unwrap();
-    
-    let body = SliceData::new(
-            vec![0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0x80]);
+
+    let body = SliceData::new(vec![
+        0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE,
+        0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE,
+        0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE,
+        0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE,
+        0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE,
+        0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0x80,
+    ]);
 
     msg.set_state_init(stinit);
     msg.set_body(body);
@@ -168,80 +191,73 @@ fn test_serialize_msg_with_state_init_and_big_body() {
 
 #[test]
 fn test_serialize_msg_with_state_init_with_refs_and_big_body_with_refs() {
-
     let mut msg = Message::with_int_header(InternalMessageHeader::default());
 
     let mut stinit = StateInit::default();
     stinit.set_split_depth(Number5::new(23).unwrap());
     stinit.set_special(TickTock::with_values(false, true));
-    let mut code = SliceData::new(vec![0x3F, 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xF4]);
+    let mut code = SliceData::new(vec![0x3F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xF4]);
     stinit.set_code(code.clone().into_cell());
-    let mut code1 = SliceData::new(vec![0xad, 0xc9, 0xba, 0xfc, 0x56, 0x94, 0x11, 0x56, 0x58, 0xfa, 0x2b, 0xdf, 0xe4, 0x65, 0x15, 0x1a, 
-                                    0x32, 0x03, 0x69, 0x4a, 0xff, 0xcd, 0x00, 0x8f, 0x36, 0x8b, 0xd2, 0xcc, 0x8c, 0xc8, 0x10, 0xfb, 
-                                    0x6b, 0x5b, 0x51]);
-    let mut code2 = SliceData::new(vec![0xad, 0xc9, 0xba, 0xfc, 0x56, 0x94, 0x11, 0x56, 0x58, 0xfa, 0x2b, 0xdf, 0xe4, 0x65, 0x15, 0x1a, 
-                                    0x32, 0x03, 0x69, 0x4a, 0xff, 0xcd, 0x00, 0x8f, 0x36, 0x8b, 0xd2, 0xcc, 0x8c, 0xc8, 0x10, 0xfb, 
-                                    0x6b, 0x5b, 0x51]);
-    let code3 = SliceData::new(vec![0xad, 0xc9, 0xba, 0xfc, 0x56, 0x94, 0x11, 0x56, 0x58, 0xfa, 0x2b, 0xdf, 0xe4, 0x65, 0x15, 0x1a, 
-                                    0x32, 0x03, 0x69, 0x4a, 0xff, 0xcd, 0x00, 0x8f, 0x36, 0x8b, 0xd2, 0xcc, 0x8c, 0xc8, 0x10, 0xfb, 
-                                    0x6b, 0x5b, 0x51]);
+    let mut code1 = SliceData::new(vec![
+        0xad, 0xc9, 0xba, 0xfc, 0x56, 0x94, 0x11, 0x56, 0x58, 0xfa, 0x2b, 0xdf, 0xe4, 0x65, 0x15,
+        0x1a, 0x32, 0x03, 0x69, 0x4a, 0xff, 0xcd, 0x00, 0x8f, 0x36, 0x8b, 0xd2, 0xcc, 0x8c, 0xc8,
+        0x10, 0xfb, 0x6b, 0x5b, 0x51,
+    ]);
+    let mut code2 = SliceData::new(vec![
+        0xad, 0xc9, 0xba, 0xfc, 0x56, 0x94, 0x11, 0x56, 0x58, 0xfa, 0x2b, 0xdf, 0xe4, 0x65, 0x15,
+        0x1a, 0x32, 0x03, 0x69, 0x4a, 0xff, 0xcd, 0x00, 0x8f, 0x36, 0x8b, 0xd2, 0xcc, 0x8c, 0xc8,
+        0x10, 0xfb, 0x6b, 0x5b, 0x51,
+    ]);
+    let code3 = SliceData::new(vec![
+        0xad, 0xc9, 0xba, 0xfc, 0x56, 0x94, 0x11, 0x56, 0x58, 0xfa, 0x2b, 0xdf, 0xe4, 0x65, 0x15,
+        0x1a, 0x32, 0x03, 0x69, 0x4a, 0xff, 0xcd, 0x00, 0x8f, 0x36, 0x8b, 0xd2, 0xcc, 0x8c, 0xc8,
+        0x10, 0xfb, 0x6b, 0x5b, 0x51,
+    ]);
     code2.append_reference(code3);
     code1.append_reference(code2);
     code.append_reference(code1);
 
     stinit.set_code(code.clone().into_cell());
 
-    let data = SliceData::new(vec![0x3F, 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xF4]);
+    let data = SliceData::new(vec![0x3F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xF4]);
     stinit.set_data(data.into_cell());
-    let library = SliceData::new(vec![0x3F, 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xF4]);
+    let library = SliceData::new(vec![0x3F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xF4]);
     stinit.set_library_code(library.into_cell(), true).unwrap();
-    
-    let mut body = BuilderData::with_bitstring(
-            vec![0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-                 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-                 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-                 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-                 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-                 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-                 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-                 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-                 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-                 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-                 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-                 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-                 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-                 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x80]).unwrap();
-    let mut body1 = BuilderData::with_bitstring(
-            vec![0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,
-                 0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0xFE,0x80]).unwrap();
 
-    let body2 = BuilderData::with_bitstring(
-            vec![0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,
-                 0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,
-                 0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,
-                 0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,
-                 0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,
-                 0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,
-                 0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,
-                 0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,
-                 0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,
-                 0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,
-                 0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,
-                 0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,
-                 0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,
-                 0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0xA6,0x80]).unwrap();
+    let mut body = BuilderData::with_bitstring(vec![
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x80,
+    ])
+    .unwrap();
+    let mut body1 = BuilderData::with_bitstring(vec![
+        0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE,
+        0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE,
+        0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE,
+        0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE,
+        0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE,
+        0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE,
+        0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE,
+        0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0x80,
+    ])
+    .unwrap();
+
+    let body2 = BuilderData::with_bitstring(vec![
+        0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6,
+        0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6,
+        0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6,
+        0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6,
+        0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6,
+        0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6,
+        0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6,
+        0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0x80,
+    ])
+    .unwrap();
 
     body1.checked_append_reference(body2.into_cell().unwrap()).unwrap();
     body.checked_append_reference(body1.into_cell().unwrap()).unwrap();
@@ -256,34 +272,56 @@ fn test_serialize_msg_with_state_init_with_refs_and_big_body_with_refs() {
 fn test_check_message_output() {
     let mut msg = Message::with_int_header(InternalMessageHeader::with_addresses_and_bounce(
         MsgAddressInt::with_variant(None, -1, SliceData::new(vec![12, 13, 17])).unwrap(),
-        MsgAddressInt::with_standart(Some(AnycastInfo::with_rewrite_pfx(SliceData::new(vec![0xC4])).unwrap()), 5, [55; 32].into()).unwrap(),
+        MsgAddressInt::with_standart(
+            Some(AnycastInfo::with_rewrite_pfx(SliceData::new(vec![0xC4])).unwrap()),
+            5,
+            [55; 32].into(),
+        )
+        .unwrap(),
         CurrencyCollection::with_grams(79),
-        false
+        false,
     ));
     let mut stinit = StateInit::default();
     stinit.set_split_depth(Number5::new(23).unwrap());
     stinit.set_special(TickTock::with_values(false, true));
-    let code = SliceData::new(vec![0x3F, 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xF4]);
+    let code = SliceData::new(vec![0x3F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xF4]);
     stinit.set_code(code.into_cell());
-    let library = SliceData::new(vec![0x3F, 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xF4]);
+    let library = SliceData::new(vec![0x3F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xF4]);
     stinit.set_library_code(library.into_cell(), false).unwrap();
     msg.init = Some(stinit);
     msg.set_body(SliceData::new(vec![0x55, 0x55, 0x80]));
-    pretty_assertions::assert_eq!(format!("{}", msg), "Message {header: Internal {src: -1:0c0d11_, \
+    pretty_assertions::assert_eq!(
+        format!("{}", msg),
+        "Message {header: Internal {src: -1:0c0d11_, \
         dst: c4_:5:3737373737373737373737373737373737373737373737373737373737373737}, \
         init: StateInit { split_depth: Some(Number5(23)), special: Some(TickTock { tick: false, tock: true }), \
         code: Some(7a0b957a15e93cca3ce96ccb4aecf275a3718a263c8aeca2ab14fe6e1e62172c), data: None, \
         library: StateInitLib(HashmapE { bit_len: 256, data: Some(c39760fbba54774b6c7fa76bfd46d6fb89d1fe0b19570bef3c4d08decc8b4566) }) }, \
-        body: 5555}");
+        body: 5555}"
+    );
 }
 
 #[test]
 fn test_check_json_address() {
     let addresses = [
-        " ", "11:", "q:22", ":-33", ":44 ", ":0:55", " :66", " :77 ",
-        "2147483648:33", "-2147483649:44", ":0:66", "66 ", " 66", " 66 ", "12345678:0:66",
+        " ",
+        "11:",
+        "q:22",
+        ":-33",
+        ":44 ",
+        ":0:55",
+        " :66",
+        " :77 ",
+        "2147483648:33",
+        "-2147483649:44",
+        ":0:66",
+        "66 ",
+        " 66",
+        " 66 ",
+        "12345678:0:66",
         "0:555555555555555555555555555555555555555555555555555555555555555",
-        "-1:555555555555555555555555555555555555555555555555555555555555555555"];
+        "-1:555555555555555555555555555555555555555555555555555555555555555555",
+    ];
 
     addresses.iter().for_each(|addr| {
         let err = MsgAddressInt::from_str(addr).err();
@@ -294,26 +332,48 @@ fn test_check_json_address() {
     let anycast = AnycastInfo::with_rewrite_pfx(SliceData::new(vec![0x77, 0x80])).unwrap();
     let addresses_int = [
         ("255:55_", MsgAddressInt::with_variant(None, 255, SliceData::new(vec![0x55])).unwrap()),
-        ("77:-129:55_",
-            MsgAddressInt::with_variant(Some(anycast.clone()), -129, SliceData::new(vec![0x55])).unwrap()),
-        ("0:5555555555555555555555555555555555555555555555555555555555555555", 
-            MsgAddressInt::with_standart(None, 0, AccountId::from([0x55; 32])).unwrap()),
-        ("1:5555555555555555555555555555555555555555555555555555555555555555", 
-            MsgAddressInt::with_standart(None, 1, AccountId::from([0x55; 32])).unwrap()),
-        ("77:1:5555555555555555555555555555555555555555555555555555555555555555", 
-            MsgAddressInt::with_standart(Some(anycast), 1, AccountId::from([0x55; 32])).unwrap()),
-        ("128:5555555555555555555555555555555555555555555555555555555555555555", 
-            MsgAddressInt::with_variant(None, 128, AccountId::from([0x55; 32])).unwrap()),
-        ("1:55555555555555555555555555555555555555555555555555555555555555558_", 
-            MsgAddressInt::with_variant(None, 1, AccountId::from([0x55; 32])).unwrap()),
-        ("0:55555555555555555555555555555555555555555555555555555555555555558_",
-            MsgAddressInt::with_variant(None, 0, AccountId::from([0x55; 32])).unwrap()),
-
-        ("1111:8888", MsgAddressInt::with_variant(None, 1111, SliceData::new(vec![0x88, 0x88, 0x80])).unwrap()),
-        ("1111:777",
-            MsgAddressInt::with_variant(None, 1111, SliceData::new(vec![0x77, 0x78])).unwrap()),
-        ("1111:abc_",
-            MsgAddressInt::with_variant(None, 1111, SliceData::new(vec![0xAB, 0xC0])).unwrap()),
+        (
+            "77:-129:55_",
+            MsgAddressInt::with_variant(Some(anycast.clone()), -129, SliceData::new(vec![0x55]))
+                .unwrap(),
+        ),
+        (
+            "0:5555555555555555555555555555555555555555555555555555555555555555",
+            MsgAddressInt::with_standart(None, 0, AccountId::from([0x55; 32])).unwrap(),
+        ),
+        (
+            "1:5555555555555555555555555555555555555555555555555555555555555555",
+            MsgAddressInt::with_standart(None, 1, AccountId::from([0x55; 32])).unwrap(),
+        ),
+        (
+            "77:1:5555555555555555555555555555555555555555555555555555555555555555",
+            MsgAddressInt::with_standart(Some(anycast), 1, AccountId::from([0x55; 32])).unwrap(),
+        ),
+        (
+            "128:5555555555555555555555555555555555555555555555555555555555555555",
+            MsgAddressInt::with_variant(None, 128, AccountId::from([0x55; 32])).unwrap(),
+        ),
+        (
+            "1:55555555555555555555555555555555555555555555555555555555555555558_",
+            MsgAddressInt::with_variant(None, 1, AccountId::from([0x55; 32])).unwrap(),
+        ),
+        (
+            "0:55555555555555555555555555555555555555555555555555555555555555558_",
+            MsgAddressInt::with_variant(None, 0, AccountId::from([0x55; 32])).unwrap(),
+        ),
+        (
+            "1111:8888",
+            MsgAddressInt::with_variant(None, 1111, SliceData::new(vec![0x88, 0x88, 0x80]))
+                .unwrap(),
+        ),
+        (
+            "1111:777",
+            MsgAddressInt::with_variant(None, 1111, SliceData::new(vec![0x77, 0x78])).unwrap(),
+        ),
+        (
+            "1111:abc_",
+            MsgAddressInt::with_variant(None, 1111, SliceData::new(vec![0xAB, 0xC0])).unwrap(),
+        ),
     ];
     addresses_int.iter().for_each(|(addr, check)| {
         let real = MsgAddressInt::from_str(addr).unwrap();
@@ -325,8 +385,10 @@ fn test_check_json_address() {
     let addresses_ext = [
         ("", MsgAddressExt::AddrNone),
         (":55_", MsgAddressExt::with_extern(SliceData::new(vec![0x55])).unwrap()),
-        (":5555555555555555555555555555555555555555555555555555555555555555",
-            MsgAddressExt::with_extern(AccountId::from([0x55; 32])).unwrap()),
+        (
+            ":5555555555555555555555555555555555555555555555555555555555555555",
+            MsgAddressExt::with_extern(AccountId::from([0x55; 32])).unwrap(),
+        ),
     ];
     addresses_ext.iter().for_each(|(addr, check)| {
         let real = MsgAddressExt::from_str(addr).unwrap();
@@ -338,7 +400,7 @@ fn test_check_json_address() {
 
 #[test]
 fn test_message_addr_external_err_1() {
-    let err = MsgAddressExt::with_extern(SliceData::from_raw(vec!(1; 65), 513)).err();
+    let err = MsgAddressExt::with_extern(SliceData::from_raw(vec![1; 65], 513)).err();
     assert!(err.is_some());
 }
 
@@ -380,4 +442,3 @@ fn test_msg_address_int_invalid() {
     MsgAddressInt::construct_from(&mut s)
         .expect_err("MsgAddressInt should not be deserialized from None");
 }
-

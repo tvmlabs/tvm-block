@@ -1,20 +1,21 @@
-/*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
+
+use std::fs::File;
+
+use tvm_types::BocReader;
 
 use super::*;
-use crate::{write_read_and_assert, MsgAddressExt};
-use std::fs::File;
-use tvm_types::BocReader;
+use crate::write_read_and_assert;
+use crate::MsgAddressExt;
 
 #[test]
 fn test_serialize_storage_used() {
@@ -80,15 +81,13 @@ fn test_serialize_storage_info() {
     assert_eq!(st_info1, s2);
 }
 
-/*
-pub struct StateInit {
-    split_depth: Option<u8>,
-    special: Option<TickTock>,
-    code: Option<Cell>,
-    data: Option<Cell>,
-    library: Option<Cell>,
-}
-*/
+// pub struct StateInit {
+// split_depth: Option<u8>,
+// special: Option<TickTock>,
+// code: Option<Cell>,
+// data: Option<Cell>,
+// library: Option<Cell>,
+// }
 #[test]
 fn test_state_init() {
     let stinit = StateInit::default();
@@ -125,8 +124,7 @@ fn prepare_library_code() -> Cell {
 fn prepare_library(public: bool) -> StateInitLib {
     let mut lib = StateInitLib::default();
     let code = prepare_library_code();
-    lib.set(&code.repr_hash(), &SimpleLib::new(code, public))
-        .unwrap();
+    lib.set(&code.repr_hash(), &SimpleLib::new(code, public)).unwrap();
     lib
 }
 
@@ -146,9 +144,7 @@ fn test_state_init3() {
         0b11110100,
     ]);
     stinit.set_data(data.into_cell());
-    stinit
-        .set_library_code(prepare_library_code(), false)
-        .unwrap();
+    stinit.set_library_code(prepare_library_code(), false).unwrap();
 
     write_read_and_assert(stinit);
 }
@@ -162,9 +158,7 @@ fn test_state_init4() {
         0b00111111, 0b11111111, 0b11111111, 0b0, 0b11111111, 0b0, 0b11111111, 0b11110100,
     ]);
     stinit.set_code(code.into_cell());
-    stinit
-        .set_library_code(prepare_library_code(), false)
-        .unwrap();
+    stinit.set_library_code(prepare_library_code(), false).unwrap();
 
     write_read_and_assert(stinit);
 }
@@ -188,9 +182,7 @@ fn test_account_state_active() {
         0b00111111, 0b11111111, 0b0, 0b11111111, 0b11111111, 0b0, 0b11111111, 0b11110100,
     ]);
     stinit.set_data(data.into_cell());
-    stinit
-        .set_library_code(prepare_library_code(), false)
-        .unwrap();
+    stinit.set_library_code(prepare_library_code(), false).unwrap();
 
     let state_init = stinit;
 
@@ -210,21 +202,17 @@ fn test_account_state_frozen() {
         0b00111111, 0b11111111, 0b0, 0b11111111, 0b11111111, 0b0, 0b11111111, 0b11110100,
     ]);
     stinit.set_data(data.into_cell());
-    stinit
-        .set_library_code(prepare_library_code(), false)
-        .unwrap();
+    stinit.set_library_code(prepare_library_code(), false).unwrap();
 
     let state_init_hash = stinit.hash().unwrap();
 
     write_read_and_assert(AccountState::AccountFrozen { state_init_hash });
 }
 
-/*
-pub struct AnycastInfo{
-    depth: u8,                      // ##5
-    pub rewrite_pfx: SliceData,         // depth length
-}
-*/
+// pub struct AnycastInfo{
+// depth: u8,                      // ##5
+// pub rewrite_pfx: SliceData,         // depth length
+// }
 
 #[test]
 fn test_anycastinfo_exception() {
@@ -236,19 +224,16 @@ fn test_anycastinfo_exception() {
 #[test]
 fn test_anycastinfo() {
     let mut anc = AnycastInfo::default();
-    anc.set_rewrite_pfx(SliceData::new(vec![0x34, 0x35, 0x36, 0x80]))
-        .unwrap();
+    anc.set_rewrite_pfx(SliceData::new(vec![0x34, 0x35, 0x36, 0x80])).unwrap();
     write_read_and_assert(anc);
 }
 
-/*
-pub struct MsgAddrStd {
-    pub anycast: Option<AnycastInfo>,
-    addr_len: Number9,
-    workchain_id: i8,
-    address: SliceData,
-}
-*/
+// pub struct MsgAddrStd {
+// pub anycast: Option<AnycastInfo>,
+// addr_len: Number9,
+// workchain_id: i8,
+// address: SliceData,
+// }
 
 #[test]
 fn test_msg_addr_std_empty() {
@@ -259,8 +244,7 @@ fn test_msg_addr_std_empty() {
 #[test]
 fn test_msg_addr_std() {
     let mut anc = AnycastInfo::default();
-    anc.set_rewrite_pfx(SliceData::new(vec![0x34, 0x35, 0x36, 0x80]))
-        .unwrap();
+    anc.set_rewrite_pfx(SliceData::new(vec![0x34, 0x35, 0x36, 0x80])).unwrap();
 
     let addr = MsgAddressInt::with_variant(
         Some(anc),
@@ -271,13 +255,11 @@ fn test_msg_addr_std() {
     write_read_and_assert(addr);
 }
 
-/*
-pub struct MsgAddressInt {
-    anycast: Option<AnycastInfo>,
-    workchain_id: i8,
-    address: AccountId,
-}
-*/
+// pub struct MsgAddressInt {
+// anycast: Option<AnycastInfo>,
+// workchain_id: i8,
+// address: AccountId,
+// }
 
 #[test]
 fn test_msg_addr_int_empty() {
@@ -288,8 +270,7 @@ fn test_msg_addr_int_empty() {
 #[test]
 fn test_msg_addr_int() {
     let mut anc = AnycastInfo::default();
-    anc.set_rewrite_pfx(SliceData::new(vec![0x98, 0x32, 0x17, 0x80]))
-        .unwrap();
+    anc.set_rewrite_pfx(SliceData::new(vec![0x98, 0x32, 0x17, 0x80])).unwrap();
 
     let acc_id = AccountId::from([
         0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E,
@@ -301,12 +282,10 @@ fn test_msg_addr_int() {
     write_read_and_assert(addr);
 }
 
-/*
-pub struct MsgAddressExt {
-    len: u8, // ## 8
-    external_address: SliceData, // len length
-}
-*/
+// pub struct MsgAddressExt {
+// len: u8, // ## 8
+// external_address: SliceData, // len length
+// }
 
 #[test]
 fn test_msg_addr_1ext_exception() {
@@ -326,14 +305,12 @@ fn test_msg_addr_ext() {
     write_read_and_assert(addr);
 }
 
-/*
-pub enum MsgAddress{
-    AddrNone,
-    AddrExtern(MsgAddressExt),
-    AddrStd(MsgAddrStd),
-    AddrVar(MsgAddressInt),
-}
-*/
+// pub enum MsgAddress{
+// AddrNone,
+// AddrExtern(MsgAddressExt),
+// AddrStd(MsgAddrStd),
+// AddrVar(MsgAddressInt),
+// }
 
 #[test]
 fn test_msg_addr_empty() {
@@ -344,8 +321,7 @@ fn test_msg_addr_empty() {
 #[test]
 fn test_msg_addr_standart() {
     let mut anc = AnycastInfo::default();
-    anc.set_rewrite_pfx(SliceData::new(vec![0x34, 0x35, 0x36, 0x80]))
-        .unwrap();
+    anc.set_rewrite_pfx(SliceData::new(vec![0x34, 0x35, 0x36, 0x80])).unwrap();
     let addr = MsgAddressInt::with_variant(
         Some(anc),
         0,
@@ -358,8 +334,7 @@ fn test_msg_addr_standart() {
 #[test]
 fn test_msg_addr_var() {
     let mut anc = AnycastInfo::default();
-    anc.set_rewrite_pfx(SliceData::new(vec![0x98, 0x32, 0x17, 0x80]))
-        .unwrap();
+    anc.set_rewrite_pfx(SliceData::new(vec![0x98, 0x32, 0x17, 0x80])).unwrap();
 
     let acc_id = AccountId::from([
         0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E,
@@ -402,15 +377,14 @@ fn test_currency_collection_addiction() {
     assert_eq!(c_res, c3);
 }
 
-/*
-pub enum Account{
-    AccountNone,
-    Account{
-        addr: MsgAddressInt,
-        storage_stat: StorageInfo,
-        storage: AccountStorage,
-    },
-}*/
+// pub enum Account{
+// AccountNone,
+// Account{
+// addr: MsgAddressInt,
+// storage_stat: StorageInfo,
+// storage: AccountStorage,
+// },
+// }
 
 #[test]
 fn test_account_none() {
@@ -421,8 +395,7 @@ fn test_account_none() {
 #[test]
 fn test_account_account() {
     let mut anc = AnycastInfo::default();
-    anc.set_rewrite_pfx(SliceData::new(vec![0x98, 0x32, 0x17, 0x80]))
-        .unwrap();
+    anc.set_rewrite_pfx(SliceData::new(vec![0x98, 0x32, 0x17, 0x80])).unwrap();
 
     let acc_id = AccountId::from([
         0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E,
@@ -430,7 +403,7 @@ fn test_account_account() {
         0x1E, 0x1F,
     ]);
 
-    //let st_used = StorageUsed::with_values(1,2,3,4,5);
+    // let st_used = StorageUsed::with_values(1,2,3,4,5);
     let g = Some(111.into());
     let st_info = StorageInfo::with_values(123456789, g);
 
@@ -448,9 +421,7 @@ fn test_account_account() {
         0b11110100,
     ]);
     stinit.set_data(data.into_cell());
-    stinit
-        .set_library_code(prepare_library_code(), false)
-        .unwrap();
+    stinit.set_library_code(prepare_library_code(), false).unwrap();
 
     let acc_st =
         AccountStorage::active_by_init_code_hash(0, CurrencyCollection::default(), stinit, false);
@@ -465,8 +436,7 @@ fn test_account_account() {
 #[test]
 fn test_account_account2() {
     let mut anc = AnycastInfo::default();
-    anc.set_rewrite_pfx(SliceData::new(vec![0x98, 0x32, 0x17, 0x80]))
-        .unwrap();
+    anc.set_rewrite_pfx(SliceData::new(vec![0x98, 0x32, 0x17, 0x80])).unwrap();
 
     let acc_id = AccountId::from([
         0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E,
@@ -474,7 +444,7 @@ fn test_account_account2() {
         0x1E, 0x1F,
     ]);
 
-    //let st_used = StorageUsed::with_values(1,2,3,4,5);
+    // let st_used = StorageUsed::with_values(1,2,3,4,5);
     let g = Some(111.into());
     let st_info = StorageInfo::with_values(123456789, g);
 
@@ -502,9 +472,7 @@ fn test_account_account2() {
         0b11110100,
     ]);
     stinit.set_data(data.clone().into_cell());
-    stinit
-        .set_library_code(prepare_library_code(), false)
-        .unwrap();
+    stinit.set_library_code(prepare_library_code(), false).unwrap();
 
     let mut balance = CurrencyCollection::with_grams(100000000000u64);
     balance.set_other(1, 100).unwrap();
@@ -562,10 +530,7 @@ fn test_account_account2() {
 fn test_freeze_account() {
     let mut acc = generate_test_account_by_init_code_hash(false);
     acc.try_freeze().unwrap();
-    assert!(
-        acc.status() == AccountStatus::AccStateFrozen,
-        "Account isnt in frozen state!"
-    );
+    assert!(acc.status() == AccountStatus::AccStateFrozen, "Account isnt in frozen state!");
 }
 
 #[test]
@@ -635,14 +600,12 @@ fn test_compare_currency_collections() {
     assert!(c2 != c1);
 }
 
-/*
-pub enum AccountStatus{
-    AccStateUninit,
-    AccStateFrozen,
-    AccStateActive,
-    AccStateNonexist,
-}
-*/
+// pub enum AccountStatus{
+// AccStateUninit,
+// AccStateFrozen,
+// AccStateActive,
+// AccStateNonexist,
+// }
 
 #[test]
 fn test_account_status_serialization() {
@@ -847,12 +810,7 @@ fn test_account_from_message() {
     );
     let mut msg = Message::with_int_header(hdr);
     let mut init = StateInit::default();
-    init.set_code(
-        BuilderData::with_bitstring(vec![0x71, 0x80])
-            .unwrap()
-            .into_cell()
-            .unwrap(),
-    );
+    init.set_code(BuilderData::with_bitstring(vec![0x71, 0x80]).unwrap().into_cell().unwrap());
     msg.set_state_init(init);
     assert!(
         Account::from_message_by_init_code_hash(&msg, false).is_some(),
@@ -864,12 +822,7 @@ fn test_account_from_message() {
     let hdr = crate::InternalMessageHeader::with_addresses_and_bounce(src, dst, value, true);
     let mut msg = Message::with_int_header(hdr);
     let mut init = StateInit::default();
-    init.set_code(
-        BuilderData::with_bitstring(vec![0x71, 0x80])
-            .unwrap()
-            .into_cell()
-            .unwrap(),
-    );
+    init.set_code(BuilderData::with_bitstring(vec![0x71, 0x80]).unwrap().into_cell().unwrap());
     msg.set_state_init(init);
     assert!(
         Account::from_message_by_init_code_hash(&msg, false).is_some(),
@@ -900,10 +853,7 @@ fn test_account_formats() {
     account1.write_original_format(&mut builder).unwrap();
     let cell = builder.into_cell().unwrap();
     let account2 = Account::construct_from_cell(cell).unwrap();
-    assert_ne!(
-        account1, account2,
-        "we must loose additional information in old format"
-    );
+    assert_ne!(account1, account2, "we must loose additional information in old format");
 
     assert!(account1.init_code_hash().is_some());
     assert!(account2.init_code_hash().is_none());

@@ -1,49 +1,58 @@
-/*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
 
-use crate::{
-    config_params::CatchainConfig,
-    define_HashmapE,
-    error::BlockError,
-    shard::{MASTERCHAIN_ID, SHARD_FULL},
-    signature::{CryptoSignature, SigPubKey},
-    types::{Number16, UnixTime32},
-    Deserializable, Serializable,
-};
+use std::borrow::Cow;
+use std::cmp::min;
+use std::cmp::Ordering;
+use std::convert::TryInto;
+use std::io::Cursor;
+use std::io::Write;
 
-use crc::{Crc, CRC_32_ISCSI};
-use sha2::{Digest, Sha256, Sha512};
-use std::{
-    borrow::Cow,
-    cmp::{min, Ordering},
-    convert::TryInto,
-    io::{Cursor, Write},
-};
+use crc::Crc;
+use crc::CRC_32_ISCSI;
+use sha2::Digest;
+use sha2::Sha256;
+use sha2::Sha512;
 use tvm_types::bls::BLS_PUBLIC_KEY_LEN;
+use tvm_types::error;
+use tvm_types::fail;
 use tvm_types::types::ByteOrderRead;
-use tvm_types::{
-    error, fail, BuilderData, Cell, HashmapE, HashmapType, IBitstring, Result, SliceData, UInt256,
-};
+use tvm_types::BuilderData;
+use tvm_types::Cell;
+use tvm_types::HashmapE;
+use tvm_types::HashmapType;
+use tvm_types::IBitstring;
+use tvm_types::Result;
+use tvm_types::SliceData;
+use tvm_types::UInt256;
+
+use crate::config_params::CatchainConfig;
+use crate::define_HashmapE;
+use crate::error::BlockError;
+use crate::shard::MASTERCHAIN_ID;
+use crate::shard::SHARD_FULL;
+use crate::signature::CryptoSignature;
+use crate::signature::SigPubKey;
+use crate::types::Number16;
+use crate::types::UnixTime32;
+use crate::Deserializable;
+use crate::Serializable;
 
 pub const CASTAGNOLI: Crc<u32> = Crc::<u32>::new(&CRC_32_ISCSI);
 
-/*
-validator_info$_
-  validator_list_hash_short:uint32
-  catchain_seqno:uint32
-  nx_cc_updated:Bool
-= ValidatorInfo;
-*/
+// validator_info$_
+// validator_list_hash_short:uint32
+// catchain_seqno:uint32
+// nx_cc_updated:Bool
+// = ValidatorInfo;
 
 /// Validator info struct
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
@@ -55,11 +64,7 @@ pub struct ValidatorInfo {
 
 impl ValidatorInfo {
     pub const fn new() -> Self {
-        ValidatorInfo {
-            validator_list_hash_short: 0,
-            catchain_seqno: 0,
-            nx_cc_updated: false,
-        }
+        ValidatorInfo { validator_list_hash_short: 0, catchain_seqno: 0, nx_cc_updated: false }
     }
 
     pub fn with_params(
@@ -67,11 +72,7 @@ impl ValidatorInfo {
         catchain_seqno: u32,
         nx_cc_updated: bool,
     ) -> Self {
-        ValidatorInfo {
-            validator_list_hash_short,
-            catchain_seqno,
-            nx_cc_updated,
-        }
+        ValidatorInfo { validator_list_hash_short, catchain_seqno, nx_cc_updated }
     }
 }
 
@@ -93,16 +94,12 @@ impl Deserializable for ValidatorInfo {
     }
 }
 
-/*
-validator_base_info$_
-  validator_list_hash_short:uint32
-  catchain_seqno:uint32
-= ValidatorBaseInfo;
-*/
+// validator_base_info$_
+// validator_list_hash_short:uint32
+// catchain_seqno:uint32
+// = ValidatorBaseInfo;
 
-///
 /// ValidatorBaseInfo
-///
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct ValidatorBaseInfo {
     pub validator_list_hash_short: u32,
@@ -111,17 +108,11 @@ pub struct ValidatorBaseInfo {
 
 impl ValidatorBaseInfo {
     pub fn new() -> Self {
-        ValidatorBaseInfo {
-            validator_list_hash_short: 0,
-            catchain_seqno: 0,
-        }
+        ValidatorBaseInfo { validator_list_hash_short: 0, catchain_seqno: 0 }
     }
 
     pub fn with_params(validator_list_hash_short: u32, catchain_seqno: u32) -> Self {
-        ValidatorBaseInfo {
-            validator_list_hash_short,
-            catchain_seqno,
-        }
+        ValidatorBaseInfo { validator_list_hash_short, catchain_seqno }
     }
 }
 
@@ -141,27 +132,23 @@ impl Deserializable for ValidatorBaseInfo {
     }
 }
 
-/*
-validator#53
-    public_key:SigPubKey
-    weight:uint64
-= ValidatorDescr;
-validator#73
-    public_key:SigPubKey
-    weight:uint64
-    adnl_addr:bits256
-= ValidatorDescr;
-validator#93
-    public_key:SigPubKey
-    weight:uint64
-    adnl_addr:bits256
-    mc_seq_no_since:u32
-= ValidatorDescr;
-*/
+// validator#53
+// public_key:SigPubKey
+// weight:uint64
+// = ValidatorDescr;
+// validator#73
+// public_key:SigPubKey
+// weight:uint64
+// adnl_addr:bits256
+// = ValidatorDescr;
+// validator#93
+// public_key:SigPubKey
+// weight:uint64
+// adnl_addr:bits256
+// mc_seq_no_since:u32
+// = ValidatorDescr;
 
-///
 /// ValidatorDescr
-///
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct ValidatorDescr {
     pub public_key: SigPubKey,
@@ -302,12 +289,8 @@ impl Deserializable for ValidatorDescr {
                 adnl_addr = if addr.is_zero() { None } else { Some(addr) };
                 log::error!("{}) rembits={}", line!(), slice.remaining_bits());
                 mc_seq_no_since = 0;
-                bls_public_key = Some(
-                    slice
-                        .get_next_bits(BLS_PUBLIC_KEY_LEN * 8)?
-                        .as_slice()
-                        .try_into()?,
-                );
+                bls_public_key =
+                    Some(slice.get_next_bits(BLS_PUBLIC_KEY_LEN * 8)?.as_slice().try_into()?);
                 log::error!("{}) rembits={}", line!(), slice.remaining_bits());
             }
             tag => fail!(Self::invalid_tag(tag as u32)),
@@ -323,34 +306,30 @@ impl Deserializable for ValidatorDescr {
     }
 }
 
-/*
-validators#11
-    utime_since:uint32
-    utime_until:uint32
-    total:(## 16)
-    main:(## 16)
-    { main <= total }
-    { main >= 1 }
-    list:(Hashmap 16 ValidatorDescr)
-= ValidatorSet;
-
-validators_ext#12
-    utime_since:uint32
-    utime_until:uint32
-    total:(## 16)
-    main:(## 16)
-    { main <= total }
-    { main >= 1 }
-    total_weight:uint64
-    list:(HashmapE 16 ValidatorDescr)
-= ValidatorSet;
-*/
+// validators#11
+// utime_since:uint32
+// utime_until:uint32
+// total:(## 16)
+// main:(## 16)
+// { main <= total }
+// { main >= 1 }
+// list:(Hashmap 16 ValidatorDescr)
+// = ValidatorSet;
+//
+// validators_ext#12
+// utime_since:uint32
+// utime_until:uint32
+// total:(## 16)
+// main:(## 16)
+// { main <= total }
+// { main >= 1 }
+// total_weight:uint64
+// list:(HashmapE 16 ValidatorDescr)
+// = ValidatorSet;
 
 define_HashmapE! {ValidatorDescriptions, 16, ValidatorDescr}
 
-///
 /// ValidatorSet
-///
 #[derive(Clone, Default, Debug, Eq, PartialEq)]
 pub struct ValidatorSet {
     utime_since: u32,
@@ -359,7 +338,7 @@ pub struct ValidatorSet {
     main: Number16,
     total_weight: u64,
     cc_seqno: u32,             // is never used
-    list: Vec<ValidatorDescr>, //ValidatorDescriptions,
+    list: Vec<ValidatorDescr>, // ValidatorDescriptions,
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -384,6 +363,8 @@ impl Ord for IncludedValidatorWeight {
 }
 
 impl ValidatorSet {
+    const HASH_SHORT_MAGIC: u32 = 0x901660ED;
+
     pub const fn default() -> Self {
         Self {
             utime_since: 0,
@@ -395,6 +376,7 @@ impl ValidatorSet {
             list: Vec::new(),
         }
     }
+
     pub fn new(
         utime_since: u32,
         utime_until: u32,
@@ -429,10 +411,7 @@ impl ValidatorSet {
         cc_seqno: u32,
         list: Vec<ValidatorDescr>,
     ) -> Result<Self> {
-        Ok(Self {
-            cc_seqno,
-            ..Self::new(utime_since, utime_until, main, list)?
-        })
+        Ok(Self { cc_seqno, ..Self::new(utime_since, utime_until, main, list)? })
     }
 
     pub fn with_values_version_2(
@@ -442,10 +421,7 @@ impl ValidatorSet {
         total_weight: u64,
         list: Vec<ValidatorDescr>,
     ) -> Result<Self> {
-        Ok(Self {
-            total_weight,
-            ..Self::new(utime_since, utime_until, main, list)?
-        })
+        Ok(Self { total_weight, ..Self::new(utime_since, utime_until, main, list)? })
     }
 
     pub fn utime_since(&self) -> u32 {
@@ -473,9 +449,7 @@ impl ValidatorSet {
     }
 
     pub fn validator_by_pub_key(&self, pub_key: &[u8; 32]) -> Option<&ValidatorDescr> {
-        self.list
-            .iter()
-            .find(|item| item.public_key.as_slice() == pub_key)
+        self.list.iter().find(|item| item.public_key.as_slice() == pub_key)
     }
 
     pub fn catchain_seqno(&self) -> u32 {
@@ -540,15 +514,14 @@ impl ValidatorSet {
             let mut prng = ValidatorSetPRNG::new(shard_pfx, workchain_id, cc_seqno);
             let full_list = if cc_config.isolate_mc_validators {
                 if self.total <= self.main && !(self.main == 0 && self.total == 0) {
-                    fail!(failure::format_err!("Count of validators is too small to make sharde's subset while `isolate_mc_validators` flag is set (total={}, main={})", self.total, self.main))
+                    fail!(failure::format_err!(
+                        "Count of validators is too small to make sharde's subset while `isolate_mc_validators` flag is set (total={}, main={})",
+                        self.total,
+                        self.main
+                    ))
                 }
                 let list = self.list[self.main.as_usize()..].to_vec();
-                Cow::Owned(Self::new(
-                    self.utime_since,
-                    self.utime_until,
-                    self.main.as_u16(),
-                    list,
-                )?)
+                Cow::Owned(Self::new(self.utime_since, self.utime_until, self.main.as_u16(), list)?)
             } else {
                 Cow::Borrowed(self)
             };
@@ -562,9 +535,8 @@ impl ValidatorSet {
                 // 1. take pseudo random weight less (or equal) than weight_remainder
                 let mut p = prng.next_ranged(weight_remainder);
 
-                // 2. find p which
-                //      >= start p value
-                //      >= prev_weight_sum of some number of first validators
+                // 2. find p which >= start p value >= prev_weight_sum of some number of first
+                //    validators
                 for vw in weights.iter() {
                     if p < vw.prev_weight_sum {
                         break;
@@ -606,8 +578,6 @@ impl ValidatorSet {
 
         Ok((subset, hash_short))
     }
-
-    const HASH_SHORT_MAGIC: u32 = 0x901660ED;
 
     pub fn calc_subset_hash_short(subset: &[ValidatorDescr], cc_seqno: u32) -> Result<u32> {
         let mut hasher = CASTAGNOLI.digest();
@@ -692,14 +662,10 @@ impl Deserializable for ValidatorSet {
         }
 
         if self.main > self.total {
-            fail!(BlockError::InvalidData(
-                "main > total while read ValidatorSet".to_string()
-            ))
+            fail!(BlockError::InvalidData("main > total while read ValidatorSet".to_string()))
         }
         if self.main < Number16::new(1)? {
-            fail!(BlockError::InvalidData(
-                "main < 1 while read ValidatorSet".to_string()
-            ))
+            fail!(BlockError::InvalidData("main < 1 while read ValidatorSet".to_string()))
         }
         Ok(())
     }
@@ -730,11 +696,7 @@ impl ValidatorSetPRNG {
         cur.write_all(&workchain_id.to_be_bytes()).unwrap();
         cur.write_all(&cc_seqno.to_be_bytes()).unwrap();
 
-        ValidatorSetPRNG {
-            context,
-            bag: [0_u64; 7],
-            cursor: 7,
-        }
+        ValidatorSetPRNG { context, bag: [0_u64; 7], cursor: 7 }
     }
 
     fn reset(&mut self) -> u64 {

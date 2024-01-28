@@ -1,29 +1,34 @@
-/*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
 
-use crate::{define_HashmapE, Deserializable, Serializable};
-use tvm_types::{
-    fail, BuilderData, Cell, HashmapE, HashmapSubtree, HashmapType, Result, SliceData, UInt256,
-};
+use tvm_types::fail;
+use tvm_types::BuilderData;
+use tvm_types::Cell;
+use tvm_types::HashmapE;
+use tvm_types::HashmapSubtree;
+use tvm_types::HashmapType;
+use tvm_types::Result;
+use tvm_types::SliceData;
+use tvm_types::UInt256;
+
+use crate::define_HashmapE;
+use crate::Deserializable;
+use crate::Serializable;
 
 #[cfg(test)]
 #[path = "tests/test_miscellaneous.rs"]
 mod tests;
 
-/*
 // key is [ shard:uint64 mc_seqno:uint32 ]
-_ (HashmapE 96 ProcessedUpto) = ProcessedInfo;
-*/
+// _ (HashmapE 96 ProcessedUpto) = ProcessedInfo;
 define_HashmapE!(ProcessedInfo, 96, ProcessedUpto);
 
 /// Struct ProcessedInfoKey describe key for ProcessedInfo
@@ -38,6 +43,7 @@ impl ProcessedInfoKey {
     pub fn with_params(shard: u64, mc_seqno: u32) -> Self {
         ProcessedInfoKey { shard, mc_seqno }
     }
+
     pub fn seq_no(&self) -> u32 {
         self.mc_seqno
     }
@@ -59,9 +65,7 @@ impl Deserializable for ProcessedInfoKey {
     }
 }
 
-///
 /// Struct ProcessedUpto
-///
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct ProcessedUpto {
     pub last_msg_lt: u64,
@@ -76,11 +80,7 @@ impl ProcessedUpto {
         last_msg_hash: UInt256,
         original_shard: Option<u64>,
     ) -> Self {
-        Self {
-            last_msg_lt,
-            last_msg_hash,
-            original_shard,
-        }
+        Self { last_msg_lt, last_msg_hash, original_shard }
     }
 }
 
@@ -121,7 +121,6 @@ impl IhrPendingInfo {
     }
 }
 
-///
 /// IhrPendingSince structure
 ///
 /// ihr_pending$_

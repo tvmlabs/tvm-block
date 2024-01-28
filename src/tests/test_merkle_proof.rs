@@ -1,25 +1,30 @@
-/*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
 
-use super::*;
-use crate::{
-    blocks::{BlkPrevInfo, BlockExtra, ExtBlkRef, ValueFlow},
-    shard::ShardIdent,
-    Serializable,
-};
 use std::collections::HashSet;
 use std::fs::File;
-use tvm_types::{BocReader, BuilderData, Cell, CellType, UsageTree};
+
+use tvm_types::BocReader;
+use tvm_types::BuilderData;
+use tvm_types::Cell;
+use tvm_types::CellType;
+use tvm_types::UsageTree;
+
+use super::*;
+use crate::blocks::BlkPrevInfo;
+use crate::blocks::BlockExtra;
+use crate::blocks::ExtBlkRef;
+use crate::blocks::ValueFlow;
+use crate::shard::ShardIdent;
+use crate::Serializable;
 
 #[test]
 fn test_merkle_proof_invalid_arg() {
@@ -31,10 +36,8 @@ fn test_merkle_proof_invalid_arg() {
     a.append_raw(&[1], 2).unwrap();
     b.append_raw(&[2], 3).unwrap();
 
-    root.checked_append_reference(a.into_cell().unwrap())
-        .unwrap();
-    root.checked_append_reference(b.into_cell().unwrap())
-        .unwrap();
+    root.checked_append_reference(a.into_cell().unwrap()).unwrap();
+    root.checked_append_reference(b.into_cell().unwrap()).unwrap();
 
     let mut proof_for = HashSet::new();
     proof_for.insert(UInt256::default());
@@ -53,10 +56,8 @@ fn test_merkle_proof1() {
     a.append_raw(&[1], 2).unwrap();
     b.append_raw(&[2], 3).unwrap();
 
-    root.checked_append_reference(a.into_cell().unwrap())
-        .unwrap();
-    root.checked_append_reference(b.into_cell().unwrap())
-        .unwrap();
+    root.checked_append_reference(a.into_cell().unwrap()).unwrap();
+    root.checked_append_reference(b.into_cell().unwrap()).unwrap();
 
     let root = root.into_cell().unwrap();
 
@@ -94,12 +95,10 @@ fn test_merkle_proof_with_subtrees() {
         c.into_cell().unwrap()
     }
 
-    /*
-          root
-      c5        c6
-    c1  c2    c3  c4
-              c1  c2
-    */
+    // root
+    // c5        c6
+    // c1  c2    c3  c4
+    // c1  c2
     let c1 = create_cell(&[1, 1, 1], &[]);
     let c2 = create_cell(&[2, 2, 2], &[]);
     let c3 = create_cell(&[3, 3, 3], &[&c1]);
@@ -184,24 +183,16 @@ fn test_merkle_proof_hi_hashes() {
     root1.append_raw(&[0], 1).unwrap();
     a.append_raw(&[1], 2).unwrap();
     b.append_raw(&[2], 3).unwrap();
-    root1
-        .checked_append_reference(a.clone().into_cell().unwrap())
-        .unwrap();
-    root1
-        .checked_append_reference(b.into_cell().unwrap())
-        .unwrap();
+    root1.checked_append_reference(a.clone().into_cell().unwrap()).unwrap();
+    root1.checked_append_reference(b.into_cell().unwrap()).unwrap();
 
     let mut root2 = BuilderData::new();
     let mut b = BuilderData::new();
 
     root2.append_raw(&[0], 1).unwrap();
     b.append_raw(&[3], 7).unwrap();
-    root2
-        .checked_append_reference(a.into_cell().unwrap())
-        .unwrap();
-    root2
-        .checked_append_reference(b.into_cell().unwrap())
-        .unwrap();
+    root2.checked_append_reference(a.into_cell().unwrap()).unwrap();
+    root2.checked_append_reference(b.into_cell().unwrap()).unwrap();
 
     let root1 = root1.into_cell().unwrap();
     let root2 = root2.into_cell().unwrap();
@@ -229,14 +220,9 @@ fn test_merkle_proof_hi_hashes() {
         )
         .unwrap();
 
-    let block = Block::with_params(
-        0,
-        block_info,
-        ValueFlow::default(),
-        update,
-        BlockExtra::default(),
-    )
-    .unwrap();
+    let block =
+        Block::with_params(0, block_info, ValueFlow::default(), update, BlockExtra::default())
+            .unwrap();
     let block_root = block.serialize().unwrap();
 
     // construct usage tree
@@ -275,9 +261,7 @@ fn test_merkle_proof_hi_hashes2() {
 
     root2.append_raw(&[0], 2).unwrap();
     b.append_raw(&[3], 7).unwrap();
-    root2
-        .checked_append_reference(b.into_cell().unwrap())
-        .unwrap();
+    root2.checked_append_reference(b.into_cell().unwrap()).unwrap();
 
     let root1 = root1.into_cell().unwrap();
     let root2 = root2.into_cell().unwrap();
@@ -308,11 +292,7 @@ fn test_merkle_proof_hi_hashes2() {
     let block_proof = MerkleProof::create_by_usage_tree(&block_root, usage_tree).unwrap();
 
     // construct proof BOC
-    let proof_root = block_proof
-        .write_to_new_cell()
-        .unwrap()
-        .into_cell()
-        .unwrap();
+    let proof_root = block_proof.write_to_new_cell().unwrap().into_cell().unwrap();
 
     println!("{:#.222}", proof_root);
     println!("{:#.222}", block_root);

@@ -1,39 +1,61 @@
-/*
-* Copyright (C) 2019-2022 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2022 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
 
-use crate::{
-    error::BlockError,
-    hashmapaug::{Augmentation, HashmapAugType},
-    merkle_proof::MerkleProof,
-    messages::{AnycastInfo, Message, MsgAddressInt, SimpleLib, StateInit, StateInitLib, TickTock},
-    shard::{ShardIdent, ShardStateUnsplit},
-    shard_accounts::DepthBalanceInfo,
-    types::{AddSub, ChildCell, CurrencyCollection, Grams, Number5, VarUInteger7},
-    ConfigParams, Deserializable, GetRepresentationHash, MaybeDeserialize, MaybeSerialize,
-    Serializable,
-};
-use std::{collections::HashSet, fmt};
-use tvm_types::{
-    error, fail, AccountId, BuilderData, Cell, HashmapType, IBitstring, Result, SliceData, UInt256,
-    UsageTree,
-};
+use std::collections::HashSet;
+use std::fmt;
+
+use tvm_types::error;
+use tvm_types::fail;
+use tvm_types::AccountId;
+use tvm_types::BuilderData;
+use tvm_types::Cell;
+use tvm_types::HashmapType;
+use tvm_types::IBitstring;
+use tvm_types::Result;
+use tvm_types::SliceData;
+use tvm_types::UInt256;
+use tvm_types::UsageTree;
+
+use crate::error::BlockError;
+use crate::hashmapaug::Augmentation;
+use crate::hashmapaug::HashmapAugType;
+use crate::merkle_proof::MerkleProof;
+use crate::messages::AnycastInfo;
+use crate::messages::Message;
+use crate::messages::MsgAddressInt;
+use crate::messages::SimpleLib;
+use crate::messages::StateInit;
+use crate::messages::StateInitLib;
+use crate::messages::TickTock;
+use crate::shard::ShardIdent;
+use crate::shard::ShardStateUnsplit;
+use crate::shard_accounts::DepthBalanceInfo;
+use crate::types::AddSub;
+use crate::types::ChildCell;
+use crate::types::CurrencyCollection;
+use crate::types::Grams;
+use crate::types::Number5;
+use crate::types::VarUInteger7;
+use crate::ConfigParams;
+use crate::Deserializable;
+use crate::GetRepresentationHash;
+use crate::MaybeDeserialize;
+use crate::MaybeSerialize;
+use crate::Serializable;
 
 #[cfg(test)]
 #[path = "tests/test_accounts.rs"]
 mod tests;
 
 ///////////////////////////////////////////////////////////////////////////////
-///
 /// 4.1.5. Storage profile of an account.
 ///
 /// storage_used$_ cells:(VarUInteger 7) bits:(VarUInteger 7)
@@ -80,13 +102,11 @@ mod tests;
 /// library:(Maybe ^Cell) = StateInit;
 
 ///////////////////////////////////////////////////////////////////////////////
-///
 /// 4.1.5. Storage profile of an account.
 ///
 /// storage_used$_ cells:(VarUInteger 7) bits:(VarUInteger 7)
 /// ext_refs:(VarUInteger 7) int_refs:(VarUInteger 7)
 /// public_cells:(VarUInteger 7) = StorageUsed;
-///
 
 #[derive(PartialEq, Eq, Clone, Debug, PartialOrd, Ord, Default)]
 pub struct StorageUsed {
@@ -99,6 +119,7 @@ impl StorageUsed {
     pub const fn default() -> Self {
         Self::new()
     }
+
     pub const fn new() -> Self {
         Self {
             cells: VarUInteger7::default(),
@@ -106,12 +127,15 @@ impl StorageUsed {
             public_cells: VarUInteger7::default(),
         }
     }
+
     pub const fn bits(&self) -> u64 {
         self.bits.as_u64()
     }
+
     pub const fn cells(&self) -> u64 {
         self.cells.as_u64()
     }
+
     pub const fn public_cells(&self) -> u64 {
         self.public_cells.as_u64()
     }
@@ -170,15 +194,11 @@ impl fmt::Display for StorageUsed {
     }
 }
 
-/*
-storage_used_short$_
-    cells:(VarUInteger 7)
-  bits:(VarUInteger 7)
-= StorageUsedShort;
-*/
-///
+// storage_used_short$_
+// cells:(VarUInteger 7)
+// bits:(VarUInteger 7)
+// = StorageUsedShort;
 /// StorageUsedShort struct
-///
 #[derive(PartialEq, Eq, Clone, Debug, PartialOrd, Ord, Default)]
 pub struct StorageUsedShort {
     cells: VarUInteger7,
@@ -189,24 +209,21 @@ impl StorageUsedShort {
     pub const fn default() -> Self {
         Self::new()
     }
+
     pub const fn new() -> Self {
-        Self {
-            cells: VarUInteger7::default(),
-            bits: VarUInteger7::default(),
-        }
+        Self { cells: VarUInteger7::default(), bits: VarUInteger7::default() }
     }
+
     pub const fn bits(&self) -> u64 {
         self.bits.as_u64()
     }
+
     pub const fn cells(&self) -> u64 {
         self.cells.as_u64()
     }
 
     pub fn with_values_checked(cells: u64, bits: u64) -> Result<Self> {
-        Ok(Self {
-            cells: VarUInteger7::new(cells)?,
-            bits: VarUInteger7::new(bits)?,
-        })
+        Ok(Self { cells: VarUInteger7::new(cells)?, bits: VarUInteger7::new(bits)? })
     }
 
     pub fn calculate_for_struct<T: Serializable>(value: &T) -> Result<StorageUsedShort> {
@@ -250,16 +267,11 @@ impl Deserializable for StorageUsedShort {
 
 impl fmt::Display for StorageUsedShort {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "StorageUsed[cells = {}, bits = {}]",
-            self.cells, self.bits
-        )
+        write!(f, "StorageUsed[cells = {}, bits = {}]", self.cells, self.bits)
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-///
 /// 4.1.5. Storage profile of an account.
 /// storage_info$_ used:StorageUsed last_paid:uint32
 /// due_payment:(Maybe Grams) = StorageInfo;
@@ -275,27 +287,23 @@ impl StorageInfo {
     pub const fn default() -> Self {
         Self::new()
     }
+
     pub const fn new() -> Self {
-        StorageInfo {
-            used: StorageUsed::default(),
-            last_paid: 0,
-            due_payment: None,
-        }
+        StorageInfo { used: StorageUsed::default(), last_paid: 0, due_payment: None }
     }
 
     pub const fn with_values(last_paid: u32, due_payment: Option<Grams>) -> Self {
-        StorageInfo {
-            used: StorageUsed::default(),
-            last_paid,
-            due_payment,
-        }
+        StorageInfo { used: StorageUsed::default(), last_paid, due_payment }
     }
+
     pub const fn used(&self) -> &StorageUsed {
         &self.used
     }
+
     pub const fn last_paid(&self) -> u32 {
         self.last_paid
     }
+
     pub const fn due_payment(&self) -> Option<&Grams> {
         self.due_payment.as_ref()
     }
@@ -330,14 +338,12 @@ impl fmt::Display for StorageInfo {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-///
 /// 4.1.6. Account description.
 ///
 /// acc_state_uninit$00 = AccountStatus;
 /// acc_state_frozen$01 = AccountStatus;
 /// acc_state_active$10 = AccountStatus;
 /// acc_state_nonexist$11 = AccountStatus;
-///
 
 #[derive(Clone, Debug, Default, Eq, Ord, PartialEq, PartialOrd)]
 pub enum AccountStatus {
@@ -379,13 +385,11 @@ impl Deserializable for AccountStatus {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-///
 /// 4.1.6. Account description.
 ///
 /// account_storage$_ last_trans_lt:uint64
 /// balance:CurrencyCollection state:AccountState
 /// = AccountStorage;
-///
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct AccountStorage {
@@ -408,10 +412,7 @@ impl AccountStorage {
 
     /// Construct storage for uninit account
     pub fn unint(balance: CurrencyCollection) -> Self {
-        Self {
-            balance,
-            ..Self::default()
-        }
+        Self { balance, ..Self::default() }
     }
 
     /// Construct storage for active account
@@ -480,13 +481,11 @@ impl fmt::Display for AccountStorage {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-///
 /// 4.1.6. Account description.
 ///
 /// account_uninit$00 = AccountState;
 /// account_active$1 _:StateInit = AccountState;
 /// account_frozen$01 state_hash:uint256 = AccountState;
-///
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -552,16 +551,19 @@ impl AccountStuff {
     pub fn storage_stat(&self) -> &StorageInfo {
         &self.storage_stat
     }
+
     pub fn state_init_mut(&mut self) -> Option<&mut StateInit> {
         match self.storage.state {
             AccountState::AccountActive { ref mut state_init } => Some(state_init),
             _ => None,
         }
     }
+
     fn update_storage_stat(&mut self) -> Result<()> {
         self.storage_stat.used = StorageUsed::calculate_for_struct(&self.storage)?;
         Ok(())
     }
+
     fn update_storage_stat_fast(&mut self) -> Result<()> {
         let cell = self.storage.serialize()?;
         self.storage_stat.used.bits = VarUInteger7::new(cell.tree_bits_count())?;
@@ -602,15 +604,12 @@ impl PartialEq for Account {
 impl Eq for Account {}
 
 impl Account {
-    ///
     /// Create new empty instance of account
-    ///
     pub const fn default() -> Self {
         Self::new()
     }
-    ///
+
     /// Create new empty instance of account
-    ///
     pub const fn new() -> Self {
         Account { stuff: None }
     }
@@ -640,9 +639,7 @@ impl Account {
         Ok(account)
     }
 
-    ///
     /// create unintialized account, only with address and balance
-    ///
     pub fn with_address_and_ballance(addr: &MsgAddressInt, balance: &CurrencyCollection) -> Self {
         Account::with_stuff(AccountStuff {
             addr: addr.clone(),
@@ -651,9 +648,7 @@ impl Account {
         })
     }
 
-    ///
     /// Create unintialize account with zero balance
-    ///
     pub const fn with_address(addr: MsgAddressInt) -> Self {
         Account::with_stuff(AccountStuff {
             addr,
@@ -662,9 +657,7 @@ impl Account {
         })
     }
 
-    ///
     /// Create initialized account from "constructor internal message"
-    ///
     pub fn from_message_by_init_code_hash(msg: &Message, init_code_hash: bool) -> Option<Self> {
         let hdr = msg.int_header()?;
         if hdr.value().grams.is_zero() {
@@ -678,9 +671,7 @@ impl Account {
                 true => Some(init.code()?.repr_hash()),
                 false => None,
             };
-            storage.state = AccountState::AccountActive {
-                state_init: init.clone(),
-            };
+            storage.state = AccountState::AccountActive { state_init: init.clone() };
         } else if hdr.bounce {
             return None;
         }
@@ -697,9 +688,7 @@ impl Account {
     pub fn try_freeze(&mut self) -> Result<()> {
         if let Some(state) = self.state_mut() {
             if let AccountState::AccountActive { state_init } = state {
-                *state = AccountState::AccountFrozen {
-                    state_init_hash: state_init.hash()?,
-                }
+                *state = AccountState::AccountFrozen { state_init_hash: state_init.hash()? }
             }
         }
         Ok(())
@@ -730,16 +719,8 @@ impl Account {
     ) -> Self {
         let storage = AccountStorage::frozen(last_trans_lt, balance, state_hash);
         let used = StorageUsed::calculate_for_struct(&storage).unwrap();
-        let storage_stat = StorageInfo {
-            used,
-            last_paid,
-            due_payment,
-        };
-        let stuff = AccountStuff {
-            addr,
-            storage_stat,
-            storage,
-        };
+        let storage_stat = StorageInfo { used, last_paid, due_payment };
+        let stuff = AccountStuff { addr, storage_stat, storage };
         Account::with_stuff(stuff)
     }
 
@@ -762,11 +743,7 @@ impl Account {
             last_paid,
             due_payment: None,
         };
-        let stuff = AccountStuff {
-            addr,
-            storage_stat,
-            storage,
-        };
+        let stuff = AccountStuff { addr, storage_stat, storage };
         Account::with_stuff(stuff)
     }
 
@@ -967,18 +944,14 @@ impl Account {
                             true => state_init.code().map(|code| code.repr_hash()),
                             false => None,
                         };
-                        AccountState::AccountActive {
-                            state_init: state_init.clone(),
-                        }
+                        AccountState::AccountActive { state_init: state_init.clone() }
                     } else {
                         fail!("StateInit doesn't correspond to uninit account address")
                     }
                 }
                 AccountState::AccountFrozen { state_init_hash } => {
                     if state_init_hash == &state_init.hash()? {
-                        AccountState::AccountActive {
-                            state_init: state_init.clone(),
-                        }
+                        AccountState::AccountActive { state_init: state_init.clone() }
                     } else {
                         fail!("StateInit doesn't correspond to frozen hash")
                     }
@@ -1030,8 +1003,7 @@ impl Account {
 
     /// getting due payment
     pub fn due_payment(&self) -> Option<&Grams> {
-        self.stuff()
-            .and_then(|s| s.storage_stat.due_payment.as_ref())
+        self.stuff().and_then(|s| s.storage_stat.due_payment.as_ref())
     }
 
     /// setting due payment
@@ -1117,9 +1089,7 @@ impl Account {
                 MerkleProof::create_by_usage_tree(state_root, usage_tree)
                     .and_then(|proof| proof.serialize())
             }
-            None => fail!(BlockError::InvalidData(
-                "Account cannot be None".to_string()
-            )),
+            None => fail!(BlockError::InvalidData("Account cannot be None".to_string())),
         }
     }
 
@@ -1143,17 +1113,8 @@ impl Account {
         let last_trans_lt = Deserializable::construct_from(slice)?; //last_trans_lt:uint64
         let balance = Deserializable::construct_from(slice)?; //balance:CurrencyCollection
         let state = Deserializable::construct_from(slice)?; //state:AccountState
-        let storage = AccountStorage {
-            last_trans_lt,
-            balance,
-            state,
-            ..AccountStorage::default()
-        };
-        Ok(Account::with_stuff(AccountStuff {
-            addr,
-            storage_stat,
-            storage,
-        }))
+        let storage = AccountStorage { last_trans_lt, balance, state, ..AccountStorage::default() };
+        Ok(Account::with_stuff(AccountStuff { addr, storage_stat, storage }))
     }
 
     fn read_version(slice: &mut SliceData, _version: u32) -> Result<Self> {
@@ -1163,17 +1124,8 @@ impl Account {
         let balance = CurrencyCollection::construct_from(slice)?; //balance:CurrencyCollection
         let state = Deserializable::construct_from(slice)?; //state:AccountState
         let init_code_hash = UInt256::read_maybe_from(slice)?;
-        let storage = AccountStorage {
-            last_trans_lt,
-            balance,
-            state,
-            init_code_hash,
-        };
-        let stuff = AccountStuff {
-            addr,
-            storage_stat,
-            storage,
-        };
+        let storage = AccountStorage { last_trans_lt, balance, state, init_code_hash };
+        let stuff = AccountStuff { addr, storage_stat, storage };
         Ok(Account::with_stuff(stuff))
     }
 }
@@ -1193,17 +1145,12 @@ impl Account {
     }
 
     pub fn update_config_smc(&mut self, config: &ConfigParams) -> Result<()> {
-        let data = self
-            .get_data()
-            .ok_or_else(|| error!("config SMC doesn't contain data"))?;
+        let data = self.get_data().ok_or_else(|| error!("config SMC doesn't contain data"))?;
         let mut data = SliceData::load_cell(data)?;
         data.checked_drain_reference()
             .map_err(|_| error!("config SMC data doesn't contain reference with old config"))?;
         let mut builder = data.into_builder();
-        let cell = config
-            .config_params
-            .data()
-            .ok_or_else(|| error!("configs musn't be empty"))?;
+        let cell = config.config_params.data().ok_or_else(|| error!("configs musn't be empty"))?;
         builder.checked_prepend_reference(cell.clone())?;
         self.set_data(builder.into_cell()?);
         Ok(())
@@ -1270,10 +1217,8 @@ impl fmt::Display for Account {
     }
 }
 
-/*
-account_descr$_ account:^Account last_trans_hash:bits256
-  last_trans_lt:uint64 = ShardAccount;
-*/
+// account_descr$_ account:^Account last_trans_hash:bits256
+// last_trans_lt:uint64 = ShardAccount;
 
 /// struct ShardAccount
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
@@ -1289,11 +1234,7 @@ impl ShardAccount {
         last_trans_hash: UInt256,
         last_trans_lt: u64,
     ) -> Self {
-        ShardAccount {
-            account: ChildCell::with_cell(account_root),
-            last_trans_hash,
-            last_trans_lt,
-        }
+        ShardAccount { account: ChildCell::with_cell(account_root), last_trans_hash, last_trans_lt }
     }
 
     pub fn with_params(
@@ -1370,8 +1311,7 @@ impl Deserializable for ShardAccount {
 #[allow(dead_code)]
 pub fn generate_test_account_by_init_code_hash(init_code_hash: bool) -> Account {
     let mut anc = AnycastInfo::default();
-    anc.set_rewrite_pfx(SliceData::new(vec![0x98, 0x32, 0x17, 0x80]))
-        .unwrap();
+    anc.set_rewrite_pfx(SliceData::new(vec![0x98, 0x32, 0x17, 0x80])).unwrap();
 
     let acc_id = AccountId::from([
         0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E,
@@ -1379,7 +1319,7 @@ pub fn generate_test_account_by_init_code_hash(init_code_hash: bool) -> Account 
         0x1E, 0x1F,
     ]);
 
-    //let st_used = StorageUsed::with_values(1,2,3,4,5);
+    // let st_used = StorageUsed::with_values(1,2,3,4,5);
     let g = Some(111.into());
     let st_info = StorageInfo::with_values(123456789, g);
 

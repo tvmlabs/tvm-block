@@ -1,23 +1,31 @@
-/*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
 
-use crate::{
-    error::BlockError, messages::Message, types::CurrencyCollection, Deserializable, Serializable,
-};
 use std::collections::LinkedList;
-use tvm_types::{
-    error, fail, AccountId, BuilderData, Cell, IBitstring, Result, SliceData, UInt256,
-};
+
+use tvm_types::error;
+use tvm_types::fail;
+use tvm_types::AccountId;
+use tvm_types::BuilderData;
+use tvm_types::Cell;
+use tvm_types::IBitstring;
+use tvm_types::Result;
+use tvm_types::SliceData;
+use tvm_types::UInt256;
+
+use crate::error::BlockError;
+use crate::messages::Message;
+use crate::types::CurrencyCollection;
+use crate::Deserializable;
+use crate::Serializable;
 
 pub const ACTION_SEND_MSG: u32 = 0x0ec3c86d;
 pub const ACTION_SET_CODE: u32 = 0xad4de08e;
@@ -29,22 +37,16 @@ pub const ACTION_COPYLEFT: u32 = 0x24486f7a;
 #[path = "tests/test_out_actions.rs"]
 mod tests;
 
-/*
-out_list_empty$_ = OutList 0;
-out_list$_ {n:#} prev:^(OutList n) action:OutAction = OutList (n+1);
-action_reserve#ad4de08e = OutAction;
-action_send_msg#0ec3c86d out_msg:^Message = OutAction;
-action_set_code#ad4de08e new_code:^Cell = OutAction;
-*/
+// out_list_empty$_ = OutList 0;
+// out_list$_ {n:#} prev:^(OutList n) action:OutAction = OutList (n+1);
+// action_reserve#ad4de08e = OutAction;
+// action_send_msg#0ec3c86d out_msg:^Message = OutAction;
+// action_set_code#ad4de08e new_code:^Cell = OutAction;
 
-///
 /// List of output actions
-///
 pub type OutActions = LinkedList<OutAction>;
 
-///
 /// Implementation of Serializable for OutActions
-///
 impl Serializable for OutActions {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
         let mut builder = BuilderData::new();
@@ -63,9 +65,7 @@ impl Serializable for OutActions {
     }
 }
 
-///
 /// Implementation of Deserializable for OutActions
-///
 impl Deserializable for OutActions {
     fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
         let mut cell = cell.clone();
@@ -82,43 +82,27 @@ impl Deserializable for OutActions {
     }
 }
 
-///
 /// Enum OutAction
-///
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[allow(clippy::large_enum_variant)]
 pub enum OutAction {
-    ///
     /// Action for send message
-    ///
     SendMsg { mode: u8, out_msg: Message },
 
-    ///
     /// Action for set new code of smart-contract
-    ///
     SetCode { new_code: Cell },
 
-    ///
     /// Action for reserving some account balance.
     /// It is roughly equivalent to creating an output
     /// message carrying x nanograms to oneself,so that
     /// the subsequent output actions would not be able
     /// to spend more money than the remainder.
-    ///
     ReserveCurrency { mode: u8, value: CurrencyCollection },
 
-    ///
     /// Action for change library.
-    ///
-    ChangeLibrary {
-        mode: u8,
-        code: Option<Cell>,
-        hash: Option<UInt256>,
-    },
+    ChangeLibrary { mode: u8, code: Option<Cell>, hash: Option<UInt256> },
 
-    ///
     /// Action for revert reward for code to code creater.
-    ///
     CopyLeft { license: u8, address: AccountId },
 
     #[default]
@@ -132,7 +116,7 @@ pub const SENDMSG_IGNORE_ERROR: u8 = 2;
 pub const SENDMSG_DELETE_IF_EMPTY: u8 = 32;
 pub const SENDMSG_REMAINING_MSG_BALANCE: u8 = 64;
 pub const SENDMSG_ALL_BALANCE: u8 = 128;
-//mask for cheking valid flags
+// mask for cheking valid flags
 pub const SENDMSG_VALID_FLAGS: u8 = SENDMSG_ORDINARY
     | SENDMSG_PAY_FEE_SEPARATELY
     | SENDMSG_IGNORE_ERROR
@@ -154,34 +138,24 @@ pub const SET_LIB_CODE_REMOVE: u8 = 1;
 pub const SET_LIB_CODE_ADD_PRIVATE: u8 = 2 + 1;
 pub const SET_LIB_CODE_ADD_PUBLIC: u8 = 2 * 2 + 1;
 
-///
 /// Implementation of Output Actions
-///
 impl OutAction {
-    ///
     /// Create new instance OutAction::ActionSend
-    ///
     pub fn new_send(mode: u8, out_msg: Message) -> Self {
         OutAction::SendMsg { mode, out_msg }
     }
 
-    ///
     /// Create new instance OutAction::ActionCode
-    ///
     pub fn new_set(new_code: Cell) -> Self {
         OutAction::SetCode { new_code }
     }
 
-    ///
     /// Create new instance OutAction::ReserveCurrency
-    ///
     pub fn new_reserve(mode: u8, value: CurrencyCollection) -> Self {
         OutAction::ReserveCurrency { mode, value }
     }
 
-    ///
     /// Create new instance OutAction::ChangeLibrary
-    ///
     pub fn new_change_library(mode: u8, code: Option<Cell>, hash: Option<UInt256>) -> Self {
         debug_assert!(match mode {
             CHANGE_LIB_REMOVE => code.is_none() && hash.is_some(),
@@ -192,9 +166,7 @@ impl OutAction {
         OutAction::ChangeLibrary { mode, code, hash }
     }
 
-    ///
     /// Create new instance OutAction::Copyleft
-    ///
     pub fn new_copyleft(license: u8, address: AccountId) -> Self {
         OutAction::CopyLeft { license, address }
     }
@@ -203,10 +175,7 @@ impl OutAction {
 impl Serializable for OutAction {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
         match self {
-            OutAction::SendMsg {
-                ref mode,
-                ref out_msg,
-            } => {
+            OutAction::SendMsg { ref mode, ref out_msg } => {
                 ACTION_SEND_MSG.write_to(cell)?; // tag
                 mode.write_to(cell)?;
                 cell.checked_append_reference(out_msg.serialize()?)?;
@@ -215,19 +184,12 @@ impl Serializable for OutAction {
                 ACTION_SET_CODE.write_to(cell)?; //tag
                 cell.checked_append_reference(new_code.clone())?;
             }
-            OutAction::ReserveCurrency {
-                ref mode,
-                ref value,
-            } => {
+            OutAction::ReserveCurrency { ref mode, ref value } => {
                 ACTION_RESERVE.write_to(cell)?; // tag
                 mode.write_to(cell)?;
                 value.write_to(cell)?;
             }
-            OutAction::ChangeLibrary {
-                ref mode,
-                ref code,
-                ref hash,
-            } => {
+            OutAction::ChangeLibrary { ref mode, ref code, ref hash } => {
                 ACTION_CHANGE_LIB.write_to(cell)?; // tag
                 mode.write_to(cell)?;
                 if let Some(value) = hash {
@@ -237,10 +199,7 @@ impl Serializable for OutAction {
                     cell.checked_append_reference(value.clone())?;
                 }
             }
-            OutAction::CopyLeft {
-                ref license,
-                ref address,
-            } => {
+            OutAction::CopyLeft { ref license, ref address } => {
                 ACTION_COPYLEFT.write_to(cell)?; // tag
                 license.write_to(cell)?;
                 address.write_to(cell)?;
@@ -254,9 +213,7 @@ impl Serializable for OutAction {
 impl Deserializable for OutAction {
     fn read_from(&mut self, cell: &mut SliceData) -> Result<()> {
         if cell.remaining_bits() < std::mem::size_of::<u32>() * 8 {
-            fail!(BlockError::InvalidArg(
-                "cell can't be shorter than 32 bits".to_string()
-            ))
+            fail!(BlockError::InvalidArg("cell can't be shorter than 32 bits".to_string()))
         }
         let tag = cell.get_next_u32()?;
         match tag {
@@ -293,10 +250,7 @@ impl Deserializable for OutAction {
                 address.read_from(cell)?;
                 *self = OutAction::new_copyleft(license, address);
             }
-            tag => fail!(BlockError::InvalidConstructorTag {
-                t: tag,
-                s: "OutAction".to_string()
-            }),
+            tag => fail!(BlockError::InvalidConstructorTag { t: tag, s: "OutAction".to_string() }),
         }
         Ok(())
     }

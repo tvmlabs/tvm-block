@@ -1,21 +1,23 @@
-/*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
 #![allow(clippy::inconsistent_digit_grouping, clippy::unusual_byte_groupings)]
-use super::*;
-use crate::{AccountIdPrefixFull, BlockIdExt};
-use tvm_types::{read_single_root_boc, SliceData};
+use std::collections::HashSet;
+use std::str::FromStr;
 
-use std::{collections::HashSet, str::FromStr};
+use tvm_types::read_single_root_boc;
+use tvm_types::SliceData;
+
+use super::*;
+use crate::AccountIdPrefixFull;
+use crate::BlockIdExt;
 
 fn parse_shard_state_unsplit(ss: ShardStateUnsplit) {
     println!("messages");
@@ -62,10 +64,7 @@ fn parse_shard_state_unsplit(ss: ShardStateUnsplit) {
                 Ok(i <= 5)
             })
             .unwrap();
-        println!(
-            "Old mc blocks info: let = {}",
-            custom.prev_blocks.len().unwrap()
-        );
+        println!("Old mc blocks info: let = {}", custom.prev_blocks.len().unwrap());
     }
 }
 
@@ -107,23 +106,11 @@ fn test_shard_state_unsplit_serialize() {
 
             let mut copyleft_rewards = CopyleftRewards::default();
             let address = MsgAddressInt::with_standart(None, 0, AccountId::from([1; 32])).unwrap();
-            copyleft_rewards
-                .set(&address.address(), &100.into())
-                .unwrap();
+            copyleft_rewards.set(&address.address(), &100.into()).unwrap();
             let address = MsgAddressInt::with_standart(None, 0, AccountId::from([2; 32])).unwrap();
-            copyleft_rewards
-                .set(&address.address(), &200.into())
-                .unwrap();
+            copyleft_rewards.set(&address.address(), &200.into()).unwrap();
             ss.set_copyleft_reward(copyleft_rewards).unwrap();
-            assert_eq!(
-                ss.read_custom()
-                    .unwrap()
-                    .unwrap()
-                    .state_copyleft_rewards
-                    .len()
-                    .unwrap(),
-                2
-            );
+            assert_eq!(ss.read_custom().unwrap().unwrap().state_copyleft_rewards.len().unwrap(), 2);
 
             let cell = ss.clone().serialize().unwrap();
             let restored_ss = ShardStateUnsplit::construct_from_cell(cell).unwrap();
@@ -316,13 +303,15 @@ fn test_shard_ident_with_prefix_slice() {
 
 #[test]
 fn test_shard_ident_merge() {
-    assert!(ShardIdent::with_tagged_prefix(
-        0,
-        0b1000_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    )
-    .unwrap()
-    .merge()
-    .is_err());
+    assert!(
+        ShardIdent::with_tagged_prefix(
+            0,
+            0b1000_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+        )
+        .unwrap()
+        .merge()
+        .is_err()
+    );
     assert_eq!(
         ShardIdent::with_tagged_prefix(
             0,
@@ -383,153 +372,177 @@ fn test_shard_ident_merge() {
 
 #[test]
 fn test_shard_ident_is_ancestor_for() {
-    assert!(ShardIdent::with_tagged_prefix(
-        0,
-        0b0101_1000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    )
-    .unwrap()
-    .is_ancestor_for(
-        &ShardIdent::with_tagged_prefix(
+    assert!(
+        ShardIdent::with_tagged_prefix(
             0,
-            0b0101_1010_00000000_00000000_00000000_01000000_00000000_01100000_10000000
+            0b0101_1000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
         )
         .unwrap()
-    ));
-    assert!(!ShardIdent::with_tagged_prefix(
-        -1,
-        0b0101_1000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    )
-    .unwrap()
-    .is_ancestor_for(
-        &ShardIdent::with_tagged_prefix(
-            0,
-            0b0101_1010_00000000_00000000_00000000_01000000_00000000_01100000_10000000
+        .is_ancestor_for(
+            &ShardIdent::with_tagged_prefix(
+                0,
+                0b0101_1010_00000000_00000000_00000000_01000000_00000000_01100000_10000000
+            )
+            .unwrap()
+        )
+    );
+    assert!(
+        !ShardIdent::with_tagged_prefix(
+            -1,
+            0b0101_1000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
         )
         .unwrap()
-    ));
-    assert!(ShardIdent::with_tagged_prefix(
-        0,
-        0b1000_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    )
-    .unwrap()
-    .is_ancestor_for(
-        &ShardIdent::with_tagged_prefix(
-            0,
-            0b0101_1001_00000000_00010000_00000000_00000000_00000000_00000000_00000000
+        .is_ancestor_for(
+            &ShardIdent::with_tagged_prefix(
+                0,
+                0b0101_1010_00000000_00000000_00000000_01000000_00000000_01100000_10000000
+            )
+            .unwrap()
         )
-        .unwrap()
-    ));
-    assert!(ShardIdent::with_tagged_prefix(
-        0,
-        0b1000_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    )
-    .unwrap()
-    .is_ancestor_for(
-        &ShardIdent::with_tagged_prefix(
+    );
+    assert!(
+        ShardIdent::with_tagged_prefix(
             0,
             0b1000_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
         )
         .unwrap()
-    ));
-    assert!(!ShardIdent::with_tagged_prefix(
-        0,
-        0b1001_1000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    )
-    .unwrap()
-    .is_ancestor_for(
-        &ShardIdent::with_tagged_prefix(
-            0,
-            0b1000_1000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+        .is_ancestor_for(
+            &ShardIdent::with_tagged_prefix(
+                0,
+                0b0101_1001_00000000_00010000_00000000_00000000_00000000_00000000_00000000
+            )
+            .unwrap()
         )
-        .unwrap()
-    ));
-}
-
-#[test]
-fn test_shard_ident_is_parent_for() {
-    assert!(ShardIdent::with_tagged_prefix(
-        0,
-        0b0101_1000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    )
-    .unwrap()
-    .is_parent_for(
-        &ShardIdent::with_tagged_prefix(
-            0,
-            0b0101_1100_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-        )
-        .unwrap()
-    ));
-    assert!(!ShardIdent::with_tagged_prefix(
-        -1,
-        0b0101_1000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    )
-    .unwrap()
-    .is_parent_for(
-        &ShardIdent::with_tagged_prefix(
-            0,
-            0b0101_1100_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-        )
-        .unwrap()
-    ));
-    assert!(ShardIdent::with_tagged_prefix(
-        0,
-        0b1000_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    )
-    .unwrap()
-    .is_parent_for(
-        &ShardIdent::with_tagged_prefix(
-            0,
-            0b0100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-        )
-        .unwrap()
-    ));
-    assert!(!ShardIdent::with_tagged_prefix(
-        0,
-        0b1000_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    )
-    .unwrap()
-    .is_parent_for(
-        &ShardIdent::with_tagged_prefix(
+    );
+    assert!(
+        ShardIdent::with_tagged_prefix(
             0,
             0b1000_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
         )
         .unwrap()
-    ));
-    assert!(!ShardIdent::with_tagged_prefix(
-        0,
-        0b1001_1000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    )
-    .unwrap()
-    .is_parent_for(
-        &ShardIdent::with_tagged_prefix(
+        .is_ancestor_for(
+            &ShardIdent::with_tagged_prefix(
+                0,
+                0b1000_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+            )
+            .unwrap()
+        )
+    );
+    assert!(
+        !ShardIdent::with_tagged_prefix(
             0,
             0b1001_1000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
         )
         .unwrap()
-    ));
-    assert!(!ShardIdent::with_tagged_prefix(
-        0,
-        0b1100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    )
-    .unwrap()
-    .is_parent_for(
-        &ShardIdent::with_tagged_prefix(
+        .is_ancestor_for(
+            &ShardIdent::with_tagged_prefix(
+                0,
+                0b1000_1000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+            )
+            .unwrap()
+        )
+    );
+}
+
+#[test]
+fn test_shard_ident_is_parent_for() {
+    assert!(
+        ShardIdent::with_tagged_prefix(
+            0,
+            0b0101_1000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+        )
+        .unwrap()
+        .is_parent_for(
+            &ShardIdent::with_tagged_prefix(
+                0,
+                0b0101_1100_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+            )
+            .unwrap()
+        )
+    );
+    assert!(
+        !ShardIdent::with_tagged_prefix(
+            -1,
+            0b0101_1000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+        )
+        .unwrap()
+        .is_parent_for(
+            &ShardIdent::with_tagged_prefix(
+                0,
+                0b0101_1100_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+            )
+            .unwrap()
+        )
+    );
+    assert!(
+        ShardIdent::with_tagged_prefix(
             0,
             0b1000_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
         )
         .unwrap()
-    ));
+        .is_parent_for(
+            &ShardIdent::with_tagged_prefix(
+                0,
+                0b0100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+            )
+            .unwrap()
+        )
+    );
+    assert!(
+        !ShardIdent::with_tagged_prefix(
+            0,
+            0b1000_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+        )
+        .unwrap()
+        .is_parent_for(
+            &ShardIdent::with_tagged_prefix(
+                0,
+                0b1000_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+            )
+            .unwrap()
+        )
+    );
+    assert!(
+        !ShardIdent::with_tagged_prefix(
+            0,
+            0b1001_1000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+        )
+        .unwrap()
+        .is_parent_for(
+            &ShardIdent::with_tagged_prefix(
+                0,
+                0b1001_1000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+            )
+            .unwrap()
+        )
+    );
+    assert!(
+        !ShardIdent::with_tagged_prefix(
+            0,
+            0b1100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+        )
+        .unwrap()
+        .is_parent_for(
+            &ShardIdent::with_tagged_prefix(
+                0,
+                0b1000_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+            )
+            .unwrap()
+        )
+    );
 }
 
 #[test]
 fn test_shard_ident_split() {
-    assert!(ShardIdent::with_tagged_prefix(
-        0,
-        0b0000_0000_00000000_00000000_00000000_00000000_00000000_00000000_0000_1000
-    )
-    .unwrap()
-    .split()
-    .is_err(),);
+    assert!(
+        ShardIdent::with_tagged_prefix(
+            0,
+            0b0000_0000_00000000_00000000_00000000_00000000_00000000_00000000_0000_1000
+        )
+        .unwrap()
+        .split()
+        .is_err(),
+    );
     assert_eq!(
         ShardIdent::with_tagged_prefix(
             0,
@@ -629,13 +642,17 @@ fn test_shard_ident_contains_account() {
             )
             .unwrap()
     );
-    assert!(ShardIdent::with_tagged_prefix(0, 0x6000_0000_0000_0000)
-        .unwrap()
-        .contains_account(
-            AccountId::from_str("79b1756926764d88d0b9bc8f42806939f293fb7733fba0959bb024234447c900")
+    assert!(
+        ShardIdent::with_tagged_prefix(0, 0x6000_0000_0000_0000)
+            .unwrap()
+            .contains_account(
+                AccountId::from_str(
+                    "79b1756926764d88d0b9bc8f42806939f293fb7733fba0959bb024234447c900"
+                )
                 .unwrap()
-        )
-        .unwrap());
+            )
+            .unwrap()
+    );
     assert!(
         ShardIdent::with_prefix_slice(0, SliceData::from_string("_").unwrap())
             .unwrap()
@@ -672,18 +689,8 @@ fn test_shard_prefix_without_tag() {
         .shard_prefix_without_tag(),
         0b0100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
     );
-    assert_eq!(
-        ShardIdent::with_prefix_len(2, 0, 0)
-            .unwrap()
-            .shard_prefix_without_tag(),
-        0
-    );
-    assert_eq!(
-        ShardIdent::with_prefix_len(0, 0, 0)
-            .unwrap()
-            .shard_prefix_without_tag(),
-        0
-    );
+    assert_eq!(ShardIdent::with_prefix_len(2, 0, 0).unwrap().shard_prefix_without_tag(), 0);
+    assert_eq!(ShardIdent::with_prefix_len(0, 0, 0).unwrap().shard_prefix_without_tag(), 0);
     assert_eq!(
         ShardIdent::with_prefix_len(
             12,
@@ -698,84 +705,95 @@ fn test_shard_prefix_without_tag() {
 
 #[test]
 fn test_shard_ident_contains_prefix() {
-    assert!(ShardIdent::with_tagged_prefix(
-        0,
-        0b0100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    )
-    .unwrap()
-    .contains_prefix(
-        0,
-        0b0110_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    ));
-    assert!(ShardIdent::with_tagged_prefix(
-        0,
-        0b0100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    )
-    .unwrap()
-    .contains_prefix(
-        0,
-        0b0100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    ));
-    assert!(ShardIdent::with_tagged_prefix(
-        0,
-        0b0100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    )
-    .unwrap()
-    .contains_prefix(
-        0,
-        0b0000_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    ));
-    assert!(!ShardIdent::with_tagged_prefix(
-        0,
-        0b0100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    )
-    .unwrap()
-    .contains_prefix(
-        0,
-        0b1000_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    ));
-    assert!(!ShardIdent::with_tagged_prefix(
-        0,
-        0b0100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    )
-    .unwrap()
-    .contains_prefix(
-        0,
-        0b1100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    ));
-    assert!(!ShardIdent::with_tagged_prefix(
-        0,
-        0b0100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    )
-    .unwrap()
-    .contains_prefix(
-        0,
-        0b1010_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
-    ));
+    assert!(
+        ShardIdent::with_tagged_prefix(
+            0,
+            0b0100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+        )
+        .unwrap()
+        .contains_prefix(
+            0,
+            0b0110_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+        )
+    );
+    assert!(
+        ShardIdent::with_tagged_prefix(
+            0,
+            0b0100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+        )
+        .unwrap()
+        .contains_prefix(
+            0,
+            0b0100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+        )
+    );
+    assert!(
+        ShardIdent::with_tagged_prefix(
+            0,
+            0b0100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+        )
+        .unwrap()
+        .contains_prefix(
+            0,
+            0b0000_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+        )
+    );
+    assert!(
+        !ShardIdent::with_tagged_prefix(
+            0,
+            0b0100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+        )
+        .unwrap()
+        .contains_prefix(
+            0,
+            0b1000_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+        )
+    );
+    assert!(
+        !ShardIdent::with_tagged_prefix(
+            0,
+            0b0100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+        )
+        .unwrap()
+        .contains_prefix(
+            0,
+            0b1100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+        )
+    );
+    assert!(
+        !ShardIdent::with_tagged_prefix(
+            0,
+            0b0100_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+        )
+        .unwrap()
+        .contains_prefix(
+            0,
+            0b1010_0000_00000000_00000000_00000000_00000000_00000000_00000000_00000000
+        )
+    );
 }
 
 #[test]
 fn test_shard_siblings() {
     assert_eq!(
-        ShardIdent::with_tagged_prefix(0, 0x2000_0000_0000_0000)
-            .unwrap()
-            .sibling(),
+        ShardIdent::with_tagged_prefix(0, 0x2000_0000_0000_0000).unwrap().sibling(),
         ShardIdent::with_tagged_prefix(0, 0x6000_0000_0000_0000).unwrap()
     );
     assert_eq!(
         ShardIdent::with_tagged_prefix(0, 0x2000_0000_0000_0000).unwrap(),
-        ShardIdent::with_tagged_prefix(0, 0x6000_0000_0000_0000)
-            .unwrap()
-            .sibling()
+        ShardIdent::with_tagged_prefix(0, 0x6000_0000_0000_0000).unwrap().sibling()
     );
 }
 
 mod account_id_prefix_full {
     use super::super::*;
-    use crate::{
-        AnycastInfo, IntermediateAddressExt, IntermediateAddressSimple, MsgAddrStd, MsgAddrVar,
-        Number5, Number9,
-    };
+    use crate::AnycastInfo;
+    use crate::IntermediateAddressExt;
+    use crate::IntermediateAddressSimple;
+    use crate::MsgAddrStd;
+    use crate::MsgAddrVar;
+    use crate::Number5;
+    use crate::Number9;
 
     fn get_anycast_info() -> AnycastInfo {
         let depth = 12;
@@ -831,10 +849,7 @@ mod account_id_prefix_full {
 
     #[test]
     fn test_construction() -> Result<()> {
-        let expected = AccountIdPrefixFull {
-            workchain_id: 1,
-            prefix: 0x123456789ABCDEF0,
-        };
+        let expected = AccountIdPrefixFull { workchain_id: 1, prefix: 0x123456789ABCDEF0 };
 
         let address = MsgAddressInt::AddrStd(get_msg_addr_std(None));
         let prefix = AccountIdPrefixFull::prefix(&address)?;
@@ -851,10 +866,7 @@ mod account_id_prefix_full {
 
     #[test]
     fn test_construction_anycast() -> Result<()> {
-        let expected = AccountIdPrefixFull {
-            workchain_id: 1,
-            prefix: 0x321456789ABCDEF0,
-        };
+        let expected = AccountIdPrefixFull { workchain_id: 1, prefix: 0x321456789ABCDEF0 };
 
         let address = MsgAddressInt::AddrStd(get_msg_addr_std(Some(get_anycast_info())));
         let prefix = AccountIdPrefixFull::prefix(&address)?;
@@ -877,10 +889,8 @@ mod account_id_prefix_full {
 
     #[test]
     fn test_checked_construction_invalid() {
-        let address = MsgAddressInt::AddrVar(get_msg_addr_var_with_workchain_id(
-            INVALID_WORKCHAIN_ID,
-            None,
-        ));
+        let address =
+            MsgAddressInt::AddrVar(get_msg_addr_var_with_workchain_id(INVALID_WORKCHAIN_ID, None));
         AccountIdPrefixFull::checked_prefix(&address).unwrap_err();
     }
 
@@ -893,50 +903,33 @@ mod account_id_prefix_full {
 
     #[test]
     fn test_prefix_to_invalid() {
-        let address = MsgAddressInt::AddrVar(get_msg_addr_var_with_workchain_id(
-            INVALID_WORKCHAIN_ID,
-            None,
-        ));
+        let address =
+            MsgAddressInt::AddrVar(get_msg_addr_var_with_workchain_id(INVALID_WORKCHAIN_ID, None));
         let mut prefix = AccountIdPrefixFull::default();
         assert!(!AccountIdPrefixFull::prefix_to(&address, &mut prefix));
     }
 
     #[test]
     fn test_interpolate_addr() {
-        let prefix1 = AccountIdPrefixFull {
-            workchain_id: 1,
-            prefix: 0x123456789ABCDEF0,
-        };
+        let prefix1 = AccountIdPrefixFull { workchain_id: 1, prefix: 0x123456789ABCDEF0 };
 
-        let prefix2 = AccountIdPrefixFull {
-            workchain_id: -1,
-            prefix: 0x0FEDCBA987654321,
-        };
+        let prefix2 = AccountIdPrefixFull { workchain_id: -1, prefix: 0x0FEDCBA987654321 };
 
         assert_eq!(prefix1.interpolate_addr(&prefix2, 0), prefix1);
 
         assert_eq!(
             prefix1.interpolate_addr(&prefix2, 1),
-            AccountIdPrefixFull {
-                workchain_id: 0x8000_0001u64 as i32,
-                prefix: prefix1.prefix
-            }
+            AccountIdPrefixFull { workchain_id: 0x8000_0001u64 as i32, prefix: prefix1.prefix }
         );
 
         assert_eq!(
             prefix1.interpolate_addr(&prefix2, 20),
-            AccountIdPrefixFull {
-                workchain_id: 0xFFFF_F001u64 as i32,
-                prefix: prefix1.prefix
-            }
+            AccountIdPrefixFull { workchain_id: 0xFFFF_F001u64 as i32, prefix: prefix1.prefix }
         );
 
         assert_eq!(
             prefix1.interpolate_addr(&prefix2, 32 + 20),
-            AccountIdPrefixFull {
-                workchain_id: prefix2.workchain_id,
-                prefix: 0x0FEDC6789ABCDEF0
-            }
+            AccountIdPrefixFull { workchain_id: prefix2.workchain_id, prefix: 0x0FEDC6789ABCDEF0 }
         );
 
         assert_eq!(prefix1.interpolate_addr(&prefix2, 32 + 64), prefix2);
@@ -944,15 +937,9 @@ mod account_id_prefix_full {
 
     #[test]
     fn test_interpolate_addr_intermediate() -> Result<()> {
-        let prefix1 = AccountIdPrefixFull {
-            workchain_id: 1,
-            prefix: 0x123456789ABCDEF0,
-        };
+        let prefix1 = AccountIdPrefixFull { workchain_id: 1, prefix: 0x123456789ABCDEF0 };
 
-        let prefix2 = AccountIdPrefixFull {
-            workchain_id: -1,
-            prefix: 0x0FEDCBA987654321,
-        };
+        let prefix2 = AccountIdPrefixFull { workchain_id: -1, prefix: 0x0FEDCBA987654321 };
 
         assert_eq!(
             prefix1
@@ -963,10 +950,7 @@ mod account_id_prefix_full {
         assert_eq!(
             prefix1
                 .interpolate_addr_intermediate(&prefix2, &IntermediateAddress::use_dest_bits(1)?)?,
-            AccountIdPrefixFull {
-                workchain_id: 0x8000_0001u64 as i32,
-                prefix: prefix1.prefix
-            }
+            AccountIdPrefixFull { workchain_id: 0x8000_0001u64 as i32, prefix: prefix1.prefix }
         );
 
         assert_eq!(
@@ -974,10 +958,7 @@ mod account_id_prefix_full {
                 &prefix2,
                 &IntermediateAddress::use_dest_bits(20)?
             )?,
-            AccountIdPrefixFull {
-                workchain_id: 0xFFFF_F001u64 as i32,
-                prefix: prefix1.prefix
-            }
+            AccountIdPrefixFull { workchain_id: 0xFFFF_F001u64 as i32, prefix: prefix1.prefix }
         );
 
         assert_eq!(
@@ -985,10 +966,7 @@ mod account_id_prefix_full {
                 &prefix2,
                 &IntermediateAddress::use_dest_bits(32 + 20)?
             )?,
-            AccountIdPrefixFull {
-                workchain_id: prefix2.workchain_id,
-                prefix: 0x0FEDC6789ABCDEF0
-            }
+            AccountIdPrefixFull { workchain_id: prefix2.workchain_id, prefix: 0x0FEDC6789ABCDEF0 }
         );
 
         assert_eq!(
@@ -1022,50 +1000,26 @@ mod account_id_prefix_full {
         let prefix2 = 0x0FEDCBA987654321;
 
         assert_eq!(
-            AccountIdPrefixFull {
-                workchain_id: 1,
-                prefix: prefix1
-            }
-            .count_matching_bits(&AccountIdPrefixFull {
-                workchain_id: -1,
-                prefix: prefix2
-            }),
+            AccountIdPrefixFull { workchain_id: 1, prefix: prefix1 }
+                .count_matching_bits(&AccountIdPrefixFull { workchain_id: -1, prefix: prefix2 }),
             0
         );
 
         assert_eq!(
-            AccountIdPrefixFull {
-                workchain_id: 1,
-                prefix: prefix1
-            }
-            .count_matching_bits(&AccountIdPrefixFull {
-                workchain_id: 2,
-                prefix: prefix2
-            }),
+            AccountIdPrefixFull { workchain_id: 1, prefix: prefix1 }
+                .count_matching_bits(&AccountIdPrefixFull { workchain_id: 2, prefix: prefix2 }),
             30
         );
 
         assert_eq!(
-            AccountIdPrefixFull {
-                workchain_id: -1,
-                prefix: prefix1
-            }
-            .count_matching_bits(&AccountIdPrefixFull {
-                workchain_id: -1,
-                prefix: prefix2
-            }),
+            AccountIdPrefixFull { workchain_id: -1, prefix: prefix1 }
+                .count_matching_bits(&AccountIdPrefixFull { workchain_id: -1, prefix: prefix2 }),
             35
         );
 
         assert_eq!(
-            AccountIdPrefixFull {
-                workchain_id: 1,
-                prefix: prefix1
-            }
-            .count_matching_bits(&AccountIdPrefixFull {
-                workchain_id: 1,
-                prefix: prefix1
-            }),
+            AccountIdPrefixFull { workchain_id: 1, prefix: prefix1 }
+                .count_matching_bits(&AccountIdPrefixFull { workchain_id: 1, prefix: prefix1 }),
             32 + 64
         );
     }
@@ -1075,24 +1029,15 @@ mod account_id_prefix_full {
 fn test_shard_to_slice() {
     let shard = ShardIdent::with_tagged_prefix(128, 0x6000_0000_0000_0000).unwrap();
     assert_eq!(shard.prefix_len(), 2);
-    assert_eq!(
-        shard.shard_key(true),
-        SliceData::from_string("000000806_").unwrap()
-    );
+    assert_eq!(shard.shard_key(true), SliceData::from_string("000000806_").unwrap());
 
     let shard = ShardIdent::masterchain();
     assert_eq!(shard.prefix_len(), 0);
-    assert_eq!(
-        shard.shard_key(true),
-        SliceData::from_string("FFFFFFFF").unwrap()
-    );
+    assert_eq!(shard.shard_key(true), SliceData::from_string("FFFFFFFF").unwrap());
 
     let shard = ShardIdent::with_tagged_prefix(128, 0x6000_0000_0000_0000).unwrap();
     assert_eq!(shard.prefix_len(), 2);
-    assert_eq!(
-        shard.shard_key(false),
-        SliceData::from_string("6_").unwrap()
-    );
+    assert_eq!(shard.shard_key(false), SliceData::from_string("6_").unwrap());
 
     let shard = ShardIdent::masterchain();
     assert_eq!(shard.prefix_len(), 0);
@@ -1110,31 +1055,17 @@ fn test_shard_intersect_with() {
 
 #[test]
 fn test_hypercube_routing() -> Result<()> {
-    let prefix1 = AccountIdPrefixFull {
-        workchain_id: 1,
-        prefix: 0x123456789ABCDEF0,
-    };
+    let prefix1 = AccountIdPrefixFull { workchain_id: 1, prefix: 0x123456789ABCDEF0 };
 
-    let prefix2 = AccountIdPrefixFull {
-        workchain_id: 1,
-        prefix: 0x0FEDCBA987654321,
-    };
+    let prefix2 = AccountIdPrefixFull { workchain_id: 1, prefix: 0x0FEDCBA987654321 };
 
     let cur_shard = ShardIdent::with_prefix_len(12, 1, 0x1230_0000_0000_0000)?;
 
     prefix1
-        .perform_hypercube_routing(
-            &prefix2,
-            &cur_shard,
-            IntermediateAddress::use_dest_bits(52)?,
-        )
+        .perform_hypercube_routing(&prefix2, &cur_shard, IntermediateAddress::use_dest_bits(52)?)
         .unwrap_err();
     prefix1
-        .perform_hypercube_routing(
-            &prefix2,
-            &cur_shard,
-            IntermediateAddress::use_dest_bits(44)?,
-        )
+        .perform_hypercube_routing(&prefix2, &cur_shard, IntermediateAddress::use_dest_bits(44)?)
         .unwrap_err();
 
     assert_eq!(
@@ -1143,10 +1074,7 @@ fn test_hypercube_routing() -> Result<()> {
             &cur_shard,
             IntermediateAddress::use_dest_bits(32)?
         )?,
-        (
-            IntermediateAddress::use_dest_bits(32)?,
-            IntermediateAddress::use_dest_bits(36)?
-        )
+        (IntermediateAddress::use_dest_bits(32)?, IntermediateAddress::use_dest_bits(36)?)
     );
     assert_eq!(
         prefix1.perform_hypercube_routing(
@@ -1154,20 +1082,13 @@ fn test_hypercube_routing() -> Result<()> {
             &cur_shard,
             IntermediateAddress::use_dest_bits(10)?
         )?,
-        (
-            IntermediateAddress::use_dest_bits(32)?,
-            IntermediateAddress::use_dest_bits(36)?
-        )
+        (IntermediateAddress::use_dest_bits(32)?, IntermediateAddress::use_dest_bits(36)?)
     );
 
     let cur_shard = ShardIdent::with_prefix_len(20, 1, 0x1230_0000_0000_0000)?;
 
     prefix1
-        .perform_hypercube_routing(
-            &prefix2,
-            &cur_shard,
-            IntermediateAddress::use_dest_bits(96)?,
-        )
+        .perform_hypercube_routing(&prefix2, &cur_shard, IntermediateAddress::use_dest_bits(96)?)
         .unwrap_err();
 
     Ok(())

@@ -1,23 +1,28 @@
-/*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
+
+use std::str::FromStr;
+
+use tvm_types::AccountId;
 
 use super::*;
-use crate::{
-    write_read_and_assert, Block, CurrencyCollection, IntermediateAddress, InternalMessageHeader,
-    Message, MsgAddressInt, MsgEnvelope, ShardIdent,
-};
-use std::str::FromStr;
-use tvm_types::AccountId;
+use crate::write_read_and_assert;
+use crate::Block;
+use crate::CurrencyCollection;
+use crate::IntermediateAddress;
+use crate::InternalMessageHeader;
+use crate::Message;
+use crate::MsgAddressInt;
+use crate::MsgEnvelope;
+use crate::ShardIdent;
 
 #[test]
 fn test_process_info_key() {
@@ -115,12 +120,7 @@ fn test_find_shards_by_routing_custom() {
     assert_eq!(next_prefix.prefix, 0x9f8b3fd904191a09);
 
     let block = Block::construct_from_file("src/tests/data/key_block_not_all_shardes.boc").unwrap();
-    let extra = block
-        .read_extra()
-        .unwrap()
-        .read_custom()
-        .unwrap()
-        .expect("need key block");
+    let extra = block.read_extra().unwrap().read_custom().unwrap().expect("need key block");
     let shards = extra.shards();
 
     let shard_src = ShardIdent::with_tagged_prefix(0, 0xd800000000000000).unwrap();

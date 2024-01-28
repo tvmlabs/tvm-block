@@ -1,38 +1,44 @@
-/*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
 
 use std::sync::Arc;
-use crate::{
-    AccountId, AccountStatus, ExternalInboundMessageHeader, HashUpdate, InternalMessageHeader, 
-    MsgAddressExt, MsgAddressInt, StateInit, TickTock, TransactionDescr, 
-    write_read_and_assert, 
-    types::Number5
-};
-use super::*;
 
-fn create_external_message() -> Arc<Message>  {
-    let src = MsgAddressExt::with_extern(SliceData::new(vec![0x23, 0x52, 0x73, 0x00, 0x80])).unwrap();
+use super::*;
+use crate::types::Number5;
+use crate::write_read_and_assert;
+use crate::AccountId;
+use crate::AccountStatus;
+use crate::ExternalInboundMessageHeader;
+use crate::HashUpdate;
+use crate::InternalMessageHeader;
+use crate::MsgAddressExt;
+use crate::MsgAddressInt;
+use crate::StateInit;
+use crate::TickTock;
+use crate::TransactionDescr;
+
+fn create_external_message() -> Arc<Message> {
+    let src =
+        MsgAddressExt::with_extern(SliceData::new(vec![0x23, 0x52, 0x73, 0x00, 0x80])).unwrap();
     let dst = MsgAddressInt::with_standart(None, -1, AccountId::from([0x11; 32])).unwrap();
     let mut hdr = ExternalInboundMessageHeader::new(src, dst);
     hdr.import_fee = 10.into();
     Arc::new(Message::with_ext_in_header(hdr))
 }
 
-fn create_internal_message() -> Message  {
+fn create_internal_message() -> Message {
     let mut hdr = InternalMessageHeader::with_addresses(
         MsgAddressInt::with_standart(None, -1, AccountId::from([0x33; 32])).unwrap(),
         MsgAddressInt::with_standart(None, -1, AccountId::from([0x22; 32])).unwrap(),
-        CurrencyCollection::default()
+        CurrencyCollection::default(),
     );
     hdr.ihr_fee = 10.into();
     Message::with_int_header(hdr)
@@ -41,9 +47,9 @@ fn create_internal_message() -> Message  {
 fn create_transation() -> Transaction {
     let mut t = Transaction::with_address_and_status(
         AccountId::from([1; 32]),
-        AccountStatus::AccStateActive
+        AccountStatus::AccStateActive,
     );
-    t.set_logical_time(1111); 
+    t.set_logical_time(1111);
     t.set_total_fees(CurrencyCollection::with_grams(2222));
     t
 }
@@ -140,7 +146,7 @@ fn test_serde_inmsg_discarded_fin() {
 #[test]
 fn test_serde_inmsg_discarded_tr_withdata() {
     let mut b = BuilderData::new();
-    b.append_raw(&[1, 2 ,3], 3*8).unwrap();
+    b.append_raw(&[1, 2, 3], 3 * 8).unwrap();
     let msg_descriptor = InMsgDiscardedTransit::with_cells(
         MsgEnvelope::default().serialize().unwrap(),
         1234567,
@@ -158,50 +164,52 @@ fn test_serde_inmsg_discarded_tr() {
     write_read_and_assert(msg_descriptor);
 }
 
-fn create_account_id(n: u8) -> AccountId{
-    AccountId::from([0,0,0,0,0,0,0,0,
-                    0,0,0,0,0,0,0,0,
-                    0,0,0,0,0,0,0,0,
-                    0,0,0,0,0,0,0,n])
+fn create_account_id(n: u8) -> AccountId {
+    AccountId::from([
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, n,
+    ])
 }
 
-fn get_message_with_addrs(src: AccountId, dst: AccountId) -> Message
-{
-    let mut msg = Message::with_int_header(
-        InternalMessageHeader::with_addresses(
-            MsgAddressInt::with_standart( None, 0, src).unwrap(),
-            MsgAddressInt::with_standart( None, 0, dst).unwrap(),
-            CurrencyCollection::default())
-    );
-    
+fn get_message_with_addrs(src: AccountId, dst: AccountId) -> Message {
+    let mut msg = Message::with_int_header(InternalMessageHeader::with_addresses(
+        MsgAddressInt::with_standart(None, 0, src).unwrap(),
+        MsgAddressInt::with_standart(None, 0, dst).unwrap(),
+        CurrencyCollection::default(),
+    ));
+
     let mut stinit = StateInit::default();
     stinit.set_split_depth(Number5::new(23).unwrap());
     stinit.set_special(TickTock::with_values(false, true));
-    let code = SliceData::new(vec![0b00111111, 0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11110100]);
+    let code = SliceData::new(vec![
+        0b00111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111,
+        0b11110100,
+    ]);
     stinit.set_code(code.into_cell());
-    let data = SliceData::new(vec![0b00111111, 0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11110100]);
+    let data = SliceData::new(vec![
+        0b00111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111,
+        0b11110100,
+    ]);
     stinit.set_data(data.into_cell());
-    let library = SliceData::new(vec![0b00111111, 0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11111111,0b11110100]);
+    let library = SliceData::new(vec![
+        0b00111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111,
+        0b11110100,
+    ]);
     stinit.set_library_code(library.into_cell(), true).unwrap();
-    
+
     msg.set_state_init(stinit);
 
     msg
 }
 
 fn get_message() -> Message {
-    get_message_with_addrs(
-        AccountId::from([0; 32]),
-        AccountId::from([1; 32]),
-    )
+    get_message_with_addrs(AccountId::from([0; 32]), AccountId::from([1; 32]))
 }
 
-fn transaction() -> Transaction
-{
-
+fn transaction() -> Transaction {
     let mut tr = Transaction::with_address_and_status(
         AccountId::from([1; 32]),
-        AccountStatus::AccStateActive
+        AccountStatus::AccStateActive,
     );
 
     let s_in_msg = get_message();
@@ -224,7 +232,6 @@ fn transaction() -> Transaction
     tr
 }
 
-
 #[test]
 fn test_work_with_in_msg_desc() {
     let mut msg_desc = InMsgDescr::default();
@@ -232,13 +239,15 @@ fn test_work_with_in_msg_desc() {
     // test InMsg::External
     let msg = get_message_with_addrs(create_account_id(1), create_account_id(2));
     let tr_cell = transaction().serialize().unwrap();
-    let in_msg_ext = InMsg::External(InMsgExternal::with_cells(msg.serialize().unwrap(), tr_cell.clone()));
+    let in_msg_ext =
+        InMsg::External(InMsgExternal::with_cells(msg.serialize().unwrap(), tr_cell.clone()));
 
     msg_desc.insert(&in_msg_ext).unwrap();
     assert_eq!(msg_desc.len().unwrap(), 1);
 
     let msg = get_message_with_addrs(create_account_id(2), create_account_id(1));
-    let in_msg_ext = InMsg::External(InMsgExternal::with_cells(msg.serialize().unwrap(), tr_cell.clone()));
+    let in_msg_ext =
+        InMsg::External(InMsgExternal::with_cells(msg.serialize().unwrap(), tr_cell.clone()));
 
     msg_desc.insert(&in_msg_ext).unwrap();
     assert_eq!(msg_desc.len().unwrap(), 2);
@@ -250,14 +259,12 @@ fn test_work_with_in_msg_desc() {
     // test InMsg::IHR
     let msg = get_message_with_addrs(create_account_id(3), create_account_id(4));
 
-    let in_msg_ihr = InMsg::IHR(
-        InMsgIHR::with_cells(
-            msg.serialize().unwrap(),
-            tr_cell.clone(),
-            Grams::one(),
-            Cell::default(),
-        )
-    );
+    let in_msg_ihr = InMsg::IHR(InMsgIHR::with_cells(
+        msg.serialize().unwrap(),
+        tr_cell.clone(),
+        Grams::one(),
+        Cell::default(),
+    ));
 
     msg_desc.insert(&in_msg_ihr).unwrap();
     assert_eq!(msg_desc.len().unwrap(), 3);
@@ -266,13 +273,8 @@ fn test_work_with_in_msg_desc() {
     let msg = get_message_with_addrs(create_account_id(4), create_account_id(5));
     let msg = MsgEnvelope::with_message_and_fee(&msg, Grams::one()).unwrap();
 
-    let in_msg_final = InMsg::Final(
-        InMsgFinal::with_cells(
-            msg.serialize().unwrap(),
-            tr_cell,
-            Grams::one(),
-        )
-    );
+    let in_msg_final =
+        InMsg::Final(InMsgFinal::with_cells(msg.serialize().unwrap(), tr_cell, Grams::one()));
 
     msg_desc.insert(&in_msg_final).unwrap();
     assert_eq!(msg_desc.len().unwrap(), 4);
@@ -281,13 +283,11 @@ fn test_work_with_in_msg_desc() {
     let msg = get_message_with_addrs(create_account_id(5), create_account_id(6));
     let msg1 = get_message_with_addrs(create_account_id(6), create_account_id(4));
 
-    let in_msg_transit = InMsg::Transit(
-        InMsgTransit::with_cells(
-            MsgEnvelope::with_message_and_fee(&msg, Grams::one()).unwrap().serialize().unwrap(),
-            MsgEnvelope::with_message_and_fee(&msg1, Grams::one()).unwrap().serialize().unwrap(),
-            Grams::one(),
-        )
-    );
+    let in_msg_transit = InMsg::Transit(InMsgTransit::with_cells(
+        MsgEnvelope::with_message_and_fee(&msg, Grams::one()).unwrap().serialize().unwrap(),
+        MsgEnvelope::with_message_and_fee(&msg1, Grams::one()).unwrap().serialize().unwrap(),
+        Grams::one(),
+    ));
 
     msg_desc.insert(&in_msg_transit).unwrap();
     assert_eq!(msg_desc.len().unwrap(), 5);
@@ -296,13 +296,11 @@ fn test_work_with_in_msg_desc() {
     let msg = get_message_with_addrs(create_account_id(6), create_account_id(7));
     let msg = MsgEnvelope::with_message_and_fee(&msg, Grams::one()).unwrap();
 
-    let in_msg_final = InMsg::DiscardedFinal(
-        InMsgDiscardedFinal::with_cells(
-            msg.serialize().unwrap(),
-            453453,
-            Grams::one(),
-        )
-    );
+    let in_msg_final = InMsg::DiscardedFinal(InMsgDiscardedFinal::with_cells(
+        msg.serialize().unwrap(),
+        453453,
+        Grams::one(),
+    ));
 
     msg_desc.insert(&in_msg_final).unwrap();
     assert_eq!(msg_desc.len().unwrap(), 6);
@@ -310,14 +308,12 @@ fn test_work_with_in_msg_desc() {
     // test InMsg::DiscardedTransit
     let msg = get_message_with_addrs(create_account_id(7), create_account_id(8));
 
-    let in_msg_transit = InMsg::DiscardedTransit(
-        InMsgDiscardedTransit::with_cells(
-            MsgEnvelope::with_message_and_fee(&msg, Grams::one()).unwrap().serialize().unwrap(),
-            453453,
-            Grams::one(),
-            SliceData::new_empty().into_cell(),
-        )
-    );
+    let in_msg_transit = InMsg::DiscardedTransit(InMsgDiscardedTransit::with_cells(
+        MsgEnvelope::with_message_and_fee(&msg, Grams::one()).unwrap().serialize().unwrap(),
+        453453,
+        Grams::one(),
+        SliceData::new_empty().into_cell(),
+    ));
 
     msg_desc.insert(&in_msg_transit).unwrap();
     assert_eq!(msg_desc.len().unwrap(), 7);

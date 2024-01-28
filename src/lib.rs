@@ -1,15 +1,13 @@
-/*
-* Copyright (C) 2019-2022 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2022 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
 
 #![cfg_attr(feature = "ci_run", deny(warnings))]
 
@@ -74,13 +72,24 @@ pub mod signature;
 pub use self::signature::*;
 
 pub mod config_params;
-pub use self::config_params::*;
+use std::collections::HashMap;
+use std::hash::Hash;
 
-use std::{collections::HashMap, hash::Hash};
-use tvm_types::{
-    error, fail, read_single_root_boc, write_boc, AccountId, BuilderData, Cell, HashmapE,
-    HashmapType, IBitstring, Result, SliceData, UInt256,
-};
+use tvm_types::error;
+use tvm_types::fail;
+use tvm_types::read_single_root_boc;
+use tvm_types::write_boc;
+use tvm_types::AccountId;
+use tvm_types::BuilderData;
+use tvm_types::Cell;
+use tvm_types::HashmapE;
+use tvm_types::HashmapType;
+use tvm_types::IBitstring;
+use tvm_types::Result;
+use tvm_types::SliceData;
+use tvm_types::UInt256;
+
+pub use self::config_params::*;
 
 impl<K, V> Serializable for HashMap<K, V>
 where
@@ -227,17 +236,16 @@ impl Serializable for Cell {
         Ok(())
     }
 }
-/* for future use
-impl Serializable for SliceData {
-    fn write_to_new_cell(&self) -> Result<BuilderData> {
-        Ok(BuilderData::from_slice(self))
-    }
-    fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
-        cell.checked_append_references_and_data(self)?;
-        Ok(())
-    }
-}
-*/
+// for future use
+// impl Serializable for SliceData {
+// fn write_to_new_cell(&self) -> Result<BuilderData> {
+// Ok(BuilderData::from_slice(self))
+// }
+// fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
+// cell.checked_append_references_and_data(self)?;
+// Ok(())
+// }
+// }
 impl<T: Serializable> MaybeSerialize for Option<T> {
     fn write_maybe_to(&self, cell: &mut BuilderData) -> Result<()> {
         match self {
@@ -301,10 +309,7 @@ impl Deserializable for AccountId {
 impl Serializable for AccountId {
     fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
         if self.remaining_bits() != 256 {
-            fail!(
-                "account_id must contain 256 bits, but {}",
-                self.remaining_bits()
-            )
+            fail!("account_id must contain 256 bits, but {}", self.remaining_bits())
         }
         cell.append_bytestring(self)?;
         Ok(())
@@ -316,10 +321,7 @@ impl Deserializable for () {
         if cell.remaining_bits() == 0 && cell.remaining_references() == 0 {
             Ok(())
         } else {
-            fail!(
-                "It must be True by TLB, but some data is present: {:x}",
-                cell
-            )
+            fail!("It must be True by TLB, but some data is present: {:x}", cell)
         }
     }
 }

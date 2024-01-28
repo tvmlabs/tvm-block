@@ -1,35 +1,42 @@
-/*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
-*
-* Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
-* this file except in compliance with the License.
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
-* limitations under the License.
-*/
+// Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+//
+// Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
+// use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific TON DEV software governing permissions and
+// limitations under the License.
 
-use crate::{
-    accounts::Account,
-    blocks::{Block, BlockInfo, BlockSeqNoAndShard},
-    error::BlockError,
-    hashmapaug::HashmapAugType,
-    merkle_update::MerkleUpdate,
-    messages::Message,
-    shard::ShardStateUnsplit,
-    transactions::Transaction,
-    Deserializable, GetRepresentationHash, Serializable,
-};
-use std::{
-    cmp::max,
-    collections::{HashMap, HashSet},
-};
-use tvm_types::{
-    error, fail, types::UInt256, BuilderData, Cell, CellType, IBitstring, Result, SliceData,
-    UsageTree,
-};
+use std::cmp::max;
+use std::collections::HashMap;
+use std::collections::HashSet;
+
+use tvm_types::error;
+use tvm_types::fail;
+use tvm_types::types::UInt256;
+use tvm_types::BuilderData;
+use tvm_types::Cell;
+use tvm_types::CellType;
+use tvm_types::IBitstring;
+use tvm_types::Result;
+use tvm_types::SliceData;
+use tvm_types::UsageTree;
+
+use crate::accounts::Account;
+use crate::blocks::Block;
+use crate::blocks::BlockInfo;
+use crate::blocks::BlockSeqNoAndShard;
+use crate::error::BlockError;
+use crate::hashmapaug::HashmapAugType;
+use crate::merkle_update::MerkleUpdate;
+use crate::messages::Message;
+use crate::shard::ShardStateUnsplit;
+use crate::transactions::Transaction;
+use crate::Deserializable;
+use crate::GetRepresentationHash;
+use crate::Serializable;
 
 #[cfg(test)]
 #[path = "tests/test_merkle_proof.rs"]
@@ -44,11 +51,7 @@ pub struct MerkleProof {
 
 impl Default for MerkleProof {
     fn default() -> MerkleProof {
-        MerkleProof {
-            hash: UInt256::default(),
-            depth: 0,
-            proof: Cell::default(),
-        }
+        MerkleProof { hash: UInt256::default(), depth: 0, proof: Cell::default() }
     }
 }
 
@@ -58,9 +61,7 @@ impl Deserializable for MerkleProof {
             fail!("Merkle proof have to fill full cell from its zeroth bit.")
         }
         if CellType::try_from(cell.get_next_byte()?)? != CellType::MerkleProof {
-            fail!(BlockError::InvalidData(
-                "invalid Merkle proof root's cell type".to_string()
-            ))
+            fail!(BlockError::InvalidData("invalid Merkle proof root's cell type".to_string()))
         }
         self.hash.read_from(cell)?;
         self.depth = cell.get_next_u16()?;
@@ -94,7 +95,8 @@ impl Serializable for MerkleProof {
 }
 
 impl MerkleProof {
-    /// Creating of a Merkle proof which includes cells whose hashes contain in `proof_for`.
+    /// Creating of a Merkle proof which includes cells whose hashes contain in
+    /// `proof_for`.
     pub fn create(root: &Cell, is_include: impl Fn(&UInt256) -> bool) -> Result<Self> {
         if !is_include(&root.repr_hash()) {
             fail!(BlockError::InvalidArg(
@@ -104,14 +106,11 @@ impl MerkleProof {
         let mut done_cells = HashMap::new();
         let proof = Self::create_raw(root, &is_include, &|_| false, 0, &mut None, &mut done_cells)?;
 
-        Ok(MerkleProof {
-            hash: root.repr_hash(),
-            depth: root.repr_depth(),
-            proof,
-        })
+        Ok(MerkleProof { hash: root.repr_hash(), depth: root.repr_depth(), proof })
     }
 
-    /// Creating of a Merkle proof which includes cells whose hashes contain in `proof_for`.
+    /// Creating of a Merkle proof which includes cells whose hashes contain in
+    /// `proof_for`.
     pub fn create_by_usage_tree(root: &Cell, usage_tree: UsageTree) -> Result<Self> {
         MerkleProof::create(root, |h| usage_tree.contains(h))
     }
@@ -137,11 +136,7 @@ impl MerkleProof {
             &mut done_cells,
         )?;
 
-        Ok(MerkleProof {
-            hash: root_hash,
-            depth: root.repr_depth(),
-            proof,
-        })
+        Ok(MerkleProof { hash: root_hash, depth: root.repr_depth(), proof })
     }
 
     pub fn create_raw(
@@ -152,11 +147,7 @@ impl MerkleProof {
         pruned_branches: &mut Option<HashSet<UInt256>>,
         done_cells: &mut HashMap<UInt256, Cell>,
     ) -> Result<Cell> {
-        let child_merkle_depth = if cell.is_merkle() {
-            merkle_depth + 1
-        } else {
-            merkle_depth
-        };
+        let child_merkle_depth = if cell.is_merkle() { merkle_depth + 1 } else { merkle_depth };
 
         let mut proof_cell = BuilderData::from_cell(cell)?;
         let mut child_mask = cell.level_mask();
@@ -207,9 +198,7 @@ pub fn check_block_info_proof(
     block_hash: &UInt256,
 ) -> Result<BlockInfo> {
     if proof_hash != block_hash {
-        fail!(BlockError::WrongMerkleProof(
-            "Proof hash is not equal given block hash".to_string()
-        ))
+        fail!(BlockError::WrongMerkleProof("Proof hash is not equal given block hash".to_string()))
     }
     block.read_info()
 }
@@ -229,10 +218,7 @@ pub fn check_transaction_proof(
     let block_info = check_block_info_proof(&block, &proof.hash, block_id)?;
 
     // check if acc is belonged the block's shard
-    if !block_info
-        .shard()
-        .contains_account(tr.account_id().clone())?
-    {
+    if !block_info.shard().contains_account(tr.account_id().clone())? {
         fail!(BlockError::WrongMerkleProof(
             "Account address in transaction belongs other shardchain".to_string()
         ))
@@ -254,10 +240,7 @@ pub fn check_transaction_proof(
     })?;
 
     let account_blocks = block_extra.read_account_blocks().map_err(|err| {
-        BlockError::WrongMerkleProof(format!(
-            "Error extracting account blocks from proof: {}",
-            err
-        ))
+        BlockError::WrongMerkleProof(format!("Error extracting account blocks from proof: {}", err))
     })?;
 
     let account_block = account_blocks
@@ -265,10 +248,8 @@ pub fn check_transaction_proof(
         .ok_or_else(|| BlockError::WrongMerkleProof("No account block in proof".to_string()))?;
 
     // find transaction
-    let tr_parent_slice_opt = account_block
-        .transactions()
-        .get_as_slice(&tr.logical_time())
-        .map_err(|err| {
+    let tr_parent_slice_opt =
+        account_block.transactions().get_as_slice(&tr.logical_time()).map_err(|err| {
             BlockError::WrongMerkleProof(format!(
                 "Error extracting transaction from dictionary in proof: {}",
                 err
@@ -278,15 +259,11 @@ pub fn check_transaction_proof(
         if let Ok(tr_slice) = tr_parent_slice.checked_drain_reference() {
             // check hash
             if tr_slice.repr_hash() != tr.hash()? {
-                fail!(BlockError::WrongMerkleProof(
-                    "Wrong transaction's hash in proof".to_string()
-                ))
+                fail!(BlockError::WrongMerkleProof("Wrong transaction's hash in proof".to_string()))
             }
         }
     } else {
-        fail!(BlockError::WrongMerkleProof(
-            "No transaction in proof".to_string()
-        ))
+        fail!(BlockError::WrongMerkleProof("No transaction in proof".to_string()))
     }
     Ok(())
 }
@@ -311,9 +288,7 @@ fn check_transaction_id(given_id: Option<UInt256>, tr_cell: Option<Cell>) -> Res
         (None, None) => Ok(()),
         (Some(id1), Some(id2)) => {
             if id1 != id2 {
-                fail!(BlockError::WrongMerkleProof(
-                    "Invalid transaction id".to_string()
-                ))
+                fail!(BlockError::WrongMerkleProof("Invalid transaction id".to_string()))
             }
             Ok(())
         }
@@ -365,18 +340,13 @@ pub fn check_message_proof(
     }
 
     let out_msg_descr = block_extra.read_out_msg_descr().map_err(|err| {
-        BlockError::WrongMerkleProof(format!(
-            "Error extracting out msg descr from proof: {}",
-            err
-        ))
+        BlockError::WrongMerkleProof(format!("Error extracting out msg descr from proof: {}", err))
     })?;
     if let Ok(Some(out_msg)) = out_msg_descr.get(&msg_hash) {
         if let Ok(real_msg_hash) = out_msg.read_message_hash() {
             check_transaction_id(tr_id, out_msg.transaction_cell())?;
             if real_msg_hash != msg_hash {
-                fail!(BlockError::WrongMerkleProof(
-                    "Wrong message's hash in proof".to_string()
-                ))
+                fail!(BlockError::WrongMerkleProof("Wrong message's hash in proof".to_string()))
             } else {
                 Ok(())
             }
@@ -386,15 +356,14 @@ pub fn check_message_proof(
             ))
         }
     } else {
-        fail!(BlockError::WrongMerkleProof(
-            "No message in proof".to_string()
-        ))
+        fail!(BlockError::WrongMerkleProof("No message in proof".to_string()))
     }
 }
 
 /// checks if account with given address is exist in shard state.
 /// Proof must contain account's root cell
-/// Returns info about the block corresponds to shard state the account belongs to.
+/// Returns info about the block corresponds to shard state the account belongs
+/// to.
 pub fn check_account_proof(proof: &MerkleProof, acc: &Account) -> Result<BlockSeqNoAndShard> {
     if acc.is_none() {
         fail!(BlockError::InvalidData("Account can't be none".to_string()))
@@ -403,10 +372,7 @@ pub fn check_account_proof(proof: &MerkleProof, acc: &Account) -> Result<BlockSe
     let ss: ShardStateUnsplit = proof.virtualize()?;
 
     let accounts = ss.read_accounts().map_err(|err| {
-        BlockError::WrongMerkleProof(format!(
-            "Error extracting accounts dict from proof: {}",
-            err
-        ))
+        BlockError::WrongMerkleProof(format!("Error extracting accounts dict from proof: {}", err))
     })?;
 
     let shard_acc = accounts.get_serialized(acc.get_addr().unwrap().get_address());
@@ -414,9 +380,7 @@ pub fn check_account_proof(proof: &MerkleProof, acc: &Account) -> Result<BlockSe
         let acc_root = shard_acc.account_cell();
         let acc_hash = Cell::hash(&acc_root, (max(acc_root.level(), 1) - 1) as usize);
         if acc.hash()? != acc_hash {
-            fail!(BlockError::WrongMerkleProof(
-                "Wrong account's hash in proof".to_string()
-            ))
+            fail!(BlockError::WrongMerkleProof("Wrong account's hash in proof".to_string()))
         } else {
             return Ok(BlockSeqNoAndShard {
                 seq_no: ss.seq_no(),
@@ -425,8 +389,6 @@ pub fn check_account_proof(proof: &MerkleProof, acc: &Account) -> Result<BlockSe
             });
         }
     } else {
-        fail!(BlockError::WrongMerkleProof(
-            "No account in proof".to_string()
-        ))
+        fail!(BlockError::WrongMerkleProof("No account in proof".to_string()))
     }
 }
