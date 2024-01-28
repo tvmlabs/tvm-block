@@ -82,8 +82,6 @@ use tvm_types::{
     HashmapType, IBitstring, Result, SliceData, UInt256,
 };
 
-include!("../common/src/info.rs");
-
 impl<K, V> Serializable for HashMap<K, V>
 where
     K: Clone + Eq + Hash + Default + Deserializable + Serializable,
