@@ -521,7 +521,7 @@ impl ConfigParams {
                 Ok(Some(ConfigParamEnum::ConfigParam0(param)))
                     if param.config_addr == self.config_addr =>
                 {
-                    ()
+                    
                 }
                 _ => return Ok(false),
             }

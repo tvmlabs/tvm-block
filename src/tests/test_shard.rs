@@ -132,7 +132,7 @@ fn test_shard_state_unsplit_serialize_fast_finality() {
 
     let in_path = "src/tests/data/shard_state.boc";
     let bytes = std::fs::read(in_path).unwrap();
-    let root_cell = read_single_root_boc(&bytes).unwrap();
+    let root_cell = read_single_root_boc(bytes).unwrap();
 
     let ss = ShardState::construct_from_cell(root_cell).unwrap();
 

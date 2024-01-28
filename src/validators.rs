@@ -162,7 +162,7 @@ pub struct ValidatorDescr {
     pub prev_weight_sum: u64,
 }
 
-#[allow(clippy::derive_hash_xor_eq)]
+#[allow(clippy::derived_hash_with_manual_eq)]
 impl std::hash::Hash for ValidatorDescr {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.public_key.as_slice().hash(state);
@@ -551,7 +551,7 @@ impl ValidatorSet {
                     next_validator.public_key.clone(),
                     1, // NB: shardchain validator lists have all weights = 1
                     next_validator.adnl_addr.clone(),
-                    next_validator.bls_public_key.clone(),
+                    next_validator.bls_public_key,
                 ));
                 debug_assert!(weight_remainder >= next_validator.weight);
                 weight_remainder -= next_validator.weight;
