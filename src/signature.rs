@@ -107,7 +107,7 @@ impl Default for CryptoSignature {
 }
 
 impl FromStr for CryptoSignature {
-    type Err = failure::Error;
+    type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self> {
         let key_buf = hex::decode(s).map_err(|err| {
@@ -217,7 +217,7 @@ impl PartialEq<UInt256> for SigPubKey {
 }
 
 impl FromStr for SigPubKey {
-    type Err = failure::Error;
+    type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self> {
         let pub_key = s.parse()?;

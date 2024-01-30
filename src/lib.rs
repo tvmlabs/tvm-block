@@ -75,6 +75,8 @@ pub mod config_params;
 use std::collections::HashMap;
 use std::hash::Hash;
 
+use base64::Engine;
+use tvm_types::base64_decode;
 use tvm_types::error;
 use tvm_types::fail;
 use tvm_types::read_single_root_boc;
@@ -195,7 +197,8 @@ pub trait Deserializable: Default {
     }
     /// adapter for tests
     fn construct_from_base64(string: &str) -> Result<Self> {
-        let bytes = base64::decode(string)?;
+        base64_decode(string)?;
+        let bytes = base64::engine::general_purpose::STANDARD.decode(string)?;
         Self::construct_from_bytes(&bytes)
     }
     // Override it to implement skipping
@@ -213,7 +216,7 @@ pub trait Deserializable: Default {
     fn read_from_reference(&mut self, slice: &mut SliceData) -> Result<()> {
         self.read_from_cell(slice.checked_drain_reference()?)
     }
-    fn invalid_tag(t: u32) -> failure::Error {
+    fn invalid_tag(t: u32) -> anyhow::Error {
         let s = std::any::type_name::<Self>().to_string();
         error!(BlockError::InvalidConstructorTag { t, s })
     }

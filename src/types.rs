@@ -142,7 +142,7 @@ macro_rules! define_VarIntegerN {
         }
 
         impl FromStr for $varname {
-            type Err = failure::Error;
+            type Err = anyhow::Error;
 
             fn from_str(string: &str) -> Result<Self> {
                 let result = if let Some(stripped) = string.strip_prefix("0x") {
@@ -346,7 +346,7 @@ macro_rules! define_VarIntegerN {
 
         #[cfg(not(test))]
         impl std::convert::TryFrom<$tt> for $varname {
-            type Error = failure::Error;
+            type Error = anyhow::Error;
 
             fn try_from(value: $tt) -> Result<Self> {
                 Self::check_overflow(&value)?;
@@ -595,7 +595,7 @@ impl Grams {
 }
 
 impl FromStr for Grams {
-    type Err = failure::Error;
+    type Err = anyhow::Error;
 
     fn from_str(string: &str) -> Result<Self> {
         if let Some(stripped) = string.strip_prefix("0x") {
@@ -746,7 +746,7 @@ impl From<u32> for Number32 {
 }
 
 impl std::convert::TryFrom<u32> for Number5 {
-    type Error = failure::Error;
+    type Error = anyhow::Error;
 
     fn try_from(value: u32) -> tvm_types::Result<Self> {
         Self::new(value)
@@ -754,7 +754,7 @@ impl std::convert::TryFrom<u32> for Number5 {
 }
 
 impl std::convert::TryFrom<u32> for Number8 {
-    type Error = failure::Error;
+    type Error = anyhow::Error;
 
     fn try_from(value: u32) -> tvm_types::Result<Self> {
         Self::new(value)
@@ -762,7 +762,7 @@ impl std::convert::TryFrom<u32> for Number8 {
 }
 
 impl std::convert::TryFrom<u32> for Number9 {
-    type Error = failure::Error;
+    type Error = anyhow::Error;
 
     fn try_from(value: u32) -> tvm_types::Result<Self> {
         Self::new(value)
@@ -770,7 +770,7 @@ impl std::convert::TryFrom<u32> for Number9 {
 }
 
 impl std::convert::TryFrom<u32> for Number12 {
-    type Error = failure::Error;
+    type Error = anyhow::Error;
 
     fn try_from(value: u32) -> tvm_types::Result<Self> {
         Self::new(value)
@@ -778,7 +778,7 @@ impl std::convert::TryFrom<u32> for Number12 {
 }
 
 impl std::convert::TryFrom<u32> for Number13 {
-    type Error = failure::Error;
+    type Error = anyhow::Error;
 
     fn try_from(value: u32) -> tvm_types::Result<Self> {
         Self::new(value)
@@ -786,7 +786,7 @@ impl std::convert::TryFrom<u32> for Number13 {
 }
 
 impl std::convert::TryFrom<u32> for Number16 {
-    type Error = failure::Error;
+    type Error = anyhow::Error;
 
     fn try_from(value: u32) -> tvm_types::Result<Self> {
         Self::new(value)
