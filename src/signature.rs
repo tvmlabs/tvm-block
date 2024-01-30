@@ -65,7 +65,7 @@ impl CryptoSignature {
             cur.write_all(r).unwrap();
             cur.write_all(s).unwrap();
         }
-        Ok(Self(ed25519::Signature::try_from(sign)?))
+        Ok(Self(ed25519::Signature::from(sign)))
     }
 
     pub fn from_r_s_str(r: &str, s: &str) -> Result<Self> {
