@@ -10,6 +10,8 @@
 // limitations under the License.
 #![allow(clippy::inconsistent_digit_grouping, clippy::unusual_byte_groupings)]
 
+use ed25519_dalek::SigningKey;
+use ed25519_dalek::VerifyingKey;
 use rand::Rng;
 use tvm_types::read_single_root_boc;
 
@@ -204,8 +206,10 @@ fn get_validator_set() -> ValidatorSet {
     let mut list = vec![];
     let mut rng = rand::thread_rng();
     for n in 0..2 {
-        let keypair = ed25519_dalek::Keypair::generate(&mut rng);
-        let key = SigPubKey::from_bytes(&keypair.public.to_bytes()).unwrap();
+        let sk: SigningKey = SigningKey::generate(&mut rng);
+        let pk: VerifyingKey = (&sk).into();
+
+        let key = SigPubKey::from_bytes(&pk.to_bytes()).unwrap();
         let vd = ValidatorDescr::with_params(key, n, None, None);
         list.push(vd);
     }
@@ -563,15 +567,19 @@ fn get_config_param_39() -> ConfigParam39 {
     let mut cp = ConfigParam39::default();
     let mut rng = rand::thread_rng();
 
-    let keypair = ed25519_dalek::Keypair::generate(&mut rng);
-    let spk = SigPubKey::from_bytes(&keypair.public.to_bytes()).unwrap();
+    let sk: SigningKey = SigningKey::generate(&mut rng);
+    let pk: VerifyingKey = (&sk).into();
+    let spk = SigPubKey::from_bytes(&pk.to_bytes()).unwrap();
+    // let keypair = ed25519_dalek::Keypair::generate(&mut rng);
+    // let spk = SigPubKey::from_bytes(&keypair.public.to_bytes()).unwrap();
     let cs = CryptoSignature::from_r_s(&[1; 32], &[2; 32]).unwrap();
     let vtk = ValidatorTempKey::with_params(UInt256::from([3; 32]), spk, 100500, 1562663724);
     let vstk = ValidatorSignedTempKey::with_key_and_signature(vtk, cs);
     cp.insert(&UInt256::from([1; 32]), &vstk).unwrap();
 
-    let keypair = ed25519_dalek::Keypair::generate(&mut rng);
-    let spk = SigPubKey::from_bytes(&keypair.public.to_bytes()).unwrap();
+    let sk: SigningKey = SigningKey::generate(&mut rng);
+    let pk: VerifyingKey = (&sk).into();
+    let spk = SigPubKey::from_bytes(&pk.to_bytes()).unwrap();
     let cs = CryptoSignature::from_r_s(&[6; 32], &[7; 32]).unwrap();
     let vtk = ValidatorTempKey::with_params(UInt256::from([8; 32]), spk, 500100, 1562664724);
     let vstk = ValidatorSignedTempKey::with_key_and_signature(vtk, cs);

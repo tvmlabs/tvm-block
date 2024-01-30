@@ -11,6 +11,8 @@
 use std::fs::File;
 use std::io::Read;
 
+use ed25519_dalek::SigningKey;
+use ed25519_dalek::VerifyingKey;
 use tvm_types::read_boc;
 use tvm_types::Cell;
 use tvm_types::UInt256;
@@ -69,8 +71,9 @@ fn test_crypto_sig_pub_key_new_default() {
 
 #[test]
 fn test_crypto_sig_pub_keyr_with() {
-    let keypair = ed25519_dalek::Keypair::generate(&mut rand::thread_rng());
-    let spk = SigPubKey::from_bytes(&keypair.public.to_bytes()).unwrap();
+    let sk: SigningKey = SigningKey::generate(&mut rand::thread_rng());
+    let pk: VerifyingKey = (&sk).into();
+    let spk = SigPubKey::from_bytes(&pk.to_bytes()).unwrap();
     write_read_and_assert(spk);
 }
 

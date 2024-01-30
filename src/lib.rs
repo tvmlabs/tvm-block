@@ -332,7 +332,7 @@ impl Serializable for () {
     }
 }
 
-pub fn id_from_key(key: &ed25519_dalek::PublicKey) -> u64 {
+pub fn id_from_key(key: &ed25519_dalek::SigningKey) -> u64 {
     let bytes = key.to_bytes();
     u64::from_be_bytes([
         bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],

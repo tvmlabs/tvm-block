@@ -49,7 +49,7 @@ impl CryptoSignature {
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        Ok(Self(ed25519::Signature::from_bytes(bytes)?))
+        Ok(Self(ed25519::Signature::try_from(bytes)?))
     }
 
     pub fn from_r_s(r: &[u8], s: &[u8]) -> Result<Self> {
@@ -65,7 +65,7 @@ impl CryptoSignature {
             cur.write_all(r).unwrap();
             cur.write_all(s).unwrap();
         }
-        Ok(Self(ed25519::Signature::from_bytes(&sign[..])?))
+        Ok(Self(ed25519::Signature::try_from(sign)?))
     }
 
     pub fn from_r_s_str(r: &str, s: &str) -> Result<Self> {
@@ -102,7 +102,7 @@ impl CryptoSignature {
 
 impl Default for CryptoSignature {
     fn default() -> Self {
-        Self(ed25519::Signature::from_bytes(&[0; ed25519_dalek::SIGNATURE_LENGTH]).unwrap())
+        Self(ed25519::Signature::from(&[0; ed25519_dalek::SIGNATURE_LENGTH]))
     }
 }
 
@@ -138,7 +138,7 @@ impl Deserializable for CryptoSignature {
             })
         }
         let buf = cell.get_next_bits(ed25519_dalek::SIGNATURE_LENGTH * 8)?;
-        self.0 = ed25519::Signature::from_bytes(&buf)?;
+        self.0 = ed25519::Signature::try_from(buf.as_slice())?;
         Ok(())
     }
 }
@@ -199,7 +199,7 @@ impl SigPubKey {
     }
 
     pub fn verify_signature(&self, data: &[u8], signature: &CryptoSignature) -> bool {
-        match ed25519_dalek::PublicKey::from_bytes(self.0.as_slice()) {
+        match ed25519_dalek::VerifyingKey::try_from(self.0.as_slice().as_slice()) {
             Ok(public_key) => public_key.verify(data, signature.signature()).is_ok(),
             Err(_) => false,
         }

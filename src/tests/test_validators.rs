@@ -1,3 +1,6 @@
+use ed25519_dalek::SigningKey;
+use ed25519_dalek::VerifyingKey;
+
 // Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
 //
 // Licensed under the SOFTWARE EVALUATION License (the "License"); you may not
@@ -63,8 +66,9 @@ fn test_validator_desc_new_default() {
 
 #[test]
 fn test_validator_desc_info_new_with() {
-    let keypair = ed25519_dalek::Keypair::generate(&mut rand::thread_rng());
-    let spk = SigPubKey::from_bytes(&keypair.public.to_bytes()).unwrap();
+    let sk: SigningKey = SigningKey::generate(&mut rand::thread_rng());
+    let pk: VerifyingKey = (&sk).into();
+    let spk = SigPubKey::from_bytes(&pk.to_bytes()).unwrap();
     let vd = ValidatorDescr::with_params(spk.clone(), 2121212121, None, None);
 
     assert_ne!(vd, ValidatorDescr::with_params(spk, 2, None, None));
@@ -76,8 +80,10 @@ fn test_validator_set_serialize() {
     let mut rng = rand::thread_rng();
     let mut list = vec![];
     for n in 0..20 {
-        let keypair = ed25519_dalek::Keypair::generate(&mut rng);
-        let key = SigPubKey::from_bytes(&keypair.public.to_bytes()).unwrap();
+        let sk: SigningKey = SigningKey::generate(&mut rng);
+        let pk: VerifyingKey = (&sk).into();
+        let key = SigPubKey::from_bytes(&pk.to_bytes()).unwrap();
+
         let vd = ValidatorDescr::with_params(key, n, None, None);
         list.push(vd);
     }

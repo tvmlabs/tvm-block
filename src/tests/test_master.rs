@@ -599,9 +599,9 @@ fn test_counters() {
 
 fn gen_collator() -> CollatorRange {
     let mut rng = rand::thread_rng();
-    let collator = rng.gen_range(0, 100);
-    let start = rng.gen_range(0, 100);
-    let finish = rng.gen_range(start, 100);
+    let collator = rng.gen_range(0..100);
+    let start = rng.gen_range(0..100);
+    let finish = rng.gen_range(start..100);
     CollatorRange { collator, start, finish }
 }
 
